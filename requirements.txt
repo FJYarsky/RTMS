@@ -1,0 +1,25 @@
+# ==============================================================================
+# RTMS v2.0.3 — Dependencias de Producción y Desarrollo
+# ==============================================================================
+
+# Framework Web y Servidor ASGI
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.8.0
+starlette>=0.38.0
+jinja2>=3.1.4
+
+# Interfaz Nativa de Escritorio y Bandeja del Sistema
+pywebview>=5.1
+pystray>=0.19.5
+pillow>=10.4.0
+
+# Telemetría de Sistema y Hardware
+psutil>=6.0.0
+
+# Herramientas de Desarrollo y Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.27.0
+ruff>=0.5.0
+dulwich>=1.2.0

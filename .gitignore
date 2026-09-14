@@ -1,0 +1,43 @@
+# ==============================================================================
+# RTMS — Git Ignore Policy
+# ==============================================================================
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Binarios pesados (>100MB no permitidos en GitHub)
+bin/*.exe
+bin/python/
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+ENV/
+
+# PyInstaller / Build outputs
+build/
+dist/
+*.spec
+
+# Logs locales y telemetría
+*.log
+rtms.log
+rtms_startup.log
+
+# Configuraciones locales de hardware y respaldos
+config/config.json
+config/power_backup.json
+
+# IDEs & OS files
+.vscode/
+.idea/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

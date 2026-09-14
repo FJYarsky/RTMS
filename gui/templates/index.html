@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="rtms-token" content="{{ api_token }}">
+    <title>RTMS v2.0.3 — Real-Time Multicam System</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ==============================================================================
+    RTMS — Real-Time Multicam System v2.0.3
+    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+    ============================================================================== -->
+    
+    <div class="app">
+        <!-- HEADER CON HUD DE TELEMETRÍA Y BOTÓN DE EMERGENCIA -->
+        <header>
+            <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor">
+                <div class="logo-icon"></div>
+                <div class="logo-text">RTMS <span class="version-tag">v2.0.3</span></div>
+            </div>
+
+            <!-- HUD de Telemetría en Tiempo Real -->
+            <div class="header-hud">
+                <div class="hud-item" title="Uso actual de procesador">
+                    <span class="hud-label">CPU</span>
+                    <span class="hud-val" id="hud-cpu-val">0%</span>
+                </div>
+                <div class="hud-item" title="Uso actual de memoria RAM">
+                    <span class="hud-label">RAM</span>
+                    <span class="hud-val" id="hud-ram-val">0%</span>
+                </div>
+                <div class="hud-item" title="Ancho de banda total emitido">
+                    <span class="hud-label">BITRATE</span>
+                    <span class="hud-val" id="hud-bitrate-val">0 kbps</span>
+                </div>
+            </div>
+
+            <div class="header-status">
+                <div class="status-pill" id="header-stream-count">
+                    <span id="active-streams-num">0</span> activos / <span id="total-streams-num">0</span> total
+                </div>
+                <div class="ip-pill" id="header-ip-addr">–.–.–.–</div>
+                <!-- Botón de Detención de Emergencia -->
+                <button class="btn btn-emergency" onclick="confirmEmergencyStop()" title="Detener inmediatamente todas las transmisiones">
+                    🛑 PARADA DE EMERGENCIA
+                </button>
+            </div>
+        </header>
+
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+            <div class="nav-section-title">Principal</div>
+            <div class="nav-link active" data-page="connect" onclick="navigateToPage('connect')">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                </svg>
+                Conectar OBS/VLC
+            </div>
+            
+            <div class="nav-section-title">Gestión</div>
+            <div class="nav-link" data-page="cameras" onclick="navigateToPage('cameras')">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/>
+                </svg>
+                Cámaras
+                <span class="nav-badge zero" id="sidebar-camera-badge">0</span>
+            </div>
+
+            <div class="nav-section-title">Gestión del Sistema</div>
+            <div class="nav-link" data-page="power" onclick="navigateToPage('power')">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2M9 3a2 2 0 002 2h2a2 2 0 002-2M9 3h6"/>
+                </svg>
+                Gestión de Energía
+            </div>
+            <div class="nav-link" data-page="system" onclick="navigateToPage('system')">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                </svg>
+                Sistema y Arranque
+            </div>
+
+            <!-- FIRMA DE AUTOR DESTACADA -->
+            <div class="sidebar-footer">
+                <div class="author-card" onclick="openAboutModal()">
+                    <div class="author-title">Desarrollado por</div>
+                    <div class="author-name">Joaquín Yarsky</div>
+                    <div class="author-sub">RTMS v2.0.3 • Soporte Oficial</div>
+                    <button class="btn btn-author-contact">ℹ️ Acerca de / Contacto</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT AREA -->
+        <main>
+            <!-- 1. PAGE: CONECTAR OBS/VLC -->
+            <div id="page-connect" class="page active">
+                <div class="page-title">Conectar con OBS / VLC</div>
+                <div class="page-subtitle">Direcciones de red optimizadas para recepción de video con ultra baja latencia.</div>
+
+                <div class="ip-display-box">
+                    <div class="ip-info-text">
+                        <div class="ip-title-label">IP del Servidor en la Red Local</div>
+                        <div class="ip-address-val" id="connect-server-ip">Cargando...</div>
+                    </div>
+                    <button class="btn btn-ghost" onclick="copyServerIp()">📋 Copiar IP</button>
+                </div>
+
+                <!-- Active Streams URL List -->
+                <div class="card">
+                    <div class="card-header">Direcciones de Transmisión Activas</div>
+                    <div class="card-body" id="connect-streams-list">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                            Buscando flujos de transmisión activos...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OBS & VLC Guides -->
+                <div class="card">
+                    <div class="card-header">Guía de Configuración Rápida en OBS Studio</div>
+                    <div class="card-body">
+                        <div class="alert-box alert-info">
+                            <strong>Protocolo SRT Recomendado:</strong> SRT ofrece corrección automática de paquetes y latencia inferior a 100ms. Configura estas fuentes en la <strong>computadora donde corre OBS</strong>.
+                        </div>
+                        
+                        <div class="obs-guide-steps">
+                            <div class="obs-guide-step">
+                                <div class="step-number">1</div>
+                                <div class="step-details">
+                                    <div class="step-title">Crear Fuente Multimedia en OBS</div>
+                                    <div class="step-desc">Haz clic en <strong>+</strong> en el panel de Fuentes, y elige <strong>Fuente multimedia</strong>.</div>
+                                </div>
+                            </div>
+                            <div class="obs-guide-step">
+                                <div class="step-number">2</div>
+                                <div class="step-details">
+                                    <div class="step-title">Desmarcar "Archivo local"</div>
+                                    <div class="step-desc">Desmarca la casilla <strong>Archivo local</strong> para habilitar las opciones de red.</div>
+                                </div>
+                            </div>
+                            <div class="obs-guide-step">
+                                <div class="step-number">3</div>
+                                <div class="step-details">
+                                    <div class="step-title">Pegar la URL generada</div>
+                                    <div class="step-desc">En el campo <strong>Entrada</strong>, pega la URL de SRT copiada arriba (ej: <code>srt://192.168.1.X:9000?mode=caller...</code>).</div>
+                                </div>
+                            </div>
+                            <div class="obs-guide-step">
+                                <div class="step-number">4</div>
+                                <div class="step-details">
+                                    <div class="step-title">Formato de entrada</div>
+                                    <div class="step-desc">En el campo <strong>Formato de entrada</strong> escribe <code>mpegts</code>.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. PAGE: CAMARAS Y CONFIGURACION -->
+            <div id="page-cameras" class="page">
+                <div class="page-title">Dispositivos y Flujos</div>
+                <div class="page-subtitle">Control individual, autoarranque y optimización de hardware para cada cámara detectada.</div>
+
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 20px; gap: 10px;">
+                    <button class="btn btn-primary" id="btn-scan-hw" onclick="scanHardwareDevices()">
+                        🔄 Escanear Hardware
+                    </button>
+                </div>
+
+                <!-- Grid de Cámaras Físicas Principales -->
+                <div class="streams-grid" id="cameras-grid-container">
+                    <!-- Tarjetas de cámaras físicas principales -->
+                </div>
+
+                <!-- SECCIÓN COLAPSABLE: CÁMARAS VIRTUALES O INACTIVAS -->
+                <div class="virtual-section-container" id="virtual-cameras-section" style="display: none; margin-top: 30px;">
+                    <div class="virtual-toggle-header" onclick="toggleVirtualCamerasVisibility()">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span id="virtual-chevron" style="font-size: 1.1rem; transition: transform 0.2s;">▶</span>
+                            <strong>Dispositivos Ocultos / Virtuales (<span id="virtual-count-badge">0</span>)</strong>
+                        </div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Haz clic para mostrar u ocultar</span>
+                    </div>
+                    <div class="streams-grid virtual-grid-hidden" id="virtual-cameras-grid" style="margin-top: 16px;">
+                        <!-- Tarjetas de cámaras virtuales u ocultas -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. PAGE: GESTION DE ENERGIA -->
+            <div id="page-power" class="page">
+                <div class="page-title">Optimización Energética</div>
+                <div class="page-subtitle">Directivas silenciosas de Windows para evitar cortes de cámara por USB Selective Suspend.</div>
+
+                <div class="card">
+                    <div class="card-header">Estado de Optimización Energética</div>
+                    <div class="card-body">
+                        <div class="alert-box alert-warning">
+                            <strong>Estabilidad para Vivo:</strong> Estas optimizaciones evitan que Windows suspenda puertos USB de las cámaras o apague adaptadores de red. Se aplican de forma 100% silenciosa sin consolas visibles.
+                        </div>
+
+                        <div class="power-grid">
+                            <div class="power-card">
+                                <div class="power-card-icon">⚡</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title">Alto Rendimiento</div>
+                                    <div class="power-card-desc">Fuerza el CPU al plan de máxima potencia de Windows.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-high-perf">Listo</div>
+                            </div>
+                            <div class="power-card">
+                                <div class="power-card-icon">💻</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title">Suspensión del Sistema</div>
+                                    <div class="power-card-desc">Evita que la PC entre en suspensión durante eventos.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-sleep">Listo</div>
+                            </div>
+                            <div class="power-card">
+                                <div class="power-card-icon">💤</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title">Hibernación</div>
+                                    <div class="power-card-desc">Desactiva el archivo de hibernación para evitar bloqueos.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-hibernation">Listo</div>
+                            </div>
+                            <div class="power-card">
+                                <div class="power-card-icon">🔌</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title">USB Selective Suspend</div>
+                                    <div class="power-card-desc">Evita que Windows apague los puertos USB de las cámaras.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-usb">Listo</div>
+                            </div>
+                            <div class="power-card">
+                                <div class="power-card-icon">💽</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title">Apagado de HDD / Discos</div>
+                                    <div class="power-card-desc">Evita desactivación de unidades de almacenamiento.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-hdd">Listo</div>
+                            </div>
+                            <div class="power-card">
+                                <div class="power-card-icon">🌐</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title">Ahorro en Adaptador de Red</div>
+                                    <div class="power-card-desc">Desactiva el ahorro de energía en tarjetas Ethernet/Wi-Fi.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-network">Listo</div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                            <button class="btn btn-primary" id="btn-apply-power" onclick="reapplySystemEnvironment()">
+                                🛠️ Aplicar Optimizaciones
+                            </button>
+                            <button class="btn btn-ghost" id="btn-restore-power" onclick="restorePowerSettings()" style="display:none;">
+                                ↩️ Restaurar Configuración Original
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. PAGE: SISTEMA Y AUTOARRANQUE -->
+            <div id="page-system" class="page">
+                <div class="page-title">Sistema y Ejecución Desatendida</div>
+                <div class="page-subtitle">Configuración de tolerancia a reinicios del sistema sin intervención humana.</div>
+
+                <div class="card">
+                    <div class="card-header">Autoarranque con Windows (Modo Desatendido)</div>
+                    <div class="card-body">
+                        <div class="alert-box alert-info">
+                            Inicia RTMS silenciosamente al encender el equipo sin consolas negras abiertas. Las cámaras con la opción de <strong>Autoarranque</strong> activa comenzarán a transmitir automáticamente.
+                        </div>
+
+                        <label class="switch-label">
+                            <div class="switch-text">
+                                <div class="switch-title">Iniciar RTMS al arrancar Windows</div>
+                                <div class="switch-desc">Permite tolerancia a reinicios accidentales o cortes de energía.</div>
+                            </div>
+                            <input type="checkbox" id="autostart-toggle-switch" onchange="toggleAutostartState(this.checked)">
+                            <div class="switch-toggle"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Información del Servidor</div>
+                    <div class="card-body">
+                        <table class="system-table">
+                            <tr>
+                                <td>Versión RTMS</td>
+                                <td>v2.0.3 (Build Septiembre 2026)</td>
+                            </tr>
+                            <tr>
+                                <td>Plataforma</td>
+                                <td id="sys-platform">Windows</td>
+                            </tr>
+                            <tr>
+                                <td>IP del Servidor</td>
+                                <td id="sys-ip">127.0.0.1</td>
+                            </tr>
+                            <tr>
+                                <td>Desarrollador</td>
+                                <td><strong>Joaquín Yarsky</strong> (<a href="mailto:joaquinyarsky@gmail.com" style="color:var(--teal)">joaquinyarsky@gmail.com</a>)</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- CONFIGURATION MODAL -->
+    <div class="modal-overlay" id="config-modal-overlay">
+        <div class="modal-card">
+            <div class="modal-hdr">
+                <span id="config-modal-title">Configuración de Cámara</span>
+                <button class="modal-close" onclick="closeConfigModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="camera-config-form" onsubmit="submitCameraConfig(event)">
+                    <input type="hidden" id="config-device-path">
+                    <input type="hidden" id="config-port">
+
+                    <div class="form-grid" style="margin-bottom: 16px;">
+                        <div class="form-group">
+                            <label class="form-label" for="config-preset">Plantilla de Calidad</label>
+                            <select class="form-ctrl" id="config-preset" onchange="applyQualityPreset(this.value)">
+                                <option value="custom">Personalizado...</option>
+                                <option value="best">El Mejor (1080p @ 60fps - 5000 kbps)</option>
+                                <option value="default" selected>Predeterminado (720p @ 30fps - 3000 kbps)</option>
+                                <option value="lowest">El Más Bajo (480p @ 24fps - 1500 kbps)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="config-resolution">Resolución</label>
+                            <select class="form-ctrl" id="config-resolution" onchange="resetQualityPreset()">
+                                <option value="480p">854x480 (480p)</option>
+                                <option value="720p" selected>1280x720 (720p)</option>
+                                <option value="1080p">1920x1080 (1080p)</option>
+                                <option value="1440p">2560x1440 (1440p)</option>
+                                <option value="4K">3840x2160 (4K)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-bottom: 16px;">
+                        <div class="form-group">
+                            <label class="form-label" for="config-fps">FPS (Fotogramas por Segundo)</label>
+                            <select class="form-ctrl" id="config-fps" onchange="resetQualityPreset()">
+                                <option value="24">24 FPS</option>
+                                <option value="30" selected>30 FPS</option>
+                                <option value="60">60 FPS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="config-bitrate">Bitrate de Video (kbps)</label>
+                            <input class="form-ctrl" type="number" id="config-bitrate" value="3000" min="500" max="50000" oninput="resetQualityPreset()">
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-bottom: 16px;">
+                        <div class="form-group">
+                            <label class="form-label" for="config-protocol">Protocolo de Red</label>
+                            <select class="form-ctrl" id="config-protocol" onchange="handleProtocolChange(this.value)">
+                                <option value="srt" selected>SRT Listener (Baja latencia 1 a 1 - Recomendado)</option>
+                                <option value="udp">UDP Multicast (Múltiples receptores LAN)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="config-encoder">Codificador FFmpeg</label>
+                            <select class="form-ctrl" id="config-encoder">
+                                <option value="auto" selected>Auto-detectar GPU (Fallback a CPU)</option>
+                                <option value="h264_nvenc">NVIDIA NVENC H.264</option>
+                                <option value="h264_qsv">Intel QuickSync QSV H.264</option>
+                                <option value="h264_amf">AMD AMF H.264</option>
+                                <option value="libx264">Libx264 (CPU - Compatibilidad Universal)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- AJUSTES DE EJECUCIÓN DESATENDIDA -->
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px;">
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--teal); margin-bottom: 8px;">Opciones de Automatización</div>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
+                            <input type="checkbox" id="config-cam-autostart" checked style="display: inline-block;">
+                            <span>Iniciar transmisión automáticamente al encender el equipo (Desatendido)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
+                            <input type="checkbox" id="config-zerolatency" checked style="display: inline-block;">
+                            <span>Activar modo de latencia cero real (sin búferes MPEG-TS)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
+                            <input type="checkbox" id="config-is-virtual" style="display: inline-block;">
+                            <span>Marcar como dispositivo virtual / secundario (ocultar en panel inferior)</span>
+                        </label>
+                    </div>
+
+                    <!-- ADVANCED SRT SETTINGS COLLAPSIBLE -->
+                    <div class="advanced-trigger" onclick="toggleAdvancedSettingsPanel()">
+                        <span>⚙️ Ajustes Avanzados SRT</span>
+                        <span class="advanced-icon" id="advanced-chevron">&#9662;</span>
+                    </div>
+
+                    <div class="advanced-panel" id="config-advanced-panel">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="config-srt-latency">Latencia SRT (ms)</label>
+                                <input class="form-ctrl" type="number" id="config-srt-latency" value="120" min="10" max="5000">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="config-srt-passphrase">Contraseña SRT (Opcional)</label>
+                                <input class="form-ctrl" type="text" id="config-srt-passphrase" placeholder="Mínimo 10 caracteres" minlength="10" maxlength="79">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: none;">
+                        <input type="submit" id="form-submit-hidden">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" onclick="closeConfigModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="document.getElementById('form-submit-hidden').click()">Guardar y Aplicar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGS MODAL -->
+    <div class="modal-overlay" id="logs-modal-overlay">
+        <div class="modal-card">
+            <div class="modal-hdr">
+                <span id="logs-modal-title">Logs de FFmpeg</span>
+                <button class="modal-close" onclick="closeLogsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="logs-box" id="logs-content-box">Cargando logs...</div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" onclick="closeLogsModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ACERCA DE RTMS Y AUTOR -->
+    <div class="modal-overlay" id="about-modal-overlay">
+        <div class="modal-card about-card">
+            <div class="modal-hdr">
+                <span>Acerca de RTMS</span>
+                <button class="modal-close" onclick="closeAboutModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center; padding: 28px;">
+                <div class="about-logo-icon"></div>
+                <h2 style="font-size: 1.5rem; font-weight: 800; margin-top: 12px; color: var(--text-primary);">
+                    Real-Time Multicam System
+                </h2>
+                <div style="font-size: 0.9rem; color: var(--teal); font-weight: 700; margin-bottom: 16px;">
+                    Versión 2.0.3 • Producción y Streaming
+                </div>
+
+                <div class="about-author-box">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">
+                        Desarrollado y Diseñado por
+                    </div>
+                    <div style="font-size: 1.3rem; font-weight: 900; color: #fff; margin: 4px 0;">
+                        Joaquín Yarsky
+                    </div>
+                    <div style="display: flex; justify-content: center; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
+                        <a href="mailto:joaquinyarsky@gmail.com" class="btn btn-ghost btn-sm" style="text-decoration:none;">
+                            ✉️ joaquinyarsky@gmail.com
+                        </a>
+                        <a href="https://wa.me/5492625437980" target="_blank" class="btn btn-whatsapp btn-sm" style="text-decoration:none;">
+                            💬 WhatsApp: +54 2625-437980
+                        </a>
+                    </div>
+                </div>
+
+                <div style="text-align: left; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); padding: 14px; margin-top: 18px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
+                    <strong>Atribuciones y Componentes de Terceros:</strong><br>
+                    • <strong>FFmpeg:</strong> Proyecto bajo licencia LGPL/GPL (soporte NVENC, QSV, AMF, SRT).<br>
+                    • <strong>FastAPI & Uvicorn:</strong> Framework web asíncrono de alto rendimiento bajo licencia MIT.<br>
+                    • <strong>pywebview:</strong> Motor de interfaz de usuario de escritorio multiplataforma.<br>
+                    • <strong>SRT (Secure Reliable Transport):</strong> Protocolo de transmisión de código abierto.
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-primary" onclick="closeAboutModal()">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMACIÓN DE PARADA DE EMERGENCIA -->
+    <div class="modal-overlay" id="emergency-modal-overlay">
+        <div class="modal-card">
+            <div class="modal-hdr" style="color: var(--status-red);">
+                <span>⚠️ Confirmar Detención de Emergencia</span>
+                <button class="modal-close" onclick="closeEmergencyModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.95rem; margin-bottom: 12px;">
+                    ¿Estás seguro de que deseas ejecutar la <strong>Parada de Emergencia</strong>?
+                </p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                    Esto detendrá de forma inmediata todos los procesos de transmisión FFmpeg activos y cortará las emisiones hacia OBS/VLC.
+                </p>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" onclick="closeEmergencyModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="executeEmergencyStop()">Detener Todo Ahora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
