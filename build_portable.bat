@@ -1,23 +1,30 @@
 @echo off
 REM ==============================================================================
-REM RTMS 2.0.2 — Build Script para ejecutable nativo portable (pywebview)
+REM RTMS 2.0.4 — Build Script para ejecutable nativo portable (pywebview)
 REM Genera rtms.exe en la carpeta dist/
 REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 REM ==============================================================================
 
 echo.
 echo ============================================================
-echo  RTMS v2.0.2 — Creando aplicacion nativa con PyInstaller
+echo  RTMS v2.0.4 — Creando aplicacion nativa con PyInstaller
 echo ============================================================
 echo.
 
 cd /d "%~dp0"
 
+REM Detectar interprete de Python preferido
+if exist "bin\python\python.exe" (
+    set "PYTHON_EXE=bin\python\python.exe"
+) else (
+    set "PYTHON_EXE=python"
+)
+
 REM Verificar que PyInstaller este instalado
-python -m PyInstaller --version >nul 2>&1
+%PYTHON_EXE% -m PyInstaller --version >nul 2>&1
 if errorlevel 1 (
     echo [INFO] PyInstaller no esta instalado. Instalando...
-    pip install pyinstaller
+    %PYTHON_EXE% -m pip install pyinstaller
 )
 
 REM Limpiar builds anteriores
@@ -28,7 +35,7 @@ if exist rtms.spec del /q rtms.spec
 echo [INFO] Construyendo ejecutable nativo rtms.exe...
 echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
 
-python -m PyInstaller ^
+%PYTHON_EXE% -m PyInstaller ^
   --clean ^
   --onedir ^
   --noconsole ^
@@ -75,10 +82,29 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Copiar la carpeta bin existente dentro de dist/rtms/ para que FFmpeg este disponible
-if exist bin (
-    echo [INFO] Copiando binarios multimedia a dist\rtms\bin...
-    xcopy /E /I /Y bin dist\rtms\bin
+REM Copiar los binarios multimedia (ffmpeg.exe, ffplay.exe) dentro de dist/rtms/bin/
+if not exist "dist\rtms\bin" mkdir "dist\rtms\bin"
+if exist "bin\ffmpeg.exe" (
+    echo [INFO] Copiando FFmpeg a dist\rtms\bin...
+    copy /Y "bin\ffmpeg.exe" "dist\rtms\bin\" >nul
+)
+if exist "bin\ffplay.exe" (
+    echo [INFO] Copiando FFplay a dist\rtms\bin...
+    copy /Y "bin\ffplay.exe" "dist\rtms\bin\" >nul
+)
+
+REM Copiar la carpeta de configuracion a dist/rtms/config/
+if exist "config" (
+    echo [INFO] Copiando configuracion a dist\rtms\config...
+    xcopy /E /I /Y config dist\rtms\config >nul
+)
+
+REM Copiar WebView2Loader.dll a dist/rtms/ para soporte nativo de Edge Chromium
+set "WEBVIEW2_DLL=bin\python\Lib\site-packages\webview\lib\runtimes\win-x64\native\WebView2Loader.dll"
+if exist "%WEBVIEW2_DLL%" (
+    echo [INFO] Copiando WebView2Loader.dll a dist\rtms...
+    copy /Y "%WEBVIEW2_DLL%" "dist\rtms\" >nul
+    copy /Y "%WEBVIEW2_DLL%" "dist\rtms\_internal\" >nul
 )
 
 echo.
@@ -86,4 +112,3 @@ echo ============================================================
 echo  [OK] Aplicacion nativa generada exitosamente en: dist\rtms\rtms.exe
 echo ============================================================
 echo.
-pause

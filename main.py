@@ -15,21 +15,18 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional
 
-_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    _APP_DIR = os.path.dirname(sys.executable)
+    _RES_DIR = getattr(sys, '_MEIPASS', _APP_DIR)
+else:
+    _APP_DIR = os.path.dirname(os.path.abspath(__file__))
+    _RES_DIR = _APP_DIR
+
+_BASE_DIR = _APP_DIR
 sys.path.insert(0, _BASE_DIR)
 
 from core.__version__ import __version__
 from core.single_instance import acquire_single_instance_lock, release_single_instance_lock
-
-# 0. Verificación estricta de instancia única (Single Instance Lock)
-if not acquire_single_instance_lock():
-    print("[INFO] RTMS ya se encuentra en ejecución en este equipo. Abortando instancia secundaria.")
-    try:
-        import ctypes
-        ctypes.windll.user32.MessageBoxW(0, "RTMS ya está abierto y ejecutándose en este equipo.", "RTMS — Instancia en Ejecución", 0x40)
-    except Exception:
-        pass
-    sys.exit(0)
 
 import uvicorn
 import webview
@@ -99,8 +96,14 @@ def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
 
     application.include_router(api_router)
 
-    _static_dir = os.path.join(_BASE_DIR, "gui", "static")
-    _templates_dir = os.path.join(_BASE_DIR, "gui", "templates")
+    _static_dir = os.path.join(_RES_DIR, "gui", "static")
+    if not os.path.exists(_static_dir):
+        _static_dir = os.path.join(_APP_DIR, "gui", "static")
+
+    _templates_dir = os.path.join(_RES_DIR, "gui", "templates")
+    if not os.path.exists(_templates_dir):
+        _templates_dir = os.path.join(_APP_DIR, "gui", "templates")
+
     if os.path.exists(_static_dir):
         application.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
@@ -147,14 +150,19 @@ def run_fastapi(port: int):
     _uvicorn_server = uvicorn.Server(config)
     _uvicorn_server.run()
 
+_api_port = 8000
+
 def show_window_from_tray():
-    global _main_window
+    global _main_window, _api_port
     if _main_window:
         try:
             _main_window.show()
             _main_window.restore()
+            return
         except Exception as e:
             logger.debug(f"Error restaurando ventana desde tray: {e}")
+    import webbrowser
+    webbrowser.open(f"http://127.0.0.1:{_api_port}")
 
 def on_closed():
     """Cierre unificado y ordenado de la aplicación (sin os._exit abrupto)."""
@@ -189,20 +197,30 @@ def on_closed():
     sys.exit(0)
 
 if __name__ == "__main__":
+    # 0. Verificación estricta de instancia única (Single Instance Lock)
+    if not acquire_single_instance_lock():
+        print("[INFO] RTMS ya se encuentra en ejecución en este equipo. Abortando instancia secundaria.")
+        try:
+            import ctypes
+            ctypes.windll.user32.MessageBoxW(0, "RTMS ya está abierto y ejecutándose en este equipo.", "RTMS — Instancia en Ejecución", 0x40)
+        except Exception:
+            pass
+        sys.exit(0)
+
     try:
-        api_port = get_free_port()
+        _api_port = get_free_port()
     except Exception as e:
         logger.error(str(e))
         release_single_instance_lock()
         sys.exit(1)
 
     # 1. Iniciar FastAPI en segundo plano
-    _uvicorn_thread = threading.Thread(target=run_fastapi, args=(api_port,), daemon=True)
+    _uvicorn_thread = threading.Thread(target=run_fastapi, args=(_api_port,), daemon=True)
     _uvicorn_thread.start()
 
     # 2. Esperar a que FastAPI esté listo
     retries = 25
-    while retries > 0 and not is_port_open("127.0.0.1", api_port):
+    while retries > 0 and not is_port_open("127.0.0.1", _api_port):
         time.sleep(0.2)
         retries -= 1
 
@@ -211,7 +229,7 @@ if __name__ == "__main__":
         release_single_instance_lock()
         sys.exit(1)
 
-    logger.info("FastAPI iniciado con éxito. Configurando interfaz nativa...")
+    logger.info(f"FastAPI iniciado con éxito en puerto {_api_port}. Configurando interfaz nativa...")
 
     # 3. Inicializar icono en la bandeja del sistema (System Tray)
     _tray_mgr = SystemTrayManager(
@@ -220,15 +238,37 @@ if __name__ == "__main__":
     )
     _tray_mgr.start()
 
-    # 4. Crear ventana nativa con pywebview
-    _main_window = webview.create_window(
-        title=f"RTMS v{__version__} — Real-Time Multicam System",
-        url=f"http://127.0.0.1:{api_port}",
-        width=1280,
-        height=820,
-        min_size=(980, 620),
-        background_color="#0b0f19"
-    )
+    # 4. Manejador para minimizar al System Tray al cerrar la ventana ('X')
+    def on_window_closing():
+        if _main_window:
+            try:
+                _main_window.hide()
+                return False  # Cancela el cierre definitivo para continuar en segundo plano
+            except Exception:
+                pass
+        return True
 
-    _main_window.events.closed += on_closed
-    webview.start()
+    # 5. Crear ventana nativa con pywebview
+    try:
+        _main_window = webview.create_window(
+            title=f"RTMS v{__version__} — Real-Time Multicam System",
+            url=f"http://127.0.0.1:{_api_port}",
+            width=1280,
+            height=820,
+            min_size=(980, 620),
+            background_color="#0b0f19"
+        )
+        _main_window.events.closing += on_window_closing
+        webview.start()
+    except Exception as e:
+        logger.warning(f"No se pudo iniciar pywebview nativo: {e}")
+        logger.info(f"Iniciando RTMS en segundo plano con acceso vía navegador en: http://127.0.0.1:{_api_port}")
+        import webbrowser
+        webbrowser.open(f"http://127.0.0.1:{_api_port}")
+
+    # Si webview finaliza o corre en modo tray/browser, mantener el hilo principal activo
+    try:
+        while True:
+            time.sleep(1)
+    except (KeyboardInterrupt, SystemExit):
+        on_closed()

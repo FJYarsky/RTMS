@@ -14,7 +14,10 @@ from typing import List, Dict
 logger = logging.getLogger("rtms.hardware")
 
 _WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
-_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # rtms_app/
+if getattr(sys, 'frozen', False):
+    _BASE_DIR = os.path.dirname(sys.executable)
+else:
+    _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # rtms_app/
 _FFMPEG_BIN = os.path.join(_BASE_DIR, "bin", "ffmpeg.exe")
 
 def get_ffmpeg_bin() -> str:
