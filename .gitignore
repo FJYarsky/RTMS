@@ -31,7 +31,11 @@ rtms_startup.log
 
 # Configuraciones locales de hardware y respaldos
 config/config.json
+config/config.json.bak
+config/config.json.tmp
 config/power_backup.json
+*.bak
+*.tmp
 
 # IDEs & OS files
 .vscode/

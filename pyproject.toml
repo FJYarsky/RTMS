@@ -1,0 +1,29 @@
+[project]
+name = "rtms"
+version = "2.0.4"
+description = "Real-Time Multicam System — Sistema multicámara en tiempo real con SRT de ultra baja latencia"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Joaquín Yarsky", email = "joaquinyarsky@gmail.com" }
+]
+license = { text = "MIT" }
+
+[tool.ruff]
+line-length = 120
+exclude = [
+    "bin",
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    "build",
+    "dist"
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501", "E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

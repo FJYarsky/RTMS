@@ -2,7 +2,6 @@
 # RTMS v2.0.3 — Tests Unitarios para Analizador de DirectShow (core/hardware.py)
 # ==============================================================================
 
-import pytest
 from core.hardware import parse_dshow_output
 
 def test_parse_dshow_modern_format():

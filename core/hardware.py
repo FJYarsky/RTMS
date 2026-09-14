@@ -8,7 +8,7 @@ import re
 import os
 import sys
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 logger = logging.getLogger("rtms.hardware")
 
@@ -34,10 +34,10 @@ async def get_directshow_devices() -> List[Dict[str, str]]:
             stderr=asyncio.subprocess.PIPE,
             creationflags=_WIN_FLAGS
         )
-        
+
         _, stderr = await process.communicate()
         output = stderr.decode('utf-8', errors='ignore')
-        
+
         return parse_dshow_output(output)
     except Exception as e:
         logger.exception(f"Error consultando dispositivos DirectShow: {e}")
@@ -50,13 +50,13 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
     """
     devices = []
     lines = output.split('\n')
-    
+
     # 1. Intentar el formato moderno de FFmpeg 7.x:
     # [in#0 @ 0000...] "Name" (video)
     # [in#0 @ 0000...]   Alternative name "@device..."
     current_video_device = None
     has_modern_format = False
-    
+
     for line in lines:
         if '(video)' in line and ']' in line:
             has_modern_format = True
@@ -73,17 +73,17 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
             current_video_device = None
         elif '(audio)' in line or '(none)' in line:
             current_video_device = None
-            
+
     if has_modern_format:
         logger.info(f"Se encontraron {len(devices)} dispositivos de video.")
         return devices
-        
+
     # 2. Fallback al formato clásico de FFmpeg (6.x y anteriores)
     if "DirectShow audio devices" in output:
         video_part = output.split("DirectShow audio devices")[0]
     else:
         video_part = output
-        
+
     current_device = None
     for line in video_part.split('\n'):
         if "DirectShow video devices" in line:
@@ -100,6 +100,6 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
             m = re.search(r'"([^"]+)"', line)
             if m:
                 current_device = m.group(1)
-                
+
     logger.info(f"Se encontraron {len(devices)} dispositivos de video.")
     return devices

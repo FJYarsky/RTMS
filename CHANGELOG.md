@@ -5,6 +5,41 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ---
 
+## [2.0.4] — 2026-09-14
+
+### Seguridad y Hardening (P0 & P1)
+- **Sanitización Estricta de Secretos**: Creación de `core/sanitizer.py` para enmascarar automáticamente cualquier `passphrase=...` o token en comandos de FFmpeg, buffers de memoria y archivos de log.
+- **Protección Integral de Endpoints Sensibles**: Extensión del middleware de autenticación `X-RTMS-Token` a endpoints de lectura (`GET /api/status`, `/api/stream/logs`, `/api/system/metrics`, `/api/power/status`), dejando `/healthz` como único endpoint público.
+- **Cifrado en Disco de Passphrases (Windows DPAPI)**: Integración de `core/secrets_mgr.py` utilizando Windows DPAPI nativo (`CryptProtectData`) para cifrar frases de paso en reposo dentro de `config.json`.
+- **Verificación Criptográfica SHA256 de FFmpeg**: Actualización de `scripts/setup_binaries.ps1` para descargar y validar el hash SHA256 oficial de Gyan.dev antes de descomprimir binarios.
+- **Escape Seguro de URLs SRT**: Parámetros de URL codificados mediante `urllib.parse.quote_plus` para evitar inyecciones por caracteres especiales.
+- **Frontend Seguro contra Inyecciones DOM**: Reemplazo de interpolaciones directas a `innerHTML` con `textContent` y función `escapeHtml()` en `gui/static/app.js`.
+
+### Ciclo de Vida y Streaming (P0)
+- **Shutdown Unificado y Eliminación de `os._exit(0)`**: Protocolo limpio de parada en `StreamManager.stop_all()`. FFmpeg recibe señal `b'q'` a `stdin`, con período de gracia de 2.5s antes de `terminate()` y fallback final a `kill()`. Cierre ordenado de Uvicorn y salida mediante `sys.exit(0)`.
+- **Corrección de Carrera en Fallback GPU $\rightarrow$ CPU**: Bloqueo de exclusión mutua (`asyncio.Lock`) por cámara y método explícito `_fallback_to_cpu()` que garantiza la detención del proceso de GPU antes de inicializar `libx264`.
+- **Aislamiento de Encoder por Dispositivo**: Fallos transitorios de GPU en un flujo no degradan a las demás cámaras a CPU.
+- **Opción `zerolatency` 100% Funcional**: Conmutación real de flags de multiplexado MPEG-TS (`-muxdelay 0`, `-flush_packets 1`), descarte de paquetes SRT (`tlpktdrop=1/0`) y sintonización de encoder.
+
+### Robustez y Arquitectura (P1 & P2)
+- **ConfigManager Atómico y Resiliente**: Escritura segura en `.tmp`, `fsync`, copias de respaldo continuas `.bak` y framework de migraciones automáticas (`migrate_config`).
+- **Identidad Estable de Cámaras (`camera_id`)**: Asignación de identificadores deterministas (UUID v5) desacoplados de la ruta física del bus USB.
+- **Gestor Inteligente de Puertos (`PortManager`)**: Detección activa de sockets en uso mediante bind de SO (rango 9000-9200) y reciclaje de puertos liberados.
+- **Watchdog No Bloqueante**: Evaluación independiente de reintentos mediante marca temporal (`next_retry_at`) sin suspender la supervisión del resto de flujos.
+- **Validación Estricta con Pydantic**: Esquemas enriquecidos con tipos `Literal` y restricciones numéricas con `Field(ge=..., le=...)`.
+- **Reporte Estructurado de Optimizaciones Windows**: `setup_windows_environment()` reporta con precisión el estado real (`ok`, `partial`, `failed`) de cada directiva.
+- **Fábrica `create_app()` y Versionado Centralizado**: Instanciación desacoplada en `main.py` y fuente única de verdad en `core/__version__.py`.
+- **Separación de Dependencias**: División entre `requirements.txt` (producción) y `requirements-dev.txt` (testing y dev).
+
+### Diagnóstico, Soporte y Herramientas (P3)
+- **Herramienta de Diagnóstico CLI (`RTMS Doctor`)**: Implementado `core/doctor.py` con 8 verificaciones automáticas de sistema, hardware y red.
+- **Copia de Seguridad y Restauración en UI**: Funcionalidad para exportar e importar configuraciones completas en JSON desde el panel web.
+- **Notificación Proactiva de Fallo**: Alerta visual destacada en la tarjeta de cámara ante el agotamiento de reintentos máximos.
+- **Documentación Técnica Avanzada**: Creación de `docs/HARDWARE.md` y `docs/TROUBLESHOOTING.md`.
+- **Suite de Pruebas Ampliada**: Cobertura expandida a 25 tests automatizados con `pytest` y validación estricta de linter con `ruff`.
+
+---
+
 ## [2.0.3] — 2026-09-14
 
 ### Seguridad y Hardening

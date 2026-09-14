@@ -1,5 +1,5 @@
 /* ==============================================================================
-   RTMS — Real-Time Multicam System v2.0.3
+   RTMS — Real-Time Multicam System v2.0.4
    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
    Controlador Frontend Asíncrono de SPA
 ============================================================================== */
@@ -25,6 +25,14 @@ async function apiFetch(url, options = {}) {
         options.headers['X-RTMS-Token'] = token;
     }
     return fetch(url, options);
+}
+
+// ESCAPE SEGURO DE HTML CONTRA INYECCIÓN XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
 }
 
 // NAVEGACIÓN ENTRE PÁGINAS
@@ -111,7 +119,7 @@ function formatUptime(seconds) {
 // OBTENER ESTADO GENERAL
 async function fetchStatus() {
     try {
-        const res = await fetch('/api/status');
+        const res = await apiFetch('/api/status');
         if (!res.ok) throw new Error("HTTP error " + res.status);
         const data = await res.json();
         
@@ -152,7 +160,7 @@ async function fetchStatus() {
 // HUD DE TELEMETRÍA EN TIEMPO REAL
 async function fetchMetrics() {
     try {
-        const res = await fetch('/api/system/metrics');
+        const res = await apiFetch('/api/system/metrics');
         if (!res.ok) return;
         const data = await res.json();
         
@@ -214,7 +222,7 @@ function renderConnectPage() {
         row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
         row.innerHTML = `
             <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                <strong style="color: var(--teal); font-size: 0.95rem;">${stream.friendly_name}</strong>
+                <strong style="color: var(--teal); font-size: 0.95rem;">${escapeHtml(stream.friendly_name)}</strong>
                 <span class="status-badge running"><span class="status-dot"></span>Transmitiendo</span>
             </div>
             <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">
@@ -306,15 +314,24 @@ function createCameraCardElement(stream, index) {
     const fallbackTag = stream.status.using_fallback_cpu ? '<span style="color:var(--status-yellow); font-size:0.7rem;">(Modo CPU Fallback)</span>' : '';
     const autostartChecked = stream.auto_start ? 'checked' : '';
 
+    let alertBanner = '';
+    if (stream.permanent_failure) {
+        alertBanner = `<div class="alert-box alert-danger" style="margin: 8px 0; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px;">⚠️ Superado límite de reintentos. Verifique si el dispositivo está en uso o desconectado.</div>`;
+    } else if (!stream.is_connected) {
+        alertBanner = `<div class="alert-box alert-warning" style="margin: 8px 0; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px;">🔌 Dispositivo desconectado físicamente. En espera de reconexión.</div>`;
+    }
+
     card.innerHTML = `
         <div class="stream-card-hdr">
             <div>
-                <div class="stream-name">${stream.friendly_name}</div>
+                <div class="stream-name">${escapeHtml(stream.friendly_name)}</div>
                 ${fallbackTag}
             </div>
             <span class="status-badge ${badgeClass}"><span class="status-dot"></span>${badgeText}</span>
         </div>
         
+        ${alertBanner}
+
         <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
             <p>Puerto SRT/UDP: <strong>${stream.port}</strong></p>
             <p>Protocolo: <strong>${protocolName}</strong></p>
@@ -632,7 +649,7 @@ async function fetchLogs() {
     
     try {
         const url = `/api/stream/logs?device_path=${encodeURIComponent(_currentLogDevicePath)}`;
-        const res = await fetch(url);
+        const res = await apiFetch(url);
         if (!res.ok) throw new Error("HTTP error " + res.status);
         const data = await res.json();
         
@@ -739,7 +756,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }, 1000);
 
-    fetch('/api/power/status').then(r => r.json()).then(data => {
+    apiFetch('/api/power/status').then(r => r.json()).then(data => {
         if (data.optimizations_applied) {
             ['pwr-high-perf','pwr-sleep','pwr-hibernation','pwr-usb','pwr-hdd','pwr-network'].forEach(id => {
                 const el = document.getElementById(id);
@@ -750,3 +767,51 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }).catch(() => {});
 });
+
+// EXPORTAR E IMPORTAR CONFIGURACIÓN (BACKUP / RESTORE)
+async function exportConfiguration() {
+    try {
+        const res = await apiFetch('/api/config/export');
+        if (!res.ok) throw new Error("HTTP error " + res.status);
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 4)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rtms_config_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast("Configuración exportada exitosamente", "success");
+    } catch (err) {
+        showToast("Error al exportar configuración", "error");
+    }
+}
+
+function triggerImportConfiguration() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+            const res = await apiFetch('/api/config/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ config_data: parsed })
+            });
+            if (res.ok) {
+                showToast("Configuración importada exitosamente", "success");
+                fetchStatus();
+            } else {
+                const errData = await res.json();
+                showToast(errData.detail || "Error al importar configuración", "error");
+            }
+        } catch (err) {
+            showToast("Archivo JSON inválido o corrupto", "error");
+        }
+    };
+    input.click();
+}

@@ -1,0 +1,42 @@
+name: Reporte de Error (Bug)
+description: Reporta un fallo o comportamiento inesperado en RTMS.
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Gracias por tomarte el tiempo de reportar este problema en RTMS.
+  - type: input
+    id: version
+    attributes:
+      label: Versión de RTMS
+      description: ¿Qué versión de RTMS estás ejecutando? (ej. v2.0.4)
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Versión de Windows
+      description: Ejemplo Windows 11 Pro 23H2 (Build 22631)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción del problema
+      description: Explica qué ocurrió y qué esperabas que sucediera.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      description: 1. Iniciar cámara X... 2. Cambiar resolución...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Registros de FFmpeg / Consola (Sanitizados)
+      description: Pega aquí los fragmentos relevantes del log (no incluyas contraseñas personales).
+      render: shell

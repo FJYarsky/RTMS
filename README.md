@@ -1,50 +1,50 @@
-# RTMS — Real-Time Multicam System v2.0.3
+# RTMS — Real-Time Multicam System v2.0.4
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue?logo=windows)](https://microsoft.com)
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP%20Multicast-teal)](https://www.srtalliance.org/)
-[![Security](https://img.shields.io/badge/Security-Local%20Token%20Auth-green.svg)](#-seguridad-y-hardening)
-[![Tests](https://img.shields.io/badge/Tests-Pytest%20Passing-brightgreen.svg)](tests/)
+[![Security](https://img.shields.io/badge/Security-Strict%20Zero--Secret%20Logs-green.svg)](#-seguridad-y-hardening)
+[![Tests](https://img.shields.io/badge/Tests-25%20Passing-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Joaqu%C3%ADn%20Yarsky-orange)](mailto:joaquinyarsky@gmail.com)
 
 **RTMS (Real-Time Multicam System)** es una estación servidora de video multicámara de ultra baja latencia para Windows, concebida para entornos exigentes de producción en vivo y streaming profesional (OBS Studio, vMix, VLC).
 
-Permite conectar múltiples cámaras mediante **DirectShow** (webcams USB, capturadoras HDMI/SDI, cámaras PTZ) a una PC servidora y retransmitir cada señal a través de la red local (LAN) usando **SRT (Secure Reliable Transport)** con latencia sub-80ms y corrección automática de paquetes perdidos, o **UDP Multicast**.
+Permite conectar múltiples cámaras mediante **DirectShow** (webcams USB, capturadoras HDMI/SDI, cámaras PTZ) a una PC servidora y retransmitir cada señal a través de la red local (LAN) usando **SRT (Secure Reliable Transport)** con latencia ultra-baja (diseñado para rendimiento sub-100ms en condiciones óptimas de hardware y red cableada con corrección automática de pérdidas de paquetes) o **UDP Multicast**.
 
 ---
 
-## 🔒 Seguridad y Hardening (v2.0.3)
+## 🔒 Seguridad y Hardening (v2.0.4)
 
-* **CORS Restringido**: Eliminado el comodín `allow_origins=["*"]`. El backend ahora solo acepta peticiones desde su propio origen local dinámico (`127.0.0.1:<puerto>`), blindando el equipo contra ataques de tipo *Localhost CSRF / Drive-by* desde navegadores web.
-* **Autenticación por Token de Sesión (`X-RTMS-Token`)**: La aplicación genera un token criptográfico seguro al arrancar que es validado en todas las peticiones que modifican el sistema (`POST /api/*`).
-* **Enmascaramiento de Contraseñas SRT**: La API oculta las contraseñas reales (`••••••••`), evitando fugas de credenciales en la red o logs.
-* **Passphrases Seguras por Defecto**: Las nuevas cámaras creadas con protocolo SRT generan automáticamente contraseñas de 12 caracteres para que los enlaces nunca queden expuestos.
-* **Rotación de Logs (`RotatingFileHandler`)**: Control estricto del archivo `rtms.log` (5 MB, 3 copias) para evitar consumo excesivo de disco en operación desatendida 24/7.
-* **Endpoint de Salud (`/healthz`)**: Verificación de estado ligera para supervisores de procesos del sistema operativo.
+* **Cero Secretos en Logs y Memoria**: Implementación de un módulo de sanitización centralizado (`core/sanitizer.py`) que enmascara automáticamente contraseñas SRT y tokens en comandos FFmpeg, buffers de memoria y archivos de registro en disco.
+* **Autenticación Estricta de API (`X-RTMS-Token`)**: Todos los endpoints mutantes (`POST`) y los endpoints de inspección sensibles (`GET /api/status`, `/api/stream/logs`, `/api/system/metrics`, `/api/power/status`) exigen el token criptográfico de sesión local. Únicamente `/healthz` permanece público para supervisores externos.
+* **CORS Restringido**: Enlace determinista y exclusivo al origen local dinámico (`127.0.0.1:<puerto>`), previniendo ataques de tipo *Localhost CSRF / Drive-by* desde navegadores externos.
+* **Protección Criptográfica en Disco (Windows DPAPI)**: Frases de paso SRT cifradas en reposo mediante Windows DPAPI (`core/secrets_mgr.py`), atadas de forma nativa a la cuenta del usuario.
+* **Rotación de Logs (`RotatingFileHandler`)**: Control estricto de tamaño para `rtms.log` (5 MB, 3 copias de respaldo) para estabilidad desatendida 24/7.
+* **Verificación de Integridad SHA256 de FFmpeg**: Descarga oficial de FFmpeg validada criptográficamente contra el checksum SHA256 de Gyan.dev.
 
 ---
 
 ## 🚀 Características Principales
 
-* **SRT Listener de Ultra Baja Latencia (`zerolatency`)**:
-  * Latencia real inferior a 80 ms (*Glass-to-Glass*).
-  * Eliminación de los 700 ms de búfer interno de MPEG-TS mediante `-muxdelay 0 -muxpreload 0 -flush_packets 1`.
-  * Descarte proactivo de paquetes demorados con `tlpktdrop=1`.
-* **Aceleración por GPU Universal (`-pix_fmt yuv420p`)**:
-  * Compatibilidad total con NVIDIA NVENC, AMD AMF e Intel QuickSync sin fallos de formato de color.
-  * **Fallback Automático a CPU (`libx264`)** en caliente si la GPU se sobrecarga o el driver falla.
-* **Operación Desatendida (*Unattended Mode*)**:
-  * Autoarranque de cámaras memorizadas al encender la PC sin requerir operador humano.
-  * Resiliencia ante retrasos en la inicialización USB/PnP de Windows con sondeo periódico continuo.
-  * Watchdog inteligente con **reseteo de errores tras estabilidad** y **backoff exponencial** (5s a 60s).
-* **Bloqueo de Instancia Única (*Single Instance Lock*)**:
-  * Mutex nativo de Windows que impide abrir el software dos veces por error.
-* **Minimización a la Bandeja del Sistema (*System Tray*)**:
-  * Icono interactivo en la barra de tareas de Windows.
-* **Telemetría en Vivo (HUD)**:
-  * Monitoreo en tiempo real de CPU %, RAM %, y lectura directa de FPS y Bitrate emitido por cada cámara.
-* **Parada de Emergencia y Cierre Seguro (*Graceful Teardown*)**:
-  * Cierre limpio con señal `q` a FFmpeg para evitar congelamientos en OBS Studio al detener flujos.
+* **SRT Listener de Ultra Baja Latencia con Modo `zerolatency` Funcional**:
+  * Diseñado para latencia sub-100ms *Glass-to-Glass* con conmutación real de parámetros (`tlpktdrop=1`, `-muxdelay 0 -muxpreload 0 -flush_packets 1`, `-tune zerolatency`).
+  * Perfil alternativo balanceado para broadcast con tolerancia a fluctuaciones de red.
+* **Aceleración Universal por GPU y Fallback Seguro**:
+  * Compatibilidad nativa con NVIDIA NVENC, Intel QuickSync y AMD AMF (`-pix_fmt yuv420p`).
+  * **Fallback transparente y libre de carreras a CPU (`libx264`)**: Bloqueo de exclusión mutua (`asyncio.Lock`) por cámara y parada limpia antes de conmutar de encoder.
+  * Granularidad por stream: la degradación temporal de una GPU no afecta a las demás cámaras.
+* **Persistencia Atómica y Resiliente (`core/config_mgr.py`)**:
+  * Escritura atómica (`.tmp` $\rightarrow$ `fsync` $\rightarrow$ `replace`), copias de respaldo continuas (`.bak`) y framework de migraciones de versión de esquema.
+  * Identidad determinista de cámara (`camera_id` UUID) desacoplada de la ruta física del bus USB.
+* **Gestor Inteligente de Puertos (`PortManager`)**:
+  * Verificación activa de sockets ocupados antes de asignación (rango 9000–9200) y reciclaje de puertos liberados.
+* **Watchdog No Bloqueante con Detección de Desconexión Física**:
+  * Reintentos con backoff exponencial independiente (5s a 60s) sin congelar la supervisión de los demás flujos.
+  * Transición a `DISCONNECTED` ante desconexión física de cables USB y relanzamiento automático al reconectar.
+* **Herramienta de Diagnóstico CLI (`RTMS Doctor`)**:
+  * Comando interactivo para validar OS, FFmpeg, soporte SRT, encoders GPU, puertos y cámaras (`python -m core.doctor` o `python core/doctor.py`).
+* **Copia de Seguridad y Migración de Configuración en UI**:
+  * Exportación e importación de la configuración completa en formato JSON desde el panel web.
 
 ---
 
@@ -52,35 +52,47 @@ Permite conectar múltiples cámaras mediante **DirectShow** (webcams USB, captu
 
 ```
 RTMS/
-├── api/                   # Capa REST API (FastAPI) con autenticación CSRF
+├── api/                   # Capa REST API (FastAPI) protegida por X-RTMS-Token
 │   ├── routes.py          # Endpoints de control, telemetría y configuración
-│   └── schemas.py         # Modelos de datos Pydantic
-├── core/                  # Procesamiento multimedia y sistema
-│   ├── ffmpeg_mgr.py      # Motor FFmpeg con watchdog resiliente y telemetría
-│   ├── hardware.py        # Sondeo de dispositivos DirectShow
-│   ├── config_mgr.py      # Gestor de persistencia seguro
-│   ├── system_env.py      # Optimizaciones de energía y firewall sin consolas CMD
+│   └── schemas.py         # Modelos de datos Pydantic estrictos
+├── core/                  # Lógica del motor y resiliencia de sistema
+│   ├── __version__.py     # Fuente única y centralizada de versión (v2.0.4)
+│   ├── sanitizer.py       # Sanitización estricta de contraseñas y secretos
+│   ├── secrets_mgr.py     # Cifrado nativo de contraseñas con Windows DPAPI
+│   ├── port_mgr.py        # Gestor de puertos sin colisiones de red
+│   ├── config_mgr.py      # Persistencia atómica, backups .bak y migraciones
+│   ├── ffmpeg_mgr.py      # Motor FFmpeg, teardown limpio y watchdog no bloqueante
+│   ├── hardware.py        # Sondeo DirectShow tradicional y moderno (7.x/8.x)
+│   ├── system_env.py      # Optimizaciones de energía Windows y firewall
 │   ├── autostart.py       # Gestor de autoarranque silencioso
+│   ├── doctor.py          # Herramienta de diagnóstico CLI (RTMS Doctor)
 │   ├── single_instance.py # Mutex Win32 para instancia única
 │   └── tray_icon.py       # Integración con System Tray (pystray)
 ├── gui/                   # Interfaz de usuario SPA
-│   ├── static/            # CSS y JavaScript seguro con token X-RTMS-Token
+│   ├── static/            # CSS y JavaScript seguro (apiFetch y safe DOM)
 │   └── templates/         # Plantilla index.html con inyección de token
-├── config/                # Plantillas de configuración
-│   └── config.example.json # Plantilla limpia para nuevos despliegues
-├── scripts/               # Scripts de utilidad
-│   └── setup_binaries.ps1 # Descarga automática de FFmpeg oficial
-├── tests/                 # Suite de pruebas automatizadas (pytest)
-│   ├── test_hardware_parser.py
+├── docs/                  # Documentación técnica avanzada
+│   ├── HARDWARE.md        # Matriz de compatibilidad de GPUs y encoders
+│   └── TROUBLESHOOTING.md # Guía paso a paso de resolución de problemas
+├── scripts/               # Scripts de instalación y soporte
+│   └── setup_binaries.ps1 # Descarga segura de FFmpeg con verificación SHA256
+├── tests/                 # Suite de 25 pruebas automatizadas (pytest)
+│   ├── test_sanitizer.py
+│   ├── test_command_builder.py
+│   ├── test_config_persistence.py
+│   ├── test_port_mgr.py
+│   ├── test_stream_lifecycle.py
+│   ├── test_security.py
 │   ├── test_config_mgr.py
-│   └── test_security.py
-├── main.py                # Punto de entrada principal
+│   └── test_hardware_parser.py
+├── pyproject.toml         # Configuración del proyecto, ruff y pytest
+├── requirements.txt       # Dependencias exclusivas de producción
+├── requirements-dev.txt   # Dependencias de desarrollo, testing y linting
 ├── run.bat                # Lanzador silencioso (pythonw.exe)
 ├── run_silent.vbs         # Lanzador 100% invisible para Windows
 ├── build_portable.bat     # Generador de ejecutable portable
-├── requirements.txt       # Dependencias de producción y test fijadas
-├── CHANGELOG.md           # Historial de cambios
-├── SECURITY.md            # Política de seguridad
+├── CHANGELOG.md           # Historial cronológico de cambios
+├── SECURITY.md            # Política de divulgación de vulnerabilidades
 └── CONTRIBUTING.md        # Guía para colaboradores
 ```
 
@@ -91,52 +103,22 @@ RTMS/
 ### 1. Instalación de Dependencias
 ```bash
 pip install -r requirements.txt
+# Para desarrollo y pruebas:
+pip install -r requirements-dev.txt
 ```
 
 ### 2. Configuración de FFmpeg
-RTMS requiere un binario de **FFmpeg** con soporte DirectShow, NVENC y SRT en `bin/ffmpeg.exe`. Puedes descargarlo e instalarlo automáticamente ejecutando en PowerShell:
+Ejecuta el script de PowerShell para descargar y verificar mediante SHA256 la versión oficial de FFmpeg:
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/setup_binaries.ps1
 ```
 
-### 3. Ejecución
-* Modo normal sin consola visible: Haz doble clic en `run.bat`.
-* Modo 100% invisible: Haz doble clic en `run_silent.vbs`.
+### 3. Diagnóstico de Salud del Sistema (RTMS Doctor)
+```bash
+python core/doctor.py
+```
 
-### 4. Ejecución de Tests
+### 4. Ejecución de Pruebas
 ```bash
 pytest tests/ -v
 ```
-
----
-
-## 📺 Guía de Conexión en OBS Studio
-
-1. Abre **OBS Studio** en la computadora receptora.
-2. En el panel de **Fuentes**, haz clic en `+` y selecciona **Fuente multimedia**.
-3. **Desmarca** la casilla `Archivo local`.
-4. En **Entrada**, pega la URL generada:
-   ```text
-   srt://192.168.1.X:9000?mode=caller&latency=120000
-   ```
-   *(Si configuraste contraseña, agrega `&passphrase=TU_CONTRASEÑA` al final de la URL)*.
-5. En **Formato de entrada**, escribe:
-   ```text
-   mpegts
-   ```
-6. Haz clic en **Aceptar**. La señal comenzará a emitirse en tiempo real.
-
----
-
-## 👤 Autor y Soporte Oficial
-
-**Joaquín Yarsky**
-* **Correo Electrónico**: [joaquinyarsky@gmail.com](mailto:joaquinyarsky@gmail.com)
-* **Teléfono / Celular**: [+54 2625-437980](tel:+542625437980)
-* **WhatsApp Directo**: [https://wa.me/5492625437980](https://wa.me/5492625437980)
-
----
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más información.

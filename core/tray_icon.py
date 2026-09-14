@@ -65,7 +65,7 @@ class SystemTrayManager:
         )
 
         self.icon = pystray.Icon("RTMS", image, "RTMS v2.0.2", menu)
-        
+
         # Iniciar en hilo independiente para no bloquear
         self._thread = threading.Thread(target=self.icon.run, daemon=True)
         self._thread.start()

@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System v2.0.3
+# RTMS — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 # ==============================================================================
 
@@ -7,11 +7,18 @@ import socket
 import psutil
 import logging
 from fastapi import APIRouter, HTTPException, Header, Depends
-from typing import List, Dict, Any, Optional
+from typing import Optional
 
-from .schemas import CameraConfigUpdate, StreamAction, AutostartToggle, CameraAutostartToggle
+from core.__version__ import __version__
+from .schemas import (
+    CameraConfigUpdate, StreamAction, AutostartToggle,
+    CameraAutostartToggle, ApplyPresetRequest, ImportConfigRequest
+)
 from core.ffmpeg_mgr import get_all_stream_statuses, stream_manager, sync_streams_with_hardware
-from core.config_mgr import update_camera_config, set_camera_autostart
+from core.config_mgr import (
+    update_camera_config, set_camera_autostart, find_camera_by_id_or_path,
+    apply_camera_preset, export_config, import_config, CAMERA_PRESETS
+)
 
 logger = logging.getLogger("rtms.routes")
 router = APIRouter()
@@ -25,7 +32,7 @@ def set_global_api_token(token: str):
 
 async def verify_api_token(x_rtms_token: Optional[str] = Header(None, alias="X-RTMS-Token")):
     """
-    Middleware de seguridad que valida el token de sesión en todas las peticiones mutantes (POST).
+    Middleware de seguridad que valida el token de sesión en todas las peticiones protegidas.
     Previene de forma definitiva ataques de tipo Localhost CSRF / Drive-by desde navegadores web.
     """
     if _GLOBAL_API_TOKEN is not None:
@@ -59,12 +66,17 @@ def get_local_ip() -> str:
 
     return "127.0.0.1"
 
-@router.get("/api/status")
+@router.get("/healthz")
+async def healthz():
+    """Endpoint público de verificación de salud para supervisores externos de procesos."""
+    return {"status": "ok", "version": __version__}
+
+@router.get("/api/status", dependencies=[Depends(verify_api_token)])
 async def get_status():
     """Retorna el estado general del sistema, IP local y flujos con contraseñas enmascaradas."""
     from core.autostart import is_autostart_enabled
     raw_streams = get_all_stream_statuses()
-    
+
     # Seguridad: Enmascarar srt_passphrase para no exponerla en texto plano
     sanitized_streams = []
     for s in raw_streams:
@@ -75,18 +87,19 @@ async def get_status():
         sanitized_streams.append(sc)
 
     return {
-        "version": "2.0.3",
+        "version": __version__,
         "local_ip": get_local_ip(),
         "autostart_enabled": is_autostart_enabled(),
-        "streams": sanitized_streams
+        "streams": sanitized_streams,
+        "presets": {k: v["name"] for k, v in CAMERA_PRESETS.items()}
     }
 
-@router.get("/api/system/metrics")
+@router.get("/api/system/metrics", dependencies=[Depends(verify_api_token)])
 async def get_system_metrics():
     """Retorna métricas de hardware (CPU, RAM) y telemetría de streams en vivo para el HUD."""
     cpu_pct = psutil.cpu_percent(interval=None)
     mem = psutil.virtual_memory()
-    
+
     statuses = get_all_stream_statuses()
     running_streams = [s for s in statuses if s["status"]["state"] == "running"]
     total_bitrate = sum(s["status"]["current_bitrate_kbps"] for s in running_streams)
@@ -108,20 +121,21 @@ async def emergency_stop():
 
 @router.post("/api/stream/action", dependencies=[Depends(verify_api_token)])
 async def handle_stream_action(action: StreamAction):
-    """Inicia, detiene o reinicia un flujo manualmente (Protegido por Token)."""
-    dp = action.device_path
-    
+    """Inicia, detiene o reinicia un flujo manualmente por device_path o camera_id."""
+    cam = find_camera_by_id_or_path(action.device_path)
+    dp = cam["device_path"] if cam else action.device_path
+
     if action.action == "stop":
         await stream_manager.stop_stream(dp)
         return {"status": "ok", "message": "Flujo detenido"}
-        
+
     elif action.action == "start":
         proc = stream_manager.get_proc(dp)
         if proc:
             await stream_manager.start_stream(dp)
             return {"status": "ok", "message": "Flujo iniciado"}
         raise HTTPException(status_code=404, detail="Dispositivo no encontrado en el registro")
-            
+
     elif action.action == "restart":
         proc = stream_manager.get_proc(dp)
         if proc:
@@ -129,22 +143,25 @@ async def handle_stream_action(action: StreamAction):
             await stream_manager.start_stream(dp)
             return {"status": "ok", "message": "Flujo reiniciado"}
         raise HTTPException(status_code=404, detail="Dispositivo no encontrado en el registro")
-        
+
     raise HTTPException(status_code=400, detail="Acción inválida")
 
 @router.post("/api/stream/config", dependencies=[Depends(verify_api_token)])
 async def update_stream_config_endpoint(config: CameraConfigUpdate):
     """Actualiza la configuración de una cámara (Protegido por Token)."""
+    cam = find_camera_by_id_or_path(config.device_path)
+    dp = cam["device_path"] if cam else config.device_path
+
     # Si la contraseña enviada es la enmascarada "••••••••", preservar la existente
     passphrase_to_set = config.srt_passphrase
-    proc = stream_manager.get_proc(config.device_path)
+    proc = stream_manager.get_proc(dp)
     if passphrase_to_set == "••••••••" and proc and proc.config:
         passphrase_to_set = proc.config.get("srt_passphrase", "")
 
     update_camera_config(
-        device_path=config.device_path, 
-        resolution=config.resolution, 
-        fps=config.fps, 
+        device_path=dp,
+        resolution=config.resolution,
+        fps=config.fps,
         bitrate=config.bitrate,
         protocol=config.protocol or "srt",
         encoder=config.encoder or "auto",
@@ -154,7 +171,7 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         zerolatency=config.zerolatency if config.zerolatency is not None else True,
         is_virtual=config.is_virtual if config.is_virtual is not None else False
     )
-    
+
     if proc:
         proc.config["resolution"] = config.resolution
         proc.config["fps"] = config.fps
@@ -166,18 +183,40 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         proc.config["auto_start"] = config.auto_start
         proc.config["zerolatency"] = config.zerolatency
         proc.config["is_virtual"] = config.is_virtual
-        
-        if proc.state == "running":
-            await stream_manager.stop_stream(config.device_path)
-            await stream_manager.start_stream(config.device_path)
-            
+
+        if proc.is_alive:
+            await stream_manager.stop_stream(dp)
+            await stream_manager.start_stream(dp)
+
     return {"status": "ok", "message": "Configuración guardada y aplicada"}
+
+@router.post("/api/stream/preset", dependencies=[Depends(verify_api_token)])
+async def apply_preset_endpoint(payload: ApplyPresetRequest):
+    """Aplica un perfil predefinido a una cámara existente."""
+    cam = find_camera_by_id_or_path(payload.device_path)
+    dp = cam["device_path"] if cam else payload.device_path
+
+    updated_cam = apply_camera_preset(dp, payload.preset_key)
+    if not updated_cam:
+        raise HTTPException(status_code=404, detail="Perfil o cámara no encontrados")
+
+    proc = stream_manager.get_proc(dp)
+    if proc:
+        proc.config.update(updated_cam)
+        if proc.is_alive:
+            await stream_manager.stop_stream(dp)
+            await stream_manager.start_stream(dp)
+
+    return {"status": "ok", "message": f"Perfil aplicado exitosamente a {dp}", "camera": updated_cam}
 
 @router.post("/api/stream/autostart_toggle", dependencies=[Depends(verify_api_token)])
 async def toggle_cam_autostart(payload: CameraAutostartToggle):
     """Activa o desactiva el autoarranque desatendido de una cámara individual (Protegido por Token)."""
-    set_camera_autostart(payload.device_path, payload.auto_start)
-    proc = stream_manager.get_proc(payload.device_path)
+    cam = find_camera_by_id_or_path(payload.device_path)
+    dp = cam["device_path"] if cam else payload.device_path
+
+    set_camera_autostart(dp, payload.auto_start)
+    proc = stream_manager.get_proc(dp)
     if proc and proc.config:
         proc.config["auto_start"] = payload.auto_start
     return {"status": "ok", "auto_start": payload.auto_start}
@@ -195,20 +234,23 @@ async def set_autostart(toggle: AutostartToggle):
     enable_autostart(toggle.enable)
     return {"status": "ok", "autostart": toggle.enable}
 
-@router.get("/api/stream/logs")
+@router.get("/api/stream/logs", dependencies=[Depends(verify_api_token)])
 async def get_stream_logs(device_path: str):
-    """Retorna los logs de FFmpeg del flujo solicitado."""
-    proc = stream_manager.get_proc(device_path)
+    """Retorna los logs sanitizados de FFmpeg del flujo solicitado (Protegido por Token)."""
+    cam = find_camera_by_id_or_path(device_path)
+    dp = cam["device_path"] if cam else device_path
+
+    proc = stream_manager.get_proc(dp)
     if not proc:
         raise HTTPException(status_code=404, detail="Dispositivo no encontrado")
     return {"logs": proc.get_logs()}
 
 @router.post("/api/power/apply", dependencies=[Depends(verify_api_token)])
 async def apply_power():
-    """Aplica las optimizaciones de energía y estabilidad en Windows (Protegido por Token)."""
+    """Aplica las optimizaciones de energía y estabilidad en Windows y reporta el resultado real."""
     from core.system_env import setup_windows_environment
-    setup_windows_environment()
-    return {"status": "ok", "message": "Optimizaciones de estabilidad aplicadas"}
+    result = setup_windows_environment()
+    return result
 
 @router.post("/api/power/restore", dependencies=[Depends(verify_api_token)])
 async def restore_power():
@@ -219,8 +261,23 @@ async def restore_power():
         return result
     raise HTTPException(status_code=400, detail=result.get("message", "Error al restaurar"))
 
-@router.get("/api/power/status")
+@router.get("/api/power/status", dependencies=[Depends(verify_api_token)])
 async def power_status():
+    """Retorna si las optimizaciones de energía están aplicadas actualmente."""
     import os
     from core.system_env import BACKUP_FILE
     return {"optimizations_applied": os.path.exists(BACKUP_FILE)}
+
+@router.get("/api/config/export", dependencies=[Depends(verify_api_token)])
+async def export_config_endpoint():
+    """Exporta la configuración completa para respaldo o migración."""
+    return export_config()
+
+@router.post("/api/config/import", dependencies=[Depends(verify_api_token)])
+async def import_config_endpoint(payload: ImportConfigRequest):
+    """Importa una configuración externa completa previa validación de esquema."""
+    success = import_config(payload.config_data)
+    if not success:
+        raise HTTPException(status_code=400, detail="Estructura de configuración inválida")
+    await sync_streams_with_hardware()
+    return {"status": "ok", "message": "Configuración importada y aplicada exitosamente"}

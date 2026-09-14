@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System v2.0.2
+# RTMS — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 # ==============================================================================
 
@@ -9,7 +9,7 @@ import sys
 import os
 import re
 import json
-import winreg
+from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger("rtms.system_env")
 
@@ -24,6 +24,9 @@ BACKUP_FILE = os.path.join(get_base_dir(), "config", "power_backup.json")
 
 def get_net_adapters_pnp():
     """Obtiene los valores actuales de PnPCapabilities para todos los adaptadores de red."""
+    if sys.platform != "win32":
+        return {}
+    import winreg
     adapters = {}
     path = r"SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002BE10318}"
     try:
@@ -53,6 +56,9 @@ def get_net_adapters_pnp():
 
 def get_hibernate_enabled():
     """Obtiene el estado actual de hibernación desde el registro."""
+    if sys.platform != "win32":
+        return 1
+    import winreg
     path = r"SYSTEM\CurrentControlSet\Control\Power"
     try:
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path) as key:
@@ -63,6 +69,8 @@ def get_hibernate_enabled():
 
 def get_power_setting(subgroup: str, setting: str):
     """Consulta los índices actuales de AC y DC para una configuración de energía de forma silenciosa."""
+    if sys.platform != "win32":
+        return None, None
     try:
         res = subprocess.run(
             ["powercfg", "/q", "SCHEME_CURRENT", subgroup, setting],
@@ -96,23 +104,28 @@ def get_power_setting(subgroup: str, setting: str):
 
     return ac_val, dc_val
 
-def get_active_scheme_guid():
+def get_active_scheme_guid() -> Optional[str]:
     """Obtiene el GUID del plan de energía activo actual sin ventanas de consola."""
-    res = subprocess.run(
-        ["powercfg", "-getactivescheme"],
-        capture_output=True, text=True, check=False,
-        creationflags=_WIN_NO_WINDOW
-    )
-    match = re.search(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', res.stdout)
-    if match:
-        return match.group(0)
-    return "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c" # Default fallback Alto rendimiento
+    if sys.platform != "win32":
+        return None
+    try:
+        res = subprocess.run(
+            ["powercfg", "-getactivescheme"],
+            capture_output=True, text=True, check=False, timeout=5,
+            creationflags=_WIN_NO_WINDOW
+        )
+        match = re.search(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', res.stdout)
+        if match:
+            return match.group(0)
+    except Exception as e:
+        logger.warning(f"Error al obtener GUID del plan activo: {e}")
+    return None
 
 def backup_current_power_settings():
     """Realiza un respaldo de la configuración actual de energía y red."""
     if sys.platform != "win32":
         return
-    
+
     if os.path.exists(BACKUP_FILE):
         logger.info("El archivo de respaldo de energía ya existe. Omitiendo respaldo para preservar los originales.")
         return
@@ -124,10 +137,10 @@ def backup_current_power_settings():
         usb_ac, usb_dc = get_power_setting("2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226")
         disk_ac, disk_dc = get_power_setting("SUB_DISK", "DISKIDLE")
         monitor_ac, monitor_dc = get_power_setting("SUB_VIDEO", "MONITORIDLE")
-        
+
         hibernate = get_hibernate_enabled()
         adapters = get_net_adapters_pnp()
-        
+
         backup_data = {
             "active_scheme_guid": active_guid,
             "hibernate_enabled": hibernate,
@@ -143,21 +156,20 @@ def backup_current_power_settings():
                 "monitor-timeout-dc": monitor_dc
             }
         }
-        
+
         os.makedirs(os.path.dirname(BACKUP_FILE), exist_ok=True)
         with open(BACKUP_FILE, "w", encoding="utf-8") as f:
             json.dump(backup_data, f, indent=4)
-            
+
         logger.info(f"Respaldo de energía guardado exitosamente en {BACKUP_FILE}")
     except Exception as e:
         logger.error(f"Error al realizar respaldo de energía: {e}")
 
-def apply_network_power_settings():
+def apply_network_power_settings() -> bool:
     """Desactiva el ahorro de energía en todos los adaptadores de red y Wake-on-LAN sin mostrar ventanas."""
     if sys.platform != "win32":
-        return
-    
-    logger.info("Configurando adaptadores de red para máximo rendimiento...")
+        return False
+
     ps_cmd_1 = (
         'Get-NetAdapter -ErrorAction SilentlyContinue | ForEach-Object { '
         '$instanceId = $_.DeviceID; '
@@ -169,55 +181,64 @@ def apply_network_power_settings():
         'Set-ItemProperty -Path $path -Name "PnPCapabilities" -Value 24 -Type DWord -ErrorAction SilentlyContinue '
         '} } }'
     )
-    
+
     ps_cmd_2 = (
         'Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object {$_.Status -eq "Up"} | ForEach-Object { '
         '$_ | Set-NetAdapterPowerManagement -WakeOnMagicPacket Disabled -WakeOnPattern Disabled -ErrorAction SilentlyContinue '
         '}'
     )
-    
+
+    success = True
     try:
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd_1], capture_output=True, text=True, check=False, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd_2], capture_output=True, text=True, check=False, creationflags=_WIN_NO_WINDOW)
-        logger.info("Ahorro de energía en adaptadores de red desactivado exitosamente.")
+        r1 = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd_1], capture_output=True, text=True, check=False, creationflags=_WIN_NO_WINDOW)
+        if r1.returncode != 0:
+            success = False
+        r2 = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd_2], capture_output=True, text=True, check=False, creationflags=_WIN_NO_WINDOW)
+        if r2.returncode != 0:
+            success = False
     except Exception as e:
         logger.warning(f"No se pudo desactivar el ahorro de energía de los adaptadores de red: {e}")
+        return False
+    return success
 
-def restore_original_power_settings():
+def restore_original_power_settings() -> Dict[str, Any]:
     """Restaura la configuración de energía y red a su estado original previo a la optimización."""
     if sys.platform != "win32":
         return {"status": "error", "message": "No en Windows"}
-        
+
     if not os.path.exists(BACKUP_FILE):
         return {"status": "error", "message": "No se encontró respaldo original de energía"}
-        
+
     logger.info("Restaurando configuraciones originales de energía...")
     try:
+        import winreg
         with open(BACKUP_FILE, "r", encoding="utf-8") as f:
             backup = json.load(f)
-            
+
         active_guid = backup.get("active_scheme_guid")
         if active_guid:
             subprocess.run(["powercfg", "-setactive", active_guid], check=False, creationflags=_WIN_NO_WINDOW)
-            
+
         timeouts = backup.get("timeouts", {})
-        
+
         def restore_val(subgroup, setting, ac_key, dc_key):
+            if not active_guid:
+                return
             ac_val = timeouts.get(ac_key)
             dc_val = timeouts.get(dc_key)
             if ac_val is not None:
                 subprocess.run(["powercfg", "-setacvalueindex", active_guid, subgroup, setting, str(ac_val)], check=False, creationflags=_WIN_NO_WINDOW)
             if dc_val is not None:
                 subprocess.run(["powercfg", "-setdcvalueindex", active_guid, subgroup, setting, str(dc_val)], check=False, creationflags=_WIN_NO_WINDOW)
-                
+
         restore_val("SUB_SLEEP", "STANDBYIDLE", "standby-timeout-ac", "standby-timeout-dc")
         restore_val("2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "usb-timeout-ac", "usb-timeout-dc")
         restore_val("SUB_DISK", "DISKIDLE", "disk-timeout-ac", "disk-timeout-dc")
         restore_val("SUB_VIDEO", "MONITORIDLE", "monitor-timeout-ac", "monitor-timeout-dc")
-        
+
         if active_guid:
             subprocess.run(["powercfg", "-setactive", active_guid], check=False, creationflags=_WIN_NO_WINDOW)
-            
+
         hibernate_val = backup.get("hibernate_enabled", 1)
         path = r"SYSTEM\CurrentControlSet\Control\Power"
         try:
@@ -225,7 +246,7 @@ def restore_original_power_settings():
                 winreg.SetValueEx(key, "HibernateEnabled", 0, winreg.REG_DWORD, hibernate_val)
         except Exception:
             pass
-            
+
         adapters = backup.get("adapters", {})
         class_path = r"SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002BE10318}"
         for subkey_name, original_val in adapters.items():
@@ -241,60 +262,127 @@ def restore_original_power_settings():
                         winreg.SetValueEx(subkey, "PnPCapabilities", 0, winreg.REG_DWORD, original_val)
             except Exception:
                 pass
-                
+
         try:
             os.remove(BACKUP_FILE)
         except OSError:
             pass
-            
+
         logger.info("Configuración original restaurada completamente.")
         return {"status": "ok", "message": "Restauración completada con éxito"}
     except Exception as e:
         logger.error(f"Error durante la restauración energética: {e}")
         return {"status": "error", "message": f"Error: {e}"}
 
-def setup_windows_environment():
-    """Configura de forma 100% silenciosa el entorno de Windows para máxima estabilidad."""
+def setup_windows_environment() -> Dict[str, Any]:
+    """
+    Configura el entorno de Windows para streaming ininterrumpido y reporta
+    el resultado de cada modificación de forma transparente.
+    """
     if sys.platform != "win32":
-        return
+        return {
+            "status": "error",
+            "message": "Plataforma no soportada (solo Windows)",
+            "applied": [],
+            "failed": ["No se encuentra en Windows"],
+            "warnings": []
+        }
+
+    applied: List[str] = []
+    failed: List[str] = []
+    warnings: List[str] = []
 
     backup_current_power_settings()
 
     logger.info("Aplicando optimizaciones de estabilidad y energía en Windows...")
-    try:
-        subprocess.run(["powercfg", "-setactive", "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        
-        active_guid = get_active_scheme_guid()
-        subprocess.run(["powercfg", "-setacvalueindex", active_guid, "2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powercfg", "-setdcvalueindex", active_guid, "2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powercfg", "-setactive", active_guid], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
 
-        subprocess.run(["powercfg", "/change", "standby-timeout-ac", "0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powercfg", "/change", "standby-timeout-dc", "0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powercfg", "/hibernate", "off"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powercfg", "/change", "disk-timeout-ac", "0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powercfg", "/change", "disk-timeout-dc", "0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powercfg", "/change", "monitor-timeout-ac", "0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        subprocess.run(["powercfg", "/change", "monitor-timeout-dc", "0"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
+    # 1. Suspender USB Selective Suspend
+    active_guid = get_active_scheme_guid()
+    if active_guid:
+        try:
+            r1 = subprocess.run(["powercfg", "-setacvalueindex", active_guid, "2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "0"], check=False, capture_output=True, creationflags=_WIN_NO_WINDOW)
+            r2 = subprocess.run(["powercfg", "-setdcvalueindex", active_guid, "2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "0"], check=False, capture_output=True, creationflags=_WIN_NO_WINDOW)
+            subprocess.run(["powercfg", "-setactive", active_guid], check=False, capture_output=True, creationflags=_WIN_NO_WINDOW)
+            if r1.returncode == 0 and r2.returncode == 0:
+                applied.append("Suspensión selectiva USB desactivada (AC y DC)")
+            else:
+                failed.append("Fallo al configurar suspensión selectiva USB")
+        except Exception as e:
+            failed.append(f"Error en configuración USB: {e}")
+    else:
+        warnings.append("No se pudo detectar el GUID del plan de energía activo; omitiendo cambios dependientes de GUID")
 
-        apply_network_power_settings()
+    # 2. Desactivar suspensión de equipo y apagado de disco/pantalla
+    cmds_to_run = [
+        (["powercfg", "/change", "standby-timeout-ac", "0"], "Suspensión del sistema en AC deshabilitada"),
+        (["powercfg", "/change", "standby-timeout-dc", "0"], "Suspensión del sistema en DC deshabilitada"),
+        (["powercfg", "/hibernate", "off"], "Hibernación deshabilitada"),
+        (["powercfg", "/change", "disk-timeout-ac", "0"], "Apagado de disco en AC deshabilitado"),
+        (["powercfg", "/change", "disk-timeout-dc", "0"], "Apagado de disco en DC deshabilitado"),
+        (["powercfg", "/change", "monitor-timeout-ac", "0"], "Apagado de monitor en AC deshabilitado"),
+        (["powercfg", "/change", "monitor-timeout-dc", "0"], "Apagado de monitor en DC deshabilitado")
+    ]
 
-    except Exception as e:
-        logger.error(f"Error al aplicar optimizaciones energéticas: {e}")
+    for cmd, desc in cmds_to_run:
+        try:
+            res = subprocess.run(cmd, check=False, capture_output=True, creationflags=_WIN_NO_WINDOW)
+            if res.returncode == 0:
+                applied.append(desc)
+            else:
+                failed.append(f"Fallo en: {desc} (code {res.returncode})")
+        except Exception as exc:
+            failed.append(f"Excepción en {desc}: {exc}")
 
-def setup_firewall_rules():
-    """Agrega reglas al firewall para puertos SRT, UDP y FastAPI de forma silenciosa."""
+    # 3. Optimización de red
+    if apply_network_power_settings():
+        applied.append("Ahorro de energía en adaptadores de red desactivado")
+    else:
+        warnings.append("No se pudo aplicar ahorro de energía de red (posible falta de permisos de Administrador)")
+
+    status_str = "ok"
+    if failed and applied:
+        status_str = "partial"
+    elif failed and not applied:
+        status_str = "failed"
+
+    return {
+        "status": status_str,
+        "message": f"Optimizaciones finalizadas con estado: {status_str}",
+        "applied": applied,
+        "failed": failed,
+        "warnings": warnings
+    }
+
+def setup_firewall_rules(port_range: str = "9000-9200") -> bool:
+    """Agrega reglas al firewall para puertos SRT/UDP de forma identificable."""
     if sys.platform != "win32":
-        return
-        
-    logger.info("Configurando reglas del firewall en Windows...")
+        return False
+
+    logger.info(f"Configurando regla de firewall RTMS_Media_Ports ({port_range})...")
     try:
         cmd_fw_srt = [
             "netsh", "advfirewall", "firewall", "add", "rule",
             "name=RTMS_Media_Ports", "dir=in", "action=allow",
-            "protocol=UDP", "localport=9000-9200", "profile=private"
+            "protocol=UDP", f"localport={port_range}", "profile=private"
         ]
-        subprocess.run(cmd_fw_srt, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_NO_WINDOW)
-        logger.info("Reglas del Firewall de Windows configuradas exitosamente.")
+        res = subprocess.run(cmd_fw_srt, check=False, capture_output=True, text=True, creationflags=_WIN_NO_WINDOW)
+        if res.returncode == 0:
+            logger.info("Reglas del Firewall de Windows configuradas exitosamente.")
+            return True
+        logger.warning(f"netsh retornó código {res.returncode}: {res.stderr}")
+        return False
     except Exception as e:
         logger.error(f"Error al configurar firewall: {e}")
+        return False
+
+def remove_firewall_rules() -> bool:
+    """Elimina la regla de firewall creada por RTMS."""
+    if sys.platform != "win32":
+        return False
+    try:
+        cmd = ["netsh", "advfirewall", "firewall", "delete", "rule", "name=RTMS_Media_Ports"]
+        res = subprocess.run(cmd, check=False, capture_output=True, text=True, creationflags=_WIN_NO_WINDOW)
+        return res.returncode == 0
+    except Exception as e:
+        logger.error(f"Error al remover regla de firewall: {e}")
+        return False

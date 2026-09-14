@@ -2,7 +2,6 @@
 # RTMS v2.0.3 — Tests Unitarios para Configuración (core/config_mgr.py)
 # ==============================================================================
 
-import pytest
 from core.config_mgr import is_virtual_device, get_or_allocate_camera_config
 
 def test_is_virtual_device_detection():

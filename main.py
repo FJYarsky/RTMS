@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System v2.0.3
+# RTMS — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -13,10 +13,12 @@ import logging
 from logging.handlers import RotatingFileHandler
 import asyncio
 from contextlib import asynccontextmanager
+from typing import Optional
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _BASE_DIR)
 
+from core.__version__ import __version__
 from core.single_instance import acquire_single_instance_lock, release_single_instance_lock
 
 # 0. Verificación estricta de instancia única (Single Instance Lock)
@@ -60,48 +62,62 @@ logger = logging.getLogger("rtms.main")
 _main_window = None
 _tray_mgr = None
 _uvicorn_server = None
+_uvicorn_thread = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Iniciando RTMS API Backend v2.0.3...")
+    logger.info(f"Iniciando RTMS API Backend v{__version__}...")
     setup_firewall_rules()
-    
+
     # Sincronización inicial y autoarranque desatendido
     asyncio.create_task(sync_streams_with_hardware())
-    
+
     # Tarea de fondo para detección continua de cámaras conectadas en caliente (hotplug)
     asyncio.create_task(stream_manager.start_periodic_hardware_sync())
-    
+
     yield
-    
+
     logger.info("Apagando backend RTMS. Deteniendo transmisiones de forma limpia...")
     try:
-        await stream_manager.emergency_stop_all()
+        await stream_manager.stop_all()
     except Exception as e:
         logger.error(f"Error deteniendo streams durante el shutdown: {e}")
 
-app = FastAPI(title="RTMS API", version="2.0.3", lifespan=lifespan)
+def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
+    """Fábrica para instanciar la aplicación FastAPI, desacoplando dependencias."""
+    set_global_api_token(token)
+    application = FastAPI(title="RTMS API", version=__version__, lifespan=lifespan)
 
-# Endpoint público de salud para supervisores de sistema (NSSM, scripts externos)
-@app.get("/healthz")
-async def healthz():
-    return {"status": "ok", "version": "2.0.3"}
+    if port:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=[f"http://127.0.0.1:{port}", f"http://localhost:{port}"],
+            allow_credentials=False,
+            allow_methods=["GET", "POST"],
+            allow_headers=["*"],
+        )
 
-# Montar endpoints de la API
-app.include_router(api_router)
+    application.include_router(api_router)
 
-_STATIC_DIR = os.path.join(_BASE_DIR, "gui", "static")
-_TEMPLATES_DIR = os.path.join(_BASE_DIR, "gui", "templates")
-app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
-templates = Jinja2Templates(directory=_TEMPLATES_DIR)
+    _static_dir = os.path.join(_BASE_DIR, "gui", "static")
+    _templates_dir = os.path.join(_BASE_DIR, "gui", "templates")
+    if os.path.exists(_static_dir):
+        application.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
-@app.get("/")
-async def root(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={"api_token": API_TOKEN}
-    )
+    if os.path.exists(_templates_dir):
+        tmpl = Jinja2Templates(directory=_templates_dir)
+
+        @application.get("/")
+        async def root(request: Request):
+            return tmpl.TemplateResponse(
+                request=request,
+                name="index.html",
+                context={"api_token": token}
+            )
+
+    return application
+
+app = create_app()
 
 def is_port_open(host: str, port: int) -> bool:
     try:
@@ -125,17 +141,9 @@ def get_free_port(start_port=8000, end_port=8099) -> int:
 def run_fastapi(port: int):
     global _uvicorn_server
     logger.info(f"Lanzando servidor de API local en puerto {port}...")
-    
-    # Restringir CORS estrictamente al origen dinámico local para prevenir localhost CSRF
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[f"http://127.0.0.1:{port}", f"http://localhost:{port}"],
-        allow_credentials=False,
-        allow_methods=["GET", "POST"],
-        allow_headers=["*"],
-    )
-    
-    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", reload=False)
+
+    app_with_cors = create_app(token=API_TOKEN, port=port)
+    config = uvicorn.Config(app_with_cors, host="127.0.0.1", port=port, log_level="warning", reload=False)
     _uvicorn_server = uvicorn.Server(config)
     _uvicorn_server.run()
 
@@ -149,28 +157,36 @@ def show_window_from_tray():
             logger.debug(f"Error restaurando ventana desde tray: {e}")
 
 def on_closed():
-    """Cierre ordenado de la aplicación."""
-    logger.info("Ventana cerrada por el usuario. Finalizando aplicación...")
-    global _tray_mgr, _uvicorn_server
+    """Cierre unificado y ordenado de la aplicación (sin os._exit abrupto)."""
+    logger.info("Cierre de aplicación solicitado. Ejecutando protocolo ordenado...")
+    global _tray_mgr, _uvicorn_server, _uvicorn_thread
+
+    # 1. Detener System Tray
     if _tray_mgr:
-        _tray_mgr.stop()
-        
+        try:
+            _tray_mgr.stop()
+        except Exception as e:
+            logger.debug(f"Error al detener system tray: {e}")
+
+    # 2. Detener todos los subprocesos FFmpeg ordenadamente (enviando 'q' antes de kill)
     try:
-        for dp, proc in stream_manager._procs.items():
-            if proc.process and proc.process.returncode is None:
-                try:
-                    proc.process.kill()
-                except Exception:
-                    pass
+        asyncio.run(stream_manager.stop_all())
     except Exception as e:
-        logger.error(f"Error durante limpieza de procesos FFmpeg: {e}")
-        
-    release_single_instance_lock()
-    
+        logger.error(f"Error durante limpieza ordenada de streams: {e}")
+
+    # 3. Notificar a Uvicorn para cierre ordenado
     if _uvicorn_server:
         _uvicorn_server.should_exit = True
-        
-    os._exit(0)
+
+    if _uvicorn_thread and _uvicorn_thread.is_alive():
+        _uvicorn_thread.join(timeout=2.0)
+
+    # 4. Liberar bloqueo de instancia única
+    release_single_instance_lock()
+
+    # 5. Salida estándar de Python
+    logger.info("RTMS cerrado exitosamente.")
+    sys.exit(0)
 
 if __name__ == "__main__":
     try:
@@ -181,8 +197,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # 1. Iniciar FastAPI en segundo plano
-    t = threading.Thread(target=run_fastapi, args=(api_port,), daemon=True)
-    t.start()
+    _uvicorn_thread = threading.Thread(target=run_fastapi, args=(api_port,), daemon=True)
+    _uvicorn_thread.start()
 
     # 2. Esperar a que FastAPI esté listo
     retries = 25
@@ -206,7 +222,7 @@ if __name__ == "__main__":
 
     # 4. Crear ventana nativa con pywebview
     _main_window = webview.create_window(
-        title="RTMS v2.0.3 — Real-Time Multicam System",
+        title=f"RTMS v{__version__} — Real-Time Multicam System",
         url=f"http://127.0.0.1:{api_port}",
         width=1280,
         height=820,

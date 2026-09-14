@@ -1,0 +1,19 @@
+name: Solicitud de Función (Feature Request)
+description: Propón una nueva funcionalidad o mejora arquitectónica para RTMS.
+title: "[FEAT]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: ¿Qué problema resuelve esta propuesta?
+      description: Describe claramente la motivación o caso de uso.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solución o comportamiento propuesto
+      description: Explica cómo debería funcionar la nueva característica.
+    validations:
+      required: true

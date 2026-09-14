@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="rtms-token" content="{{ api_token }}">
-    <title>RTMS v2.0.3 — Real-Time Multicam System</title>
+    <title>RTMS v2.0.4 — Real-Time Multicam System</title>
     <link rel="stylesheet" href="/static/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- ==============================================================================
-    RTMS — Real-Time Multicam System v2.0.3
+    RTMS — Real-Time Multicam System v2.0.4
     Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
     ============================================================================== -->
     
@@ -19,7 +19,7 @@
         <header>
             <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor">
                 <div class="logo-icon"></div>
-                <div class="logo-text">RTMS <span class="version-tag">v2.0.3</span></div>
+                <div class="logo-text">RTMS <span class="version-tag">v2.0.4</span></div>
             </div>
 
             <!-- HUD de Telemetría en Tiempo Real -->
@@ -88,7 +88,7 @@
                 <div class="author-card" onclick="openAboutModal()">
                     <div class="author-title">Desarrollado por</div>
                     <div class="author-name">Joaquín Yarsky</div>
-                    <div class="author-sub">RTMS v2.0.3 • Soporte Oficial</div>
+                    <div class="author-sub">RTMS v2.0.4 • Soporte Oficial</div>
                     <button class="btn btn-author-contact">ℹ️ Acerca de / Contacto</button>
                 </div>
             </div>
@@ -296,7 +296,7 @@
                         <table class="system-table">
                             <tr>
                                 <td>Versión RTMS</td>
-                                <td>v2.0.3 (Build Septiembre 2026)</td>
+                                <td>v2.0.4 (Build Septiembre 2026)</td>
                             </tr>
                             <tr>
                                 <td>Plataforma</td>
@@ -311,6 +311,19 @@
                                 <td><strong>Joaquín Yarsky</strong> (<a href="mailto:joaquinyarsky@gmail.com" style="color:var(--teal)">joaquinyarsky@gmail.com</a>)</td>
                             </tr>
                         </table>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">Copia de Seguridad y Migración</div>
+                    <div class="card-body">
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+                            Exporta la configuración completa del sistema para respaldo o impórtala desde un archivo JSON validado.
+                        </p>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <button class="btn btn-ghost" onclick="exportConfiguration()">📥 Exportar Configuración (JSON)</button>
+                            <button class="btn btn-ghost" onclick="triggerImportConfiguration()">📤 Importar Configuración</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -463,7 +476,7 @@
                     Real-Time Multicam System
                 </h2>
                 <div style="font-size: 0.9rem; color: var(--teal); font-weight: 700; margin-bottom: 16px;">
-                    Versión 2.0.3 • Producción y Streaming
+                    Versión 2.0.4 • Producción y Streaming
                 </div>
 
                 <div class="about-author-box">

@@ -28,7 +28,7 @@ def get_launch_command() -> tuple[str, str]:
             python_bin = embedded_pythonw
         else:
             python_bin = sys.executable.replace("python.exe", "pythonw.exe")
-        
+
         main_script = os.path.join(base_dir, "main.py")
         return base_dir, f'start "" "{python_bin}" "{main_script}"'
 

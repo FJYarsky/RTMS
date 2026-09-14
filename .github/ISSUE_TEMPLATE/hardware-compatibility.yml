@@ -1,0 +1,44 @@
+name: Compatibilidad de Hardware / Cámara
+description: Reporta resultados de pruebas con modelos específicos de cámaras, capturadoras o GPUs.
+title: "[HW]: "
+labels: ["hardware", "compatibility"]
+body:
+  - type: input
+    id: camera_model
+    attributes:
+      label: Modelo de Cámara / Capturadora
+      description: Ejemplo Logitech Brio 4K, Cam Link 4K, Elgato Facecam
+    validations:
+      required: true
+  - type: input
+    id: gpu_model
+    attributes:
+      label: Modelo de Tarjeta Gráfica (GPU) y Driver
+      description: Ejemplo NVIDIA GeForce RTX 3070 (Driver 555.85)
+    validations:
+      required: true
+  - type: dropdown
+    id: encoder_used
+    attributes:
+      label: Codificador Utilizado
+      options:
+        - h264_nvenc (NVIDIA)
+        - h264_qsv (Intel)
+        - h264_amf (AMD)
+        - libx264 (CPU)
+    validations:
+      required: true
+  - type: input
+    id: resolution_fps
+    attributes:
+      label: Resolución y Tasa de Cuadros
+      description: Ejemplo 1080p @ 60 FPS o 4K @ 30 FPS
+    validations:
+      required: true
+  - type: textarea
+    id: observation
+    attributes:
+      label: Observaciones de Rendimiento y Estabilidad
+      description: Describa la latencia percibida, consumo de GPU y estabilidad durante transmisiones prolongadas.
+    validations:
+      required: true
