@@ -9,6 +9,8 @@ import logging
 import threading
 from PIL import Image, ImageDraw
 
+from core.__version__ import __version__
+
 logger = logging.getLogger("rtms.tray")
 
 class SystemTrayManager:
@@ -64,7 +66,7 @@ class SystemTrayManager:
             pystray.MenuItem("Salir de RTMS", _exit)
         )
 
-        self.icon = pystray.Icon("RTMS", image, "RTMS v2.0.2", menu)
+        self.icon = pystray.Icon("RTMS", image, f"RTMS v{__version__}", menu)
 
         # Iniciar en hilo independiente para no bloquear
         self._thread = threading.Thread(target=self.icon.run, daemon=True)

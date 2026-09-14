@@ -1,11 +1,12 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System
+# RTMS v2.1.0 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 # ==============================================================================
 
 import json
 import os
 import sys
+import re
 import uuid
 import secrets
 import logging
@@ -19,6 +20,7 @@ from core.port_mgr import port_manager
 logger = logging.getLogger("rtms.config_mgr")
 
 _CONFIG_LOCK = threading.Lock()
+_LAST_SAVED_CONFIG: Optional[str] = None
 
 def get_base_dir() -> str:
     """Retorna el directorio base persistente, evitando carpetas temporales de PyInstaller."""
@@ -35,7 +37,8 @@ CURRENT_SCHEMA_VERSION = 3
 
 VIRTUAL_DEVICE_KEYWORDS = [
     "virtual", "obs virtual", "elgato virtual", "vmix", "unity",
-    "manycam", "droidcam", "splitcam", "snap camera", "ndi", "iriun"
+    "manycam", "droidcam", "splitcam", "snap camera", "ndi", "iriun",
+    "nvidia broadcast", "broadcast"
 ]
 
 # Perfiles de cámara predefinidos (Presets)
@@ -83,9 +86,18 @@ def is_virtual_device(friendly_name: str) -> bool:
     name_lower = friendly_name.lower()
     return any(kw in name_lower for kw in VIRTUAL_DEVICE_KEYWORDS)
 
-def generate_stable_camera_id(device_path: str) -> str:
-    """Genera un UUID v5 estable y determinista para la cámara basado en su identificador físico."""
-    return f"cam_{uuid.uuid5(uuid.NAMESPACE_DNS, device_path).hex[:12]}"
+def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
+    """Genera un UUID v5 estable y determinista para la cámara basado en su identificador físico DirectShow."""
+    seed = device_path.lower()
+    # Priorizar VID/PID de PNP locator para que el ID sea resistente a cambios de puerto USB
+    m = re.search(r'(vid_[0-9a-f]+&pid_[0-9a-f]+(?:&mi_[0-9a-f]+)?)', seed)
+    if m:
+        seed = m.group(1)
+    elif "{" in seed and "}" in seed:
+        m_guid = re.search(r'\{[0-9a-f\-]+\}', seed)
+        if m_guid:
+            seed = m_guid.group(0)
+    return f"cam_{uuid.uuid5(uuid.NAMESPACE_DNS, seed).hex[:12]}"
 
 def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -205,18 +217,18 @@ def _prepare_config_for_disk(config_data: Dict[str, Any]) -> Dict[str, Any]:
     return disk_copy
 
 def _atomic_save_unlocked(config_data: Dict[str, Any]):
-    """Guarda en disco con escritura atómica (.tmp -> fsync -> .bak -> replace). Sin lock interno."""
+    """
+    Guarda en disco con escritura atómica (.tmp -> fsync -> .bak -> replace).
+    Sin lock interno. Deduplica en memoria contra la configuración lógica en claro
+    para no generar I/O ni fsync innecesarios por la aleatoriedad de DPAPI (Claude #6).
+    """
+    global _LAST_SAVED_CONFIG
+    current_serialized = json.dumps(config_data, sort_keys=True)
+    if _LAST_SAVED_CONFIG is not None and _LAST_SAVED_CONFIG == current_serialized and os.path.exists(CONFIG_FILE):
+        return
+
     disk_data = _prepare_config_for_disk(config_data)
     json_bytes = json.dumps(disk_data, indent=4, ensure_ascii=False).encode("utf-8")
-
-    # Evitar escrituras innecesarias a disco si el archivo existe y es idéntico
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "rb") as cf:
-                if cf.read() == json_bytes:
-                    return
-        except OSError:
-            pass
 
     os.makedirs(CONFIG_DIR, exist_ok=True)
 
@@ -238,6 +250,7 @@ def _atomic_save_unlocked(config_data: Dict[str, Any]):
 
     # 3. Reemplazo atómico
     os.replace(CONFIG_TMP_FILE, CONFIG_FILE)
+    _LAST_SAVED_CONFIG = current_serialized
 
 def save_config(config_data: Dict[str, Any]):
     """Persiste la configuración de forma atómica y protegida por cerrojo."""
@@ -364,9 +377,25 @@ def apply_camera_preset(device_path: str, preset_key: str) -> Optional[Dict[str,
         return cam
     return None
 
-def export_config() -> Dict[str, Any]:
-    """Exporta la configuración completa lista para backup o transporte entre equipos."""
-    return load_config()
+def export_config(safe_mode: bool = True, include_secrets: bool = False) -> Dict[str, Any]:
+    """
+    Exporta la configuración completa lista para backup o transporte entre equipos.
+    En modo seguro (por defecto), enmascara las contraseñas SRT para proteger
+    secretos (P0-02 / Claude #2).
+    """
+    cfg = load_config()
+    export_data = json.loads(json.dumps(cfg))
+
+    if safe_mode and not include_secrets:
+        for cam in export_data.get("cameras", {}).values():
+            if cam.get("srt_passphrase"):
+                cam["srt_passphrase"] = "••••••••"
+                cam["has_passphrase"] = True
+        export_data["secrets_redacted"] = True
+    else:
+        export_data["secrets_redacted"] = False
+
+    return export_data
 
 def import_config(new_config: Dict[str, Any]) -> bool:
     """Importa y valida una configuración externa, aplicando migraciones necesarias."""

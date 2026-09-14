@@ -1,5 +1,6 @@
 {
-    "version": "2.0.3",
+    "version": "2.1.0",
+    "config_schema_version": 3,
     "cameras": {},
     "next_port": 9000,
     "unattended_autostart": true

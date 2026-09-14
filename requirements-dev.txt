@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.0.4 — Dependencias de Desarrollo y Pruebas
+# RTMS v2.1.0 — Dependencias de Desarrollo y Pruebas
 # ==============================================================================
 
 -r requirements.txt
@@ -9,4 +9,3 @@ pytest>=8.0.0
 pytest-asyncio>=0.23.0
 httpx>=0.27.0
 ruff>=0.5.0
-dulwich>=1.2.0

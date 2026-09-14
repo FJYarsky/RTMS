@@ -45,3 +45,6 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
+
+# Temporary scratch test files
+scratch/

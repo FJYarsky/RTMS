@@ -1,9 +1,9 @@
-# RTMS — Real-Time Multicam System v2.0.4
+# RTMS — Real-Time Multicam System v2.1.0
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue?logo=windows)](https://microsoft.com)
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP%20Multicast-teal)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Security-Strict%20Zero--Secret%20Logs-green.svg)](#-seguridad-y-hardening)
-[![Tests](https://img.shields.io/badge/Tests-25%20Passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Joaqu%C3%ADn%20Yarsky-orange)](mailto:joaquinyarsky@gmail.com)
 
@@ -13,19 +13,28 @@ Permite conectar múltiples cámaras mediante **DirectShow** (webcams USB, captu
 
 ---
 
-## 🔒 Seguridad y Hardening (v2.0.4)
+## 🔒 Seguridad y Hardening (v2.1.0)
 
+* **Vista Previa On-Demand Desacoplada**: Monitorización de video en vivo (MJPEG web y FFplay nativo) totalmente independiente del pipeline de emisión principal, garantizando 0.00% de uso de CPU/GPU en reposo y sin riesgo de bloqueo por buffers de lectura lenta.
 * **Cero Secretos en Logs y Memoria**: Implementación de un módulo de sanitización centralizado (`core/sanitizer.py`) que enmascara automáticamente contraseñas SRT y tokens en comandos FFmpeg, buffers de memoria y archivos de registro en disco.
 * **Autenticación Estricta de API (`X-RTMS-Token`)**: Todos los endpoints mutantes (`POST`) y los endpoints de inspección sensibles (`GET /api/status`, `/api/stream/logs`, `/api/system/metrics`, `/api/power/status`) exigen el token criptográfico de sesión local. Únicamente `/healthz` permanece público para supervisores externos.
 * **CORS Restringido**: Enlace determinista y exclusivo al origen local dinámico (`127.0.0.1:<puerto>`), previniendo ataques de tipo *Localhost CSRF / Drive-by* desde navegadores externos.
-* **Protección Criptográfica en Disco (Windows DPAPI)**: Frases de paso SRT cifradas en reposo mediante Windows DPAPI (`core/secrets_mgr.py`), atadas de forma nativa a la cuenta del usuario.
+* **Protección Criptográfica en Disco (Windows DPAPI)**: Frases de paso SRT cifradas en reposo mediante Windows DPAPI (`core/secrets_mgr.py`), atadas de forma nativa a la cuenta del usuario, con deduplicación lógica en memoria para detener escrituras redundantes a disco.
+* **Prevención Activa de Suspensión**: Modo activo de ejecución (`SetThreadExecutionState`) que impide la suspensión de Windows en laptops y portátiles durante transmisiones en directo.
 * **Rotación de Logs (`RotatingFileHandler`)**: Control estricto de tamaño para `rtms.log` (5 MB, 3 copias de respaldo) para estabilidad desatendida 24/7.
-* **Verificación de Integridad SHA256 de FFmpeg**: Descarga oficial de FFmpeg validada criptográficamente contra el checksum SHA256 de Gyan.dev.
+* **Empaquetado Seguro sin Fuga de Credenciales**: Generación portable que excluye `config.json` y distribuye únicamente la plantilla de ejemplo `config.example.json` junto con `THIRD_PARTY_NOTICES.md`.
 
 ---
 
 ## 🚀 Características Principales
 
+* **Vista Previa de Video On-Demand y Modo Encuadre**:
+  * Visualización en tiempo real vía MJPEG Streaming en la UI web y ventana externa con FFplay.
+  * Captura de cuadro estático para encuadre DirectShow cuando la cámara está detenida.
+  * Consumo nulo de recursos (0.00% CPU/GPU) fuera de uso.
+* **Optimización Térmica y Clasificación Inteligente de Cámaras**:
+  * Aislamiento de cámaras virtuales de IA (`NVIDIA Broadcast`, etc.) con auto-arranque desactivado para proteger el presupuesto térmico de GPUs dedicadas (e.g. RTX 4050).
+  * Detección única con caché global de codificadores (`NVENC`, `QuickSync`, `AMF`, `libx264`).
 * **SRT Listener de Ultra Baja Latencia con Modo `zerolatency` Funcional**:
   * Diseñado para latencia sub-100ms *Glass-to-Glass* con conmutación real de parámetros (`tlpktdrop=1`, `-muxdelay 0 -muxpreload 0 -flush_packets 1`, `-tune zerolatency`).
   * Perfil alternativo balanceado para broadcast con tolerancia a fluctuaciones de red.
@@ -53,17 +62,18 @@ Permite conectar múltiples cámaras mediante **DirectShow** (webcams USB, captu
 ```
 RTMS/
 ├── api/                   # Capa REST API (FastAPI) protegida por X-RTMS-Token
-│   ├── routes.py          # Endpoints de control, telemetría y configuración
+│   ├── routes.py          # Endpoints de control, telemetría, vistas previas y configuración
 │   └── schemas.py         # Modelos de datos Pydantic estrictos
 ├── core/                  # Lógica del motor y resiliencia de sistema
-│   ├── __version__.py     # Fuente única y centralizada de versión (v2.0.4)
+│   ├── __version__.py     # Fuente única y centralizada de versión (v2.1.0)
 │   ├── sanitizer.py       # Sanitización estricta de contraseñas y secretos
 │   ├── secrets_mgr.py     # Cifrado nativo de contraseñas con Windows DPAPI
 │   ├── port_mgr.py        # Gestor de puertos sin colisiones de red
 │   ├── config_mgr.py      # Persistencia atómica, backups .bak y migraciones
 │   ├── ffmpeg_mgr.py      # Motor FFmpeg, teardown limpio y watchdog no bloqueante
-│   ├── hardware.py        # Sondeo DirectShow tradicional y moderno (7.x/8.x)
-│   ├── system_env.py      # Optimizaciones de energía Windows y firewall
+│   ├── preview_mgr.py     # Gestor de vista previa on-demand (MJPEG y FFplay)
+│   ├── hardware.py        # Sondeo DirectShow y caché de capacidades GPU
+│   ├── system_env.py      # Optimizaciones de energía Windows, stay-awake y firewall
 │   ├── autostart.py       # Gestor de autoarranque silencioso
 │   ├── doctor.py          # Herramienta de diagnóstico CLI (RTMS Doctor)
 │   ├── single_instance.py # Mutex Win32 para instancia única

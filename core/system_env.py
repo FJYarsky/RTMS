@@ -64,7 +64,8 @@ def get_hibernate_enabled():
         with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path) as key:
             val, _ = winreg.QueryValueEx(key, "HibernateEnabled")
             return val
-    except Exception:
+    except Exception as e:
+        logger.debug(f"No se pudo consultar HibernateEnabled en el registro: {e}")
         return 1
 
 def get_power_setting(subgroup: str, setting: str):
@@ -244,8 +245,8 @@ def restore_original_power_settings() -> Dict[str, Any]:
         try:
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path, 0, winreg.KEY_SET_VALUE) as key:
                 winreg.SetValueEx(key, "HibernateEnabled", 0, winreg.REG_DWORD, hibernate_val)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Aviso al restaurar HibernateEnabled: {e}")
 
         adapters = backup.get("adapters", {})
         class_path = r"SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002BE10318}"
@@ -260,13 +261,13 @@ def restore_original_power_settings() -> Dict[str, Any]:
                             pass
                     else:
                         winreg.SetValueEx(subkey, "PnPCapabilities", 0, winreg.REG_DWORD, original_val)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Aviso al restaurar adaptador {subkey_name}: {e}")
 
         try:
             os.remove(BACKUP_FILE)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug(f"Aviso al remover archivo backup: {e}")
 
         logger.info("Configuración original restaurada completamente.")
         return {"status": "ok", "message": "Restauración completada con éxito"}
@@ -354,12 +355,20 @@ def setup_windows_environment() -> Dict[str, Any]:
     }
 
 def setup_firewall_rules(port_range: str = "9000-9200") -> bool:
-    """Agrega reglas al firewall para puertos SRT/UDP de forma identificable."""
+    """Agrega o actualiza reglas en el firewall para puertos SRT/UDP sin duplicación."""
     if sys.platform != "win32":
         return False
 
-    logger.info(f"Configurando regla de firewall RTMS_Media_Ports ({port_range})...")
+    logger.info(f"Verificando y configurando regla de firewall RTMS_Media_Ports ({port_range})...")
     try:
+        # Verificar si la regla ya existe
+        check_cmd = ["netsh", "advfirewall", "firewall", "show", "rule", "name=RTMS_Media_Ports"]
+        check_res = subprocess.run(check_cmd, check=False, capture_output=True, text=True, creationflags=_WIN_NO_WINDOW)
+        if check_res.returncode == 0:
+            logger.info("Regla RTMS_Media_Ports ya existente detectada; renovando...")
+            subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule", "name=RTMS_Media_Ports"],
+                           check=False, capture_output=True, text=True, creationflags=_WIN_NO_WINDOW)
+
         cmd_fw_srt = [
             "netsh", "advfirewall", "firewall", "add", "rule",
             "name=RTMS_Media_Ports", "dir=in", "action=allow",
@@ -386,3 +395,40 @@ def remove_firewall_rules() -> bool:
     except Exception as e:
         logger.error(f"Error al remover regla de firewall: {e}")
         return False
+
+# Flags para SetThreadExecutionState (Windows)
+ES_CONTINUOUS = 0x80000000
+ES_SYSTEM_REQUIRED = 0x00000001
+ES_DISPLAY_REQUIRED = 0x00000002
+ES_AWAYMODE_REQUIRED = 0x00000040
+
+def acquire_stay_awake() -> bool:
+    """Evita la suspensión automática del sistema mientras RTMS esté operando activamente."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        res = ctypes.windll.kernel32.SetThreadExecutionState(
+            ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED
+        )
+        if res != 0:
+            logger.info("Modo activo de ejecución habilitado (SetThreadExecutionState).")
+            return True
+        return False
+    except Exception as e:
+        logger.warning(f"No se pudo configurar SetThreadExecutionState: {e}")
+        return False
+
+def release_stay_awake() -> bool:
+    """Restaura el comportamiento normal de suspensión del sistema."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+        logger.info("Modo de suspensión normal restaurado.")
+        return True
+    except Exception as e:
+        logger.debug(f"No se pudo restaurar SetThreadExecutionState: {e}")
+        return False
+

@@ -35,7 +35,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.system_env import setup_firewall_rules
+from core.system_env import setup_firewall_rules, acquire_stay_awake, release_stay_awake
 from core.ffmpeg_mgr import sync_streams_with_hardware, stream_manager
 from core.tray_icon import SystemTrayManager
 from api.routes import router as api_router, set_global_api_token
@@ -65,6 +65,7 @@ _uvicorn_thread = None
 async def lifespan(app: FastAPI):
     logger.info(f"Iniciando RTMS API Backend v{__version__}...")
     setup_firewall_rules()
+    acquire_stay_awake()
 
     # Sincronización inicial y autoarranque desatendido
     asyncio.create_task(sync_streams_with_hardware())
@@ -79,11 +80,14 @@ async def lifespan(app: FastAPI):
         await stream_manager.stop_all()
     except Exception as e:
         logger.error(f"Error deteniendo streams durante el shutdown: {e}")
+    finally:
+        release_stay_awake()
 
 def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
     """Fábrica para instanciar la aplicación FastAPI, desacoplando dependencias."""
     set_global_api_token(token)
     application = FastAPI(title="RTMS API", version=__version__, lifespan=lifespan)
+    application.state.api_token = token
 
     if port:
         application.add_middleware(
@@ -176,18 +180,19 @@ def on_closed():
         except Exception as e:
             logger.debug(f"Error al detener system tray: {e}")
 
-    # 2. Detener todos los subprocesos FFmpeg ordenadamente (enviando 'q' antes de kill)
-    try:
-        asyncio.run(stream_manager.stop_all())
-    except Exception as e:
-        logger.error(f"Error durante limpieza ordenada de streams: {e}")
-
-    # 3. Notificar a Uvicorn para cierre ordenado
+    # 2. Notificar a Uvicorn para cierre ordenado (su lifespan ejecutará stream_manager.stop_all)
     if _uvicorn_server:
         _uvicorn_server.should_exit = True
 
     if _uvicorn_thread and _uvicorn_thread.is_alive():
-        _uvicorn_thread.join(timeout=2.0)
+        _uvicorn_thread.join(timeout=3.0)
+
+    # 3. Fallback: Si Uvicorn no estaba activo o no corrió lifespan, asegurar detención de streams
+    try:
+        if any(p.is_alive for p in stream_manager._procs.values()):
+            asyncio.run(stream_manager.stop_all())
+    except Exception as e:
+        logger.debug(f"Aviso en verificación de detención de streams: {e}")
 
     # 4. Liberar bloqueo de instancia única
     release_single_instance_lock()

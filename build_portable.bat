@@ -1,13 +1,13 @@
 @echo off
 REM ==============================================================================
-REM RTMS 2.0.4 — Build Script para ejecutable nativo portable (pywebview)
+REM RTMS v2.1.0 — Build Script para ejecutable nativo portable (pywebview)
 REM Genera rtms.exe en la carpeta dist/
 REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 REM ==============================================================================
 
 echo.
 echo ============================================================
-echo  RTMS v2.0.4 — Creando aplicacion nativa con PyInstaller
+echo  RTMS v2.1.0 — Creando aplicacion nativa con PyInstaller
 echo ============================================================
 echo.
 
@@ -43,7 +43,7 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
   --name rtms ^
   --add-data "gui\templates;gui\templates" ^
   --add-data "gui\static;gui\static" ^
-  --add-data "config;config" ^
+  --add-data "config\config.example.json;config" ^
   --add-data "icon.ico;." ^
   --hidden-import=uvicorn ^
   --hidden-import=uvicorn.logging ^
@@ -93,10 +93,16 @@ if exist "bin\ffplay.exe" (
     copy /Y "bin\ffplay.exe" "dist\rtms\bin\" >nul
 )
 
-REM Copiar la carpeta de configuracion a dist/rtms/config/
-if exist "config" (
-    echo [INFO] Copiando configuracion a dist\rtms\config...
-    xcopy /E /I /Y config dist\rtms\config >nul
+REM Copiar la plantilla limpia de configuracion a dist/rtms/config/ (NUNCA config.json ni .bak)
+if not exist "dist\rtms\config" mkdir "dist\rtms\config"
+if exist "config\config.example.json" (
+    echo [INFO] Copiando config.example.json a dist\rtms\config...
+    copy /Y "config\config.example.json" "dist\rtms\config\" >nul
+)
+
+REM Copiar licencias de terceros a la raiz distribuible
+if exist "THIRD_PARTY_NOTICES.md" (
+    copy /Y "THIRD_PARTY_NOTICES.md" "dist\rtms\" >nul
 )
 
 REM Copiar WebView2Loader.dll a dist/rtms/ para soporte nativo de Edge Chromium

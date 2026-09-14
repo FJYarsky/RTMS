@@ -6,7 +6,10 @@
 import socket
 import psutil
 import logging
-from fastapi import APIRouter, HTTPException, Header, Depends
+import secrets
+import time
+from fastapi import APIRouter, HTTPException, Header, Depends, Request, Response
+from fastapi.responses import StreamingResponse
 from typing import Optional
 
 from core.__version__ import __version__
@@ -19,52 +22,69 @@ from core.config_mgr import (
     update_camera_config, set_camera_autostart, find_camera_by_id_or_path,
     apply_camera_preset, export_config, import_config, CAMERA_PRESETS
 )
+from core.preview_mgr import preview_manager
 
 logger = logging.getLogger("rtms.routes")
 router = APIRouter()
 
 _GLOBAL_API_TOKEN: Optional[str] = None
+_LAST_IP_CACHE: dict = {"ip": "127.0.0.1", "timestamp": 0.0}
 
 def set_global_api_token(token: str):
     """Establece el token de sesión criptográfico generado al inicio de la aplicación."""
     global _GLOBAL_API_TOKEN
     _GLOBAL_API_TOKEN = token
 
-async def verify_api_token(x_rtms_token: Optional[str] = Header(None, alias="X-RTMS-Token")):
+async def verify_api_token(
+    request: Request,
+    x_rtms_token: Optional[str] = Header(None, alias="X-RTMS-Token"),
+    token: Optional[str] = None
+):
     """
-    Middleware de seguridad que valida el token de sesión en todas las peticiones protegidas.
-    Previene de forma definitiva ataques de tipo Localhost CSRF / Drive-by desde navegadores web.
+    Middleware de seguridad que valida el token de sesión en peticiones protegidas.
+    Soporta Header 'X-RTMS-Token' y query param '?token=' (para tags <img> de preview).
+    Utiliza comparación en tiempo constante para mitigar timing attacks.
     """
-    if _GLOBAL_API_TOKEN is not None:
-        if not x_rtms_token or x_rtms_token != _GLOBAL_API_TOKEN:
+    expected_token = getattr(request.app.state, "api_token", _GLOBAL_API_TOKEN)
+    if expected_token is not None:
+        provided = x_rtms_token or token
+        if not provided or not secrets.compare_digest(str(provided), str(expected_token)):
             logger.warning("Petición rechazada: Token de seguridad X-RTMS-Token inválido o ausente.")
             raise HTTPException(status_code=403, detail="Acceso denegado: Token de seguridad inválido o ausente.")
 
 def get_local_ip() -> str:
-    """Obtiene la IP local de la máquina en la LAN (online y offline)."""
+    """Obtiene la IP local con caché TTL de 30s para evitar sondeos de sockets constantes."""
+    global _LAST_IP_CACHE
+    now = time.time()
+    if now - _LAST_IP_CACHE["timestamp"] < 30.0:
+        return _LAST_IP_CACHE["ip"]
+
+    ip = "127.0.0.1"
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0.2)
         s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
+        candidate = s.getsockname()[0]
         s.close()
-        if ip and not ip.startswith("127."):
-            return ip
+        if candidate and not candidate.startswith("127."):
+            ip = candidate
     except Exception:
-        pass
+        try:
+            addrs = psutil.net_if_addrs()
+            for iface, addr_list in addrs.items():
+                for addr in addr_list:
+                    if addr.family == socket.AF_INET:
+                        ip_candidate = addr.address
+                        if not ip_candidate.startswith("127.") and not ip_candidate.startswith("169.254."):
+                            ip = ip_candidate
+                            break
+                if ip != "127.0.0.1":
+                    break
+        except Exception:
+            pass
 
-    try:
-        addrs = psutil.net_if_addrs()
-        for iface, addr_list in addrs.items():
-            for addr in addr_list:
-                if addr.family == socket.AF_INET:
-                    ip_candidate = addr.address
-                    if not ip_candidate.startswith("127.") and not ip_candidate.startswith("169.254."):
-                        return ip_candidate
-    except Exception:
-        pass
-
-    return "127.0.0.1"
+    _LAST_IP_CACHE = {"ip": ip, "timestamp": now}
+    return ip
 
 @router.get("/healthz")
 async def healthz():
@@ -269,9 +289,9 @@ async def power_status():
     return {"optimizations_applied": os.path.exists(BACKUP_FILE)}
 
 @router.get("/api/config/export", dependencies=[Depends(verify_api_token)])
-async def export_config_endpoint():
-    """Exporta la configuración completa para respaldo o migración."""
-    return export_config()
+async def export_config_endpoint(safe_mode: bool = True):
+    """Exporta la configuración completa para respaldo o migración (safe_mode oculta secretos por defecto)."""
+    return export_config(safe_mode=safe_mode)
 
 @router.post("/api/config/import", dependencies=[Depends(verify_api_token)])
 async def import_config_endpoint(payload: ImportConfigRequest):
@@ -281,3 +301,87 @@ async def import_config_endpoint(payload: ImportConfigRequest):
         raise HTTPException(status_code=400, detail="Estructura de configuración inválida")
     await sync_streams_with_hardware()
     return {"status": "ok", "message": "Configuración importada y aplicada exitosamente"}
+
+@router.get("/api/stream/{device_path:path}/preview", dependencies=[Depends(verify_api_token)])
+async def stream_preview(device_path: str):
+    """
+    Canaliza un stream MJPEG de baja latencia on-demand.
+    Si la cámara está emitiendo, lee localmente del flujo SRT/UDP sin tocar DirectShow.
+    Si la cámara está detenida, toma captura DirectShow para encuadre.
+    Al desconectarse el cliente, el generador se detiene inmediatamente liberando recursos al 0%.
+    """
+    cam = find_camera_by_id_or_path(device_path)
+    dp = cam["device_path"] if cam else device_path
+    proc = stream_manager.get_proc(dp)
+    cfg = proc.config if (proc and proc.config) else (cam or {})
+
+    is_running = proc.is_alive if proc else False
+    if is_running:
+        protocol = cfg.get("protocol", "srt")
+        port = cfg.get("port", 9000)
+        passphrase = cfg.get("srt_passphrase", "")
+        if protocol == "srt":
+            url = f"srt://127.0.0.1:{port}?mode=caller"
+            if passphrase:
+                url += f"&passphrase={passphrase}"
+        else:
+            url = f"udp://127.0.0.1:{port}"
+        gen = preview_manager.generate_mjpeg_stream(url, is_dshow=False)
+    else:
+        dshow_target = cfg.get("friendly_name", dp)
+        gen = preview_manager.generate_mjpeg_stream(dshow_target, is_dshow=True)
+
+    return StreamingResponse(
+        gen,
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
+
+@router.get("/api/stream/{device_path:path}/preview_frame", dependencies=[Depends(verify_api_token)])
+async def stream_preview_frame(device_path: str):
+    """Retorna un único frame JPEG para vista estática de encuadre."""
+    cam = find_camera_by_id_or_path(device_path)
+    dp = cam["device_path"] if cam else device_path
+    proc = stream_manager.get_proc(dp)
+    cfg = proc.config if (proc and proc.config) else (cam or {})
+
+    target = cfg.get("friendly_name", dp)
+    jpeg_bytes = await preview_manager.get_snapshot_frame(target)
+    if not jpeg_bytes:
+        raise HTTPException(status_code=503, detail="No se pudo capturar cuadro de previsualización")
+
+    return Response(content=jpeg_bytes, media_type="image/jpeg")
+
+@router.post("/api/stream/{device_path:path}/ffplay", dependencies=[Depends(verify_api_token)])
+async def launch_external_ffplay(device_path: str):
+    """Lanza ventana nativa de ultra baja latencia con FFplay para monitorización dedicada."""
+    cam = find_camera_by_id_or_path(device_path)
+    dp = cam["device_path"] if cam else device_path
+    proc = stream_manager.get_proc(dp)
+    cfg = proc.config if (proc and proc.config) else (cam or {})
+
+    name = cfg.get("friendly_name", dp)
+    is_running = proc.is_alive if proc else False
+
+    if is_running:
+        protocol = cfg.get("protocol", "srt")
+        port = cfg.get("port", 9000)
+        passphrase = cfg.get("srt_passphrase", "")
+        if protocol == "srt":
+            url = f"srt://127.0.0.1:{port}?mode=caller"
+            if passphrase:
+                url += f"&passphrase={passphrase}"
+        else:
+            url = f"udp://127.0.0.1:{port}"
+        ok = preview_manager.launch_ffplay(url, title=f"RTMS Monitor — {name} ({port})", is_dshow=False)
+    else:
+        ok = preview_manager.launch_ffplay(name, title=f"RTMS Encuadre DirectShow — {name}", is_dshow=True)
+
+    if not ok:
+        raise HTTPException(status_code=500, detail="No se pudo iniciar FFplay. Verifique que bin/ffplay.exe esté disponible.")
+
+    return {"status": "ok", "message": f"Monitor FFplay lanzado para {name}"}

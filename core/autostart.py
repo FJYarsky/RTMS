@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System v2.0.2
+# RTMS — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 # ==============================================================================
 
@@ -10,9 +10,13 @@ from pathlib import Path
 
 logger = logging.getLogger("rtms.autostart")
 
-STARTUP_DIR = Path(os.getenv("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
+def get_startup_path() -> Path:
+    appdata = os.getenv("APPDATA")
+    if not appdata:
+        appdata = str(Path.home() / "AppData" / "Roaming")
+    return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / "rtms_startup.cmd"
+
 BATCH_NAME = "rtms_startup.cmd"
-BATCH_PATH = STARTUP_DIR / BATCH_NAME
 
 def get_launch_command() -> tuple[str, str]:
     """Retorna (workdir, command_line) para iniciar RTMS sin ventana de consola."""
@@ -34,7 +38,7 @@ def get_launch_command() -> tuple[str, str]:
 
 def _ensure_startup_dir() -> None:
     try:
-        STARTUP_DIR.mkdir(parents=True, exist_ok=True)
+        get_startup_path().parent.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         logger.error(f"Failed to create Startup directory: {e}")
         raise
@@ -43,19 +47,21 @@ def _write_batch_file() -> None:
     exe_dir, cmd = get_launch_command()
     # Batch que lanza el proceso con start "" en background y sale de inmediato sin quedarse abierto
     content = f'@echo off\ncd /d "{exe_dir}"\n{cmd}\nexit\n'
+    p = get_startup_path()
     try:
-        with open(BATCH_PATH, "w", encoding="utf-8") as f:
+        with open(p, "w", encoding="utf-8") as f:
             f.write(content)
-        logger.info(f"Autostart batch created at {BATCH_PATH}")
+        logger.info(f"Autostart batch created at {p}")
     except Exception as e:
         logger.error(f"Failed to write autostart batch: {e}")
         raise
 
 def _remove_batch_file() -> None:
+    p = get_startup_path()
     try:
-        if BATCH_PATH.is_file():
-            BATCH_PATH.unlink()
-            logger.info(f"Autostart batch removed from {BATCH_PATH}")
+        if p.is_file():
+            p.unlink()
+            logger.info(f"Autostart batch removed from {p}")
     except Exception as e:
         logger.error(f"Failed to remove autostart batch: {e}")
         raise
@@ -69,4 +75,4 @@ def enable_autostart(enable: bool) -> None:
     logger.debug(f"Autostart set to {'enabled' if enable else 'disabled'}")
 
 def is_autostart_enabled() -> bool:
-    return BATCH_PATH.is_file()
+    return get_startup_path().is_file()

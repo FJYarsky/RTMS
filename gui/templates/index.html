@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="rtms-token" content="{{ api_token }}">
-    <title>RTMS v2.0.4 — Real-Time Multicam System</title>
+    <title>RTMS v2.1.0 — Real-Time Multicam System</title>
     <link rel="stylesheet" href="/static/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- ==============================================================================
-    RTMS — Real-Time Multicam System v2.0.4
+    RTMS — Real-Time Multicam System v2.1.0
     Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
     ============================================================================== -->
     
@@ -19,7 +19,7 @@
         <header>
             <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor">
                 <div class="logo-icon"></div>
-                <div class="logo-text">RTMS <span class="version-tag">v2.0.4</span></div>
+                <div class="logo-text">RTMS <span class="version-tag">v2.1.0</span></div>
             </div>
 
             <!-- HUD de Telemetría en Tiempo Real -->
@@ -476,7 +476,7 @@
                     Real-Time Multicam System
                 </h2>
                 <div style="font-size: 0.9rem; color: var(--teal); font-weight: 700; margin-bottom: 16px;">
-                    Versión 2.0.4 • Producción y Streaming
+                    Versión 2.1.0 • Producción y Streaming
                 </div>
 
                 <div class="about-author-box">
@@ -498,7 +498,7 @@
 
                 <div style="text-align: left; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); padding: 14px; margin-top: 18px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
                     <strong>Atribuciones y Componentes de Terceros:</strong><br>
-                    • <strong>FFmpeg:</strong> Proyecto bajo licencia LGPL/GPL (soporte NVENC, QSV, AMF, SRT).<br>
+                    • <strong>FFmpeg & FFplay:</strong> Proyecto bajo licencia LGPL/GPL (soporte NVENC, QSV, AMF, SRT).<br>
                     • <strong>FastAPI & Uvicorn:</strong> Framework web asíncrono de alto rendimiento bajo licencia MIT.<br>
                     • <strong>pywebview:</strong> Motor de interfaz de usuario de escritorio multiplataforma.<br>
                     • <strong>SRT (Secure Reliable Transport):</strong> Protocolo de transmisión de código abierto.
@@ -506,6 +506,39 @@
             </div>
             <div class="modal-foot">
                 <button class="btn btn-primary" onclick="closeAboutModal()">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VISTA PREVIA DE VIDEO ON-DEMAND -->
+    <div class="modal-overlay" id="preview-modal">
+        <div class="modal-card preview-card">
+            <div class="modal-hdr">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span id="preview-modal-title">Vista Previa de Video</span>
+                    <span id="preview-modal-info"></span>
+                </div>
+                <button class="modal-close" onclick="closePreviewModal()">&times;</button>
+            </div>
+            <div class="modal-body preview-modal-body">
+                <div class="preview-container">
+                    <div class="preview-loader" id="preview-loader">
+                        <div class="spinner"></div>
+                        <p>Iniciando monitor de video...</p>
+                    </div>
+                    <img id="preview-modal-img" class="preview-video-element" alt="Vista previa en vivo">
+                </div>
+            </div>
+            <div class="modal-foot" style="justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-secondary btn-sm" id="preview-ffplay-btn" title="Abrir en ventana flotante externa con ultra baja latencia">
+                        📺 Abrir en FFplay Externo
+                    </button>
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                        Consumo 0% al cerrar esta ventana
+                    </span>
+                </div>
+                <button class="btn btn-ghost" onclick="closePreviewModal()">Cerrar</button>
             </div>
         </div>
     </div>

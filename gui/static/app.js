@@ -54,7 +54,7 @@ function navigateToPage(pageId) {
     });
 }
 
-// NOTIFICACIONES TOAST
+// NOTIFICACIONES TOAST (Sanitizado seguro sin inyección de innerHTML)
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -64,15 +64,32 @@ function showToast(message, type = 'info') {
     let icon = 'ℹ️';
     if (type === 'success') icon = '✅';
     if (type === 'error') icon = '❌';
-    
-    toast.innerHTML = `
-        <span style="display: flex; align-items: center; gap: 8px;">
-            <span>${icon}</span>
-            <span>${message}</span>
-        </span>
-        <button style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.1rem;" onclick="this.parentElement.remove()">&times;</button>
-    `;
-    
+
+    const spanWrapper = document.createElement('span');
+    spanWrapper.style.display = 'flex';
+    spanWrapper.style.alignItems = 'center';
+    spanWrapper.style.gap = '8px';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.textContent = icon;
+
+    const msgSpan = document.createElement('span');
+    msgSpan.textContent = String(message);
+
+    spanWrapper.appendChild(iconSpan);
+    spanWrapper.appendChild(msgSpan);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = 'var(--text-secondary)';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.fontSize = '1.1rem';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = () => toast.remove();
+
+    toast.appendChild(spanWrapper);
+    toast.appendChild(closeBtn);
     container.appendChild(toast);
     
     setTimeout(() => {
@@ -311,8 +328,12 @@ function createCameraCardElement(stream, index) {
     const uptimeStr = formatUptime(stream.status.uptime_seconds);
     const liveFps = stream.status.current_fps ? `${stream.status.current_fps} FPS` : '–';
     const liveBitrate = stream.status.current_bitrate_kbps ? `${Math.round(stream.status.current_bitrate_kbps)} kbps` : '–';
-    const fallbackTag = stream.status.using_fallback_cpu ? '<span style="color:var(--status-yellow); font-size:0.7rem;">(Modo CPU Fallback)</span>' : '';
+    const fallbackTag = stream.status.using_fallback_cpu ? '<span style="color:var(--status-yellow); font-size:0.7rem; font-weight:700;">(Modo CPU Fallback)</span>' : '';
     const autostartChecked = stream.auto_start ? 'checked' : '';
+
+    const encText = (stream.actual_encoder && stream.actual_encoder !== 'desconocido' && stream.encoder === 'auto')
+        ? `auto (${stream.actual_encoder})`
+        : (stream.encoder || 'auto');
 
     let alertBanner = '';
     if (stream.permanent_failure) {
@@ -336,7 +357,7 @@ function createCameraCardElement(stream, index) {
             <p>Puerto SRT/UDP: <strong>${stream.port}</strong></p>
             <p>Protocolo: <strong>${protocolName}</strong></p>
             <p>Perfil: <strong>${stream.resolution} @ ${stream.fps} FPS | ${stream.bitrate} kbps</strong></p>
-            <p>Codificador: <strong>${stream.encoder}</strong></p>
+            <p>Codificador: <strong>${encText}</strong></p>
             <div style="margin-top: 6px;">
                 <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--teal);">
                     <input type="checkbox" ${autostartChecked} onchange="toggleCamAutostart(${index}, this.checked)" style="display:inline-block;">
@@ -350,8 +371,9 @@ function createCameraCardElement(stream, index) {
             <span>En vivo: <strong>${liveFps}</strong> | <strong>${liveBitrate}</strong></span>
         </div>
         
-        <div class="actions-row">
+        <div class="actions-row" style="flex-wrap: wrap;">
             ${actionBtnHtml}
+            <button class="btn btn-primary btn-sm" onclick="openPreviewModal(${index})">👁️ Vista Previa</button>
             <button class="btn btn-ghost btn-sm" onclick="controlStream(${index}, 'restart')">🔄 Reiniciar</button>
             <button class="btn btn-ghost btn-sm" onclick="configureStream(${index})">⚙️ Ajustes</button>
             <button class="btn btn-ghost btn-sm" onclick="viewLogs(${index})">📝 Logs</button>
@@ -814,4 +836,79 @@ function triggerImportConfiguration() {
         }
     };
     input.click();
+}
+
+// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND
+function openPreviewModal(index) {
+    const stream = _streams[index];
+    if (!stream) return;
+
+    const modal = document.getElementById('preview-modal');
+    const titleEl = document.getElementById('preview-modal-title');
+    const imgEl = document.getElementById('preview-modal-img');
+    const infoEl = document.getElementById('preview-modal-info');
+    const ffplayBtn = document.getElementById('preview-ffplay-btn');
+    const loader = document.getElementById('preview-loader');
+
+    if (!modal || !imgEl) return;
+
+    titleEl.textContent = `Vista Previa — ${stream.friendly_name}`;
+    const token = getApiToken();
+    const isRunning = stream.status.state === 'running';
+
+    infoEl.innerHTML = isRunning 
+        ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo (${stream.protocol.toUpperCase()}:${stream.port})</span>`
+        : `<span class="status-badge stopped"><span class="status-dot"></span>Encuadre DirectShow (Stream Detenido)</span>`;
+
+    loader.style.display = 'flex';
+    imgEl.style.display = 'none';
+
+    // Generar URL con token y cache-buster
+    const previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?token=${encodeURIComponent(token)}&t=${Date.now()}`;
+
+    imgEl.onload = () => {
+        loader.style.display = 'none';
+        imgEl.style.display = 'block';
+    };
+
+    imgEl.onerror = () => {
+        loader.style.display = 'none';
+        infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">(No disponible)</span>`;
+    };
+
+    imgEl.src = previewUrl;
+
+    if (ffplayBtn) {
+        ffplayBtn.onclick = () => launchFFplayExternal(stream.device_path);
+    }
+
+    modal.classList.add('active');
+}
+
+function closePreviewModal() {
+    const modal = document.getElementById('preview-modal');
+    const imgEl = document.getElementById('preview-modal-img');
+    if (imgEl) {
+        // Cortar la conexión inmediatamente para que el generador termine y libere el 100% de CPU/GPU
+        imgEl.src = '';
+    }
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+async function launchFFplayExternal(devicePath) {
+    try {
+        const res = await apiFetch(`/api/stream/${encodeURIComponent(devicePath)}/ffplay`, {
+            method: 'POST'
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.detail || 'Error al iniciar FFplay', 'error');
+        }
+    } catch (e) {
+        showToast('Error al conectar con el servidor', 'error');
+    }
 }

@@ -6,8 +6,8 @@ Actualmente, solo la versión más reciente recibe actualizaciones activas y par
 
 | Versión | Soportada |
 | ------- | --------- |
-| 2.0.3   | :white_check_mark: |
-| < 2.0.3 | :x: |
+| 2.1.0   | :white_check_mark: |
+| < 2.1.0 | :x: |
 
 ---
 

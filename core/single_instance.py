@@ -1,10 +1,11 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System v2.0.2
+# RTMS — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 # ==============================================================================
 
 import sys
 import ctypes
+from ctypes import wintypes
 import logging
 
 logger = logging.getLogger("rtms.single_instance")
@@ -23,11 +24,13 @@ def acquire_single_instance_lock() -> bool:
         return True
 
     ERROR_ALREADY_EXISTS = 183
-    kernel32 = ctypes.windll.kernel32
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+    kernel32.CreateMutexW.restype = wintypes.HANDLE
 
     # Intentamos crear el mutex
     _mutex_handle = kernel32.CreateMutexW(None, False, _MUTEX_NAME)
-    last_error = kernel32.GetLastError()
+    last_error = ctypes.get_last_error()
 
     if last_error == ERROR_ALREADY_EXISTS:
         logger.warning("Otra instancia de RTMS ya está en ejecución.")
@@ -41,8 +44,12 @@ def release_single_instance_lock():
     global _mutex_handle
     if _mutex_handle and sys.platform == "win32":
         try:
-            ctypes.windll.kernel32.CloseHandle(_mutex_handle)
+            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+            kernel32.CloseHandle.restype = wintypes.BOOL
+            kernel32.CloseHandle(_mutex_handle)
             _mutex_handle = None
             logger.info("Mutex de instancia única liberado.")
         except Exception as e:
             logger.warning(f"Error liberando mutex: {e}")
+

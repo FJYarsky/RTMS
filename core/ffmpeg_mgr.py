@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System
+# RTMS v2.1.0 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 # ==============================================================================
 
@@ -14,8 +14,9 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
 from core.sanitizer import sanitize_command_for_log, sanitize_log_line
-from .hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN
+from .hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN, hardware_detector
 from .config_mgr import get_or_allocate_camera_config
+from .port_mgr import port_manager
 
 logger = logging.getLogger("rtms.ffmpeg_mgr")
 
@@ -27,6 +28,7 @@ class State(str, Enum):
     RUNNING      = "running"
     ERROR        = "error"
     RESTARTING   = "restarting"
+    RECOVERING   = "recovering"
     STOPPING     = "stopping"
     DISCONNECTED = "disconnected"
 
@@ -38,7 +40,8 @@ class StreamProc:
         self.started_at: Optional[datetime] = None
         self.error_count: int = 0
         self.next_retry_at: Optional[datetime] = None
-        self.permanent_failure: bool = False
+        self.manual_intervention_required: bool = False
+        self.recovery_task: Optional[asyncio.Task] = None
         self.logs: deque = deque(maxlen=300)
         self._stop_evt = asyncio.Event()
         self._log_task: Optional[asyncio.Task] = None
@@ -52,6 +55,22 @@ class StreamProc:
         self.using_fallback_cpu: bool = False
         self.is_connected: bool = True
         self.per_stream_encoder: Optional[str] = None
+
+    @property
+    def permanent_failure(self) -> bool:
+        return self.manual_intervention_required
+
+    @permanent_failure.setter
+    def permanent_failure(self, val: bool) -> None:
+        self.manual_intervention_required = val
+
+    def clear_failure(self) -> None:
+        """Limpia el estado de intervención manual y resetea contadores para permitir reintentos."""
+        self.manual_intervention_required = False
+        self.error_count = 0
+        self.next_retry_at = None
+        if self.state == State.ERROR:
+            self.state = State.STOPPED
 
     def log(self, line: str) -> None:
         clean_line = sanitize_log_line(line)
@@ -82,44 +101,16 @@ class StreamManager:
 
     async def detect_best_encoder(self, proc: Optional[StreamProc] = None) -> str:
         """
-        Detecta el mejor codificador por hardware disponible.
-        Permite granularidad por stream para no penalizar a otros dispositivos.
+        Detecta el mejor codificador por hardware disponible consultando la caché global singleton.
+        Evita lanzar subprocesos redundantes de prueba en cada stream (P1-03 / GPU optimization).
         """
         if proc and proc.per_stream_encoder:
             return proc.per_stream_encoder
 
-        if not has_ffmpeg_binary():
-            logger.warning("FFmpeg no disponible para prueba de encoders. Usando codificador CPU (libx264).")
-            if proc:
-                proc.per_stream_encoder = "libx264"
-            return "libx264"
-
-        encoders_to_test = ["h264_nvenc", "h264_qsv", "h264_amf"]
-        ffmpeg_bin = get_ffmpeg_bin()
-
-        for enc in encoders_to_test:
-            try:
-                test_p = await asyncio.create_subprocess_exec(
-                    ffmpeg_bin, "-f", "lavfi", "-i", "color=c=black:s=640x360:d=0.1",
-                    "-pix_fmt", "yuv420p",
-                    "-c:v", enc, "-f", "null", "-",
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL,
-                    creationflags=_WIN_FLAGS
-                )
-                await test_p.wait()
-                if test_p.returncode == 0:
-                    logger.info(f"Codificador por hardware validado: {enc}")
-                    if proc:
-                        proc.per_stream_encoder = enc
-                    return enc
-            except Exception as e:
-                logger.debug(f"Encoder {enc} no disponible: {e}")
-
-        logger.info("No se detectó GPU compatible. Usando codificador CPU (libx264).")
+        best = await hardware_detector.get_best_encoder()
         if proc:
-            proc.per_stream_encoder = "libx264"
-        return "libx264"
+            proc.per_stream_encoder = best
+        return best
 
     async def build_command(self, cfg: Dict[str, Any], force_cpu: bool = False, proc: Optional[StreamProc] = None):
         res_map = {
@@ -275,6 +266,18 @@ class StreamManager:
         proc._stop_evt.clear()
         proc.using_fallback_cpu = force_cpu
 
+        # Revalidación de puerto previo al vuelo para prevenir condiciones TOCTOU (P1-01)
+        cfg_port = proc.config.get("port")
+        if cfg_port and not port_manager.revalidate_port(int(cfg_port)):
+            logger.warning(f"Puerto {cfg_port} ocupado en el sistema antes de iniciar {proc.device_path}. Reasignando...")
+            new_port = port_manager.reallocate_if_collided(int(cfg_port))
+            proc.config["port"] = new_port
+            from .config_mgr import save_config, load_config
+            c_all = load_config()
+            if proc.device_path in c_all.get("cameras", {}):
+                c_all["cameras"][proc.device_path]["port"] = new_port
+                save_config(c_all)
+
         try:
             cmd, url, actual_encoder = await self.build_command(proc.config, force_cpu=force_cpu, proc=proc)
             proc.config["_url"] = url
@@ -429,17 +432,19 @@ class StreamManager:
 
                         if proc.error_count <= self.MAX_ERRORS:
                             if proc.next_retry_at and now >= proc.next_retry_at:
-                                logger.info(f"Watchdog reintentando {dp} (intento {proc.error_count}/{self.MAX_ERRORS})...")
-                                proc.state = State.RESTARTING
+                                logger.info(f"Watchdog recuperando {dp} (intento {proc.error_count}/{self.MAX_ERRORS})...")
+                                proc.state = State.RECOVERING
                                 proc.next_retry_at = None
                                 force_cpu = proc.error_count >= 2
-                                # Lanzar inicio de forma asíncrona sin bloquear la iteración
-                                asyncio.create_task(self.start_stream(dp, force_cpu=force_cpu))
+                                if proc.recovery_task and not proc.recovery_task.done():
+                                    proc.recovery_task.cancel()
+                                proc.recovery_task = asyncio.create_task(self.start_stream(dp, force_cpu=force_cpu))
                         else:
-                            if not proc.permanent_failure:
-                                proc.permanent_failure = True
-                                logger.error(f"Flujo {dp} superó el límite de {self.MAX_ERRORS} errores. Detenido definitivamente.")
-                                proc.log(f"CRÍTICO: Superado límite de {self.MAX_ERRORS} errores consecutivos. Transmisión detenida.")
+                            if not proc.manual_intervention_required:
+                                proc.manual_intervention_required = True
+                                proc.state = State.ERROR
+                                logger.error(f"Flujo {dp} superó el límite de {self.MAX_ERRORS} errores. Pausado esperando intervención manual.")
+                                proc.log(f"CRÍTICO: Superado límite de {self.MAX_ERRORS} errores consecutivos. Pausado esperando intervención manual.")
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -561,7 +566,7 @@ class StreamManager:
                 "protocol": cfg.get("protocol", "srt"),
                 "port": cfg.get("port", 9000),
                 "encoder": cfg.get("encoder", "auto"),
-                "actual_encoder": cfg.get("_actual_encoder", "desconocido"),
+                "actual_encoder": cfg.get("_actual_encoder", proc.per_stream_encoder or "auto"),
                 "srt_latency": cfg.get("srt_latency", 120),
                 "srt_passphrase": cfg.get("srt_passphrase", ""),
                 "url": cfg.get("_url", ""),
@@ -576,6 +581,8 @@ class StreamManager:
                     "current_bitrate_kbps": proc.current_bitrate_kbps,
                     "current_speed": proc.current_speed,
                     "error_count": proc.error_count,
+                    "using_fallback_cpu": proc.using_fallback_cpu,
+                    "manual_intervention_required": proc.permanent_failure,
                     "started_at": proc.started_at.isoformat() if proc.started_at else None,
                     "uptime_seconds": (datetime.now() - proc.started_at).total_seconds() if proc.is_alive and proc.started_at else None
                 }

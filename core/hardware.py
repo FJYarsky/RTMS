@@ -1,6 +1,6 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System
-# Desarrollado y soporte: Junio 2026 - Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS v2.1.0 — Real-Time Multicam System
+# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 # ==============================================================================
 
 import asyncio
@@ -9,7 +9,7 @@ import os
 import sys
 import logging
 import shutil
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 logger = logging.getLogger("rtms.hardware")
 
@@ -126,3 +126,79 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
 
     logger.info(f"Se encontraron {len(devices)} dispositivos de video.")
     return devices
+
+class HardwareCapabilityDetector:
+    """
+    Detector y caché singleton global de capacidades de aceleración por hardware.
+    Elimina la ejecución redundante de subprocesos de prueba de encoders en cada stream (P1-03).
+    """
+    _instance = None
+
+    def __init__(self):
+        self._capabilities: Dict[str, bool] = {}
+        self._lock = asyncio.Lock()
+        self._tested = False
+
+    @classmethod
+    def get_instance(cls) -> "HardwareCapabilityDetector":
+        if cls._instance is None:
+            cls._instance = HardwareCapabilityDetector()
+        return cls._instance
+
+    async def get_available_encoders(self) -> List[str]:
+        async with self._lock:
+            if not self._tested:
+                await self._probe_capabilities()
+            return [enc for enc, ok in self._capabilities.items() if ok]
+
+    async def is_encoder_supported(self, encoder: str) -> bool:
+        if encoder == "libx264":
+            return True
+        async with self._lock:
+            if not self._tested:
+                await self._probe_capabilities()
+            return self._capabilities.get(encoder, False)
+
+    async def get_best_encoder(self, preferred_order: Optional[List[str]] = None) -> str:
+        if preferred_order is None:
+            preferred_order = ["h264_nvenc", "h264_qsv", "h264_amf"]
+        available = await self.get_available_encoders()
+        for enc in preferred_order:
+            if enc in available:
+                return enc
+        return "libx264"
+
+    async def _probe_capabilities(self):
+        if not has_ffmpeg_binary():
+            logger.warning("FFmpeg no disponible. Aceleración por hardware desactivada.")
+            self._capabilities = {"h264_nvenc": False, "h264_qsv": False, "h264_amf": False, "libx264": True}
+            self._tested = True
+            return
+
+        logger.info("Detectando capacidades de codificación por hardware (Caché Global)...")
+        ffmpeg_bin = get_ffmpeg_bin()
+        encoders_to_test = ["h264_nvenc", "h264_qsv", "h264_amf"]
+
+        for enc in encoders_to_test:
+            try:
+                p = await asyncio.create_subprocess_exec(
+                    ffmpeg_bin, "-f", "lavfi", "-i", "color=c=black:s=640x360:d=0.1",
+                    "-pix_fmt", "yuv420p",
+                    "-c:v", enc, "-f", "null", "-",
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                    creationflags=_WIN_FLAGS
+                )
+                await p.wait()
+                is_supported = (p.returncode == 0)
+                self._capabilities[enc] = is_supported
+                if is_supported:
+                    logger.info(f"Codificador por hardware validado y disponible en el sistema: {enc}")
+            except Exception as e:
+                logger.debug(f"Encoder {enc} no soportado: {e}")
+                self._capabilities[enc] = False
+
+        self._capabilities["libx264"] = True
+        self._tested = True
+
+hardware_detector = HardwareCapabilityDetector.get_instance()

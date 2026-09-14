@@ -3,6 +3,30 @@
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.1.0] — 2026-09-14
+
+### Nuevas Características y Monitorización
+- **Vista Previa de Video On-Demand (Consumo Cero en Reposo)**: Implementado `core/preview_mgr.py` con Streaming MJPEG asíncrono para la Web UI y monitor nativo de ultra-baja latencia con `FFplay`. Desacoplado 100% de la transmisión principal (sin multiplexor `-tee` bloqueante) y con liberación inmediata de recursos (0.00% CPU/GPU) al cerrar el visor.
+- **Modo Encuadre para Cámaras Detenidas**: Captura DirectShow directa de un cuadro estático cuando la cámara no está emitiendo para facilitar el encuadre y enfoque previo al evento.
+- **Detección y Clasificación de Cámaras Virtuales**: Detección y clasificación automática de `NVIDIA Broadcast` y otras cámaras virtuales de IA, con `auto_start: false` para evitar consumo espurio de Tensor Cores y GPU 3D en segundo plano.
+- **Indicador de Codificador Activo y Modo Fallback**: La tarjeta de cámara ahora refleja dinámicamente el codificador real en uso (e.g. `auto (h264_nvenc)`) y destaca en color ámbar el estado si está operando bajo `Modo CPU Fallback`.
+
+### Optimizaciones de Rendimiento y Hardware
+- **Caché Global de Encoders (`HardwareCapabilityDetector`)**: Detección singleton de encoders disponibles en hardware (`NVENC`, `QSV`, `AMF`, `libx264`), eliminando la ejecución repetida de subprocesos de prueba de FFmpeg.
+- **Deduplicación de I/O en Disco (DPAPI)**: Resuelto el bug de escrituras continuas a disco cada 20 segundos provocado por la aleatoriedad de la sal criptográfica de `CryptProtectData`. La comparación ahora se realiza contra la configuración lógica en memoria.
+- **Caché TTL para Sondeo de IP Local**: Caché de 30 segundos en `get_local_ip()` para evitar la apertura continua de sockets de red y sondeos de `psutil` durante el refresco de telemetría de la UI.
+
+### Estabilidad y Sistema Operativo (Windows)
+- **Prevención Nativa de Suspensión (`SetThreadExecutionState`)**: Implementado `acquire_stay_awake()` y `release_stay_awake()` en el ciclo de vida de la aplicación para evitar que las laptops entren en suspensión durante eventos en vivo, incluso sin elevación de privilegios de Administrador.
+- **Deduplicación de Reglas de Firewall**: Verificación previa con `netsh advfirewall firewall show rule` antes de añadir la regla `RTMS_Media_Ports`, evitando reglas duplicadas o acumuladas.
+- **Manejo Seguro de Handles Win32 (64-bit)**: Tipado explícito de `wintypes.HANDLE` y `ctypes.WinDLL(..., use_last_error=True)` en `core/single_instance.py` para prevenir truncamientos de punteros de 64 bits en el Mutex de instancia única.
+
+### Seguridad, Empaquetado y Testing
+- **Empaquetado Seguro (`build_portable.bat`)**: Exclusión rigurosa de `config.json` y copias `.bak` del paquete distribuible `dist/rtms/`, incluyendo únicamente la plantilla limpia `config.example.json`.
+- **Avisos de Terceros y Licencias**: Creación de `THIRD_PARTY_NOTICES.md` documentando las licencias GPLv3 / LGPL de FFmpeg y FFplay.
+- **Aislamiento Total de Tests**: Creación de fixture autouse en `conftest.py` que redirige las rutas de configuración a directorios temporales `tmp_path`, garantizando que la ejecución de `pytest` jamás modifique el entorno de producción.
+- **Token Seguro en Vista Previa**: El verificador de token de seguridad soporta validación en tiempo constante (`secrets.compare_digest`) y parámetros de consulta para alimentar elementos de imagen en el navegador sin comprometer la seguridad contra ataques Drive-By.
+
 ---
 
 ## [2.0.4] — 2026-09-14

@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS — Real-Time Multicam System
+# RTMS v2.1.0 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
 # ==============================================================================
 
@@ -14,6 +14,7 @@ class PortManager:
     """
     Gestor de asignación y reciclaje de puertos para transmisiones SRT/UDP.
     Verifica activamente la disponibilidad física del socket en el SO.
+    Previene condiciones TOCTOU mediante revalidación previa al lanzamiento (P1-01).
     """
     DEFAULT_MIN_PORT = 9000
     DEFAULT_MAX_PORT = 9200
@@ -42,6 +43,10 @@ class PortManager:
 
         return False
 
+    def revalidate_port(self, port: int) -> bool:
+        """Comprueba si el puerto previamente asignado sigue estando libre justo antes de usarlo."""
+        return not self.is_port_in_use(port)
+
     def allocate_port(self, preferred_port: Optional[int] = None) -> int:
         """
         Asigna un puerto libre. Si preferred_port está libre y en rango, lo asigna.
@@ -61,6 +66,14 @@ class PortManager:
                     return port
 
             raise RuntimeError(f"No hay puertos libres disponibles en el rango {self.min_port}-{self.max_port}")
+
+    def reallocate_if_collided(self, current_port: int) -> int:
+        """Reasigna un nuevo puerto libre si ocurrió una colisión externa con current_port."""
+        with self._lock:
+            self._allocated_ports.discard(current_port)
+        new_port = self.allocate_port()
+        logger.warning(f"Colisión de puerto detectada en {current_port}. Reasignado a nuevo puerto libre: {new_port}")
+        return new_port
 
     def release_port(self, port: int):
         """Libera un puerto previamente asignado."""

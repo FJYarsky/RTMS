@@ -5,4 +5,4 @@
 
 """Fuente centralizada y única de verdad para el versionado de RTMS."""
 
-__version__ = "2.0.4"
+__version__ = "2.1.0"

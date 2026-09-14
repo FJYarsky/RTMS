@@ -54,27 +54,17 @@ def check_srt_support() -> bool:
         print("[FAIL] Protocolo SRT: Error al consultar protocolos")
         return False
 
-def check_gpu_encoders() -> bool:
-    ffmpeg_exe = get_ffmpeg_bin()
+async def check_gpu_encoders() -> bool:
     if not has_ffmpeg_binary():
         print("[FAIL] GPU Encoders: FFmpeg ausente")
         return False
 
-    encoders = ["h264_nvenc", "h264_qsv", "h264_amf"]
-    found = []
-    for enc in encoders:
-        try:
-            p = subprocess.run(
-                [ffmpeg_exe, "-f", "lavfi", "-i", "color=c=black:s=640x360:d=0.1", "-pix_fmt", "yuv420p", "-c:v", enc, "-f", "null", "-"],
-                capture_output=True, timeout=5
-            )
-            if p.returncode == 0:
-                found.append(enc)
-        except Exception:
-            pass
+    from core.hardware import hardware_detector
+    found = await hardware_detector.get_available_encoders()
+    hw_only = [e for e in found if e != "libx264"]
 
-    if found:
-        print(f"[OK] GPU Hardware Encoders: {', '.join(found)}")
+    if hw_only:
+        print(f"[OK] GPU Hardware Encoders: {', '.join(hw_only)}")
         return True
     else:
         print("[WARN] GPU Hardware Encoders: Ninguno detectado (Se utilizará CPU libx264)")
@@ -125,7 +115,7 @@ def check_config_storage() -> bool:
         print(f"[FAIL] Configuración: Error al leer: {e}")
         return False
 
-async def run_doctor():
+async def run_doctor() -> bool:
     print("=" * 60)
     print(f" RTMS Doctor — Herramienta de Diagnóstico v{__version__}")
     print("=" * 60)
@@ -134,7 +124,7 @@ async def run_doctor():
         ("Sistema Operativo", check_os()),
         ("Binario FFmpeg", check_ffmpeg_binary()),
         ("Protocolo SRT", check_srt_support()),
-        ("Aceleración GPU", check_gpu_encoders()),
+        ("Aceleración GPU", await check_gpu_encoders()),
         ("Cámaras DirectShow", await check_directshow_cameras()),
         ("Red Local", check_network_ip()),
         ("Puertos Media", check_media_ports()),
@@ -145,11 +135,14 @@ async def run_doctor():
     total = len(checks)
 
     print("=" * 60)
-    if passed == total:
+    success = (passed == total)
+    if success:
         print(f"RTMS Doctor: {passed}/{total} verificaciones aprobadas. ¡Sistema listo para producción!")
     else:
         print(f"RTMS Doctor: {passed}/{total} verificaciones aprobadas. Revisa las advertencias o fallos anteriores.")
     print("=" * 60)
+    return success
 
 if __name__ == "__main__":
-    asyncio.run(run_doctor())
+    ok = asyncio.run(run_doctor())
+    sys.exit(0 if ok else 1)
