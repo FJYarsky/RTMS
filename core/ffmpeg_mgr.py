@@ -4,7 +4,6 @@
 # ==============================================================================
 
 import asyncio
-import os
 import sys
 import re
 import logging
@@ -15,14 +14,12 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
 from core.sanitizer import sanitize_command_for_log, sanitize_log_line
-from .hardware import get_directshow_devices
+from .hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN
 from .config_mgr import get_or_allocate_camera_config
 
 logger = logging.getLogger("rtms.ffmpeg_mgr")
 
 _WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
-_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_FFMPEG_BIN = os.path.join(_BASE_DIR, "bin", "ffmpeg.exe")
 
 class State(str, Enum):
     STOPPED      = "stopped"
@@ -91,12 +88,19 @@ class StreamManager:
         if proc and proc.per_stream_encoder:
             return proc.per_stream_encoder
 
+        if not has_ffmpeg_binary():
+            logger.warning("FFmpeg no disponible para prueba de encoders. Usando codificador CPU (libx264).")
+            if proc:
+                proc.per_stream_encoder = "libx264"
+            return "libx264"
+
         encoders_to_test = ["h264_nvenc", "h264_qsv", "h264_amf"]
+        ffmpeg_bin = get_ffmpeg_bin()
 
         for enc in encoders_to_test:
             try:
                 test_p = await asyncio.create_subprocess_exec(
-                    _FFMPEG_BIN, "-f", "lavfi", "-i", "color=c=black:s=640x360:d=0.1",
+                    ffmpeg_bin, "-f", "lavfi", "-i", "color=c=black:s=640x360:d=0.1",
                     "-pix_fmt", "yuv420p",
                     "-c:v", enc, "-f", "null", "-",
                     stdout=asyncio.subprocess.DEVNULL,
@@ -135,13 +139,11 @@ class StreamManager:
         maxbk = f"{int(bitrate * 1.15)}k"
         bufk = f"{bitrate * 2}k"
 
-        if not os.path.exists(_FFMPEG_BIN):
-            raise FileNotFoundError(f"FFmpeg no encontrado en: {_FFMPEG_BIN}")
-
+        ffmpeg_bin = get_ffmpeg_bin()
         escaped_device = cfg.get("device_path", cfg.get("friendly_name", "")).replace(":", "\\:")
 
         cmd = [
-            _FFMPEG_BIN,
+            ffmpeg_bin,
             "-hide_banner",
             "-stats", "-stats_period", "1",
             "-f", "dshow",
@@ -261,6 +263,12 @@ class StreamManager:
         if not proc.is_connected:
             logger.warning(f"Cámara {proc.device_path} desconectada físicamente. No se puede iniciar.")
             proc.state = State.DISCONNECTED
+            return
+
+        if not has_ffmpeg_binary():
+            proc.state = State.ERROR
+            proc.log(f"ERROR: Binario FFmpeg no encontrado en {_FFMPEG_BIN} ni en PATH del sistema.")
+            logger.error(f"FFmpeg no disponible para iniciar stream de {proc.device_path}")
             return
 
         proc.state = State.STARTING

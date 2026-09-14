@@ -18,7 +18,7 @@ sys.path.insert(0, _BASE_DIR)
 from core.__version__ import __version__
 from core.port_mgr import port_manager
 from core.config_mgr import load_config
-from core.hardware import get_directshow_devices
+from core.hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN
 
 def check_os() -> bool:
     is_win = platform.system() == "Windows"
@@ -27,22 +27,22 @@ def check_os() -> bool:
     return is_win
 
 def check_ffmpeg_binary() -> bool:
-    ffmpeg_exe = os.path.join(_BASE_DIR, "bin", "ffmpeg.exe")
-    if not os.path.exists(ffmpeg_exe):
-        print(f"[FAIL] FFmpeg: No encontrado en {ffmpeg_exe}")
+    ffmpeg_exe = get_ffmpeg_bin()
+    if not has_ffmpeg_binary():
+        print(f"[FAIL] FFmpeg: No encontrado en {_FFMPEG_BIN} ni en PATH del sistema")
         return False
     try:
         res = subprocess.run([ffmpeg_exe, "-version"], capture_output=True, text=True, timeout=5)
         first_line = res.stdout.splitlines()[0] if res.stdout else "Versión desconocida"
-        print(f"[OK] FFmpeg: {first_line}")
+        print(f"[OK] FFmpeg ({ffmpeg_exe}): {first_line}")
         return True
     except Exception as e:
         print(f"[FAIL] FFmpeg: Error al ejecutar: {e}")
         return False
 
 def check_srt_support() -> bool:
-    ffmpeg_exe = os.path.join(_BASE_DIR, "bin", "ffmpeg.exe")
-    if not os.path.exists(ffmpeg_exe):
+    ffmpeg_exe = get_ffmpeg_bin()
+    if not has_ffmpeg_binary():
         print("[FAIL] Protocolo SRT: FFmpeg ausente")
         return False
     try:
@@ -55,8 +55,8 @@ def check_srt_support() -> bool:
         return False
 
 def check_gpu_encoders() -> bool:
-    ffmpeg_exe = os.path.join(_BASE_DIR, "bin", "ffmpeg.exe")
-    if not os.path.exists(ffmpeg_exe):
+    ffmpeg_exe = get_ffmpeg_bin()
+    if not has_ffmpeg_binary():
         print("[FAIL] GPU Encoders: FFmpeg ausente")
         return False
 

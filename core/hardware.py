@@ -8,6 +8,7 @@ import re
 import os
 import sys
 import logging
+import shutil
 from typing import List, Dict
 
 logger = logging.getLogger("rtms.hardware")
@@ -16,20 +17,39 @@ _WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # rtms_app/
 _FFMPEG_BIN = os.path.join(_BASE_DIR, "bin", "ffmpeg.exe")
 
+def get_ffmpeg_bin() -> str:
+    """
+    Retorna la ruta al binario FFmpeg.
+    Prioriza el binario empaquetado en bin/ffmpeg.exe,
+    luego el binario en PATH del sistema,
+    y finalmente la ruta por defecto _FFMPEG_BIN.
+    """
+    if os.path.exists(_FFMPEG_BIN):
+        return _FFMPEG_BIN
+    system_bin = shutil.which("ffmpeg")
+    if system_bin:
+        return system_bin
+    return _FFMPEG_BIN
+
+def has_ffmpeg_binary() -> bool:
+    """Verifica si el binario FFmpeg está físicamente disponible en disco o en PATH."""
+    return os.path.exists(_FFMPEG_BIN) or (shutil.which("ffmpeg") is not None)
+
 async def get_directshow_devices() -> List[Dict[str, str]]:
     """
     Llama a ffmpeg -list_devices true -f dshow -i dummy de forma asíncrona y
     analiza stderr para extraer el Nombre Amigable (Friendly Name) y la Ruta del Dispositivo (Alternative name).
     Retorna una lista de diccionarios: [{"friendly_name": "...", "device_path": "..."}]
     """
-    if not os.path.exists(_FFMPEG_BIN):
-        logger.error(f"No se encontró el binario FFmpeg en {_FFMPEG_BIN}")
+    ffmpeg_bin = get_ffmpeg_bin()
+    if not has_ffmpeg_binary():
+        logger.error(f"No se encontró el binario FFmpeg en {_FFMPEG_BIN} ni en PATH del sistema")
         return []
 
     logger.info("Sondeando dispositivos DirectShow...")
     try:
         process = await asyncio.create_subprocess_exec(
-            _FFMPEG_BIN, "-list_devices", "true", "-f", "dshow", "-i", "dummy",
+            ffmpeg_bin, "-list_devices", "true", "-f", "dshow", "-i", "dummy",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             creationflags=_WIN_FLAGS

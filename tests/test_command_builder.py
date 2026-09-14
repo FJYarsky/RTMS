@@ -81,3 +81,30 @@ def test_build_command_url_escapes_passphrase_special_characters():
         assert "foo=bar" not in url.split("passphrase=")[0]
 
     asyncio.run(_run())
+
+def test_build_command_without_local_binary(monkeypatch):
+    """Valida que build_command pueda construir los parámetros incluso si bin/ffmpeg.exe no existe en disco (entorno CI)."""
+    async def _run():
+        import core.hardware
+        monkeypatch.setattr(core.hardware.os.path, "exists", lambda p: False)
+        monkeypatch.setattr(core.hardware.shutil, "which", lambda cmd: None)
+
+        mgr = StreamManager()
+        cfg = {
+            "device_path": "@device_test",
+            "friendly_name": "Test Cam",
+            "resolution": "720p",
+            "fps": 30,
+            "bitrate": 3000,
+            "protocol": "srt",
+            "port": 9000,
+            "encoder": "auto",
+            "srt_latency": 100,
+            "zerolatency": True
+        }
+        cmd, url, enc = await mgr.build_command(cfg)
+        assert "-tune" in cmd and "zerolatency" in cmd
+        assert enc == "libx264"
+
+    asyncio.run(_run())
+
