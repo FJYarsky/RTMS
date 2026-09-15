@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Real-Time Multicam System
+# RTMS v2.2.2 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -15,12 +15,17 @@ from typing import Optional
 from core.__version__ import __version__
 from .schemas import (
     CameraConfigUpdate, StreamAction, AutostartToggle,
-    CameraAutostartToggle, ApplyPresetRequest, ImportConfigRequest
+    CameraAutostartToggle, ApplyPresetRequest, ImportConfigRequest,
+    FullExportRequest, PreviewTicketRequest
 )
-from core.ffmpeg_mgr import get_all_stream_statuses, stream_manager, sync_streams_with_hardware
+from core.ffmpeg_mgr import (
+    get_all_stream_statuses, stream_manager, sync_streams_with_hardware,
+    build_stream_url
+)
 from core.config_mgr import (
     update_camera_config, set_camera_autostart, find_camera_by_id_or_path,
-    apply_camera_preset, export_config, import_config, CAMERA_PRESETS
+    apply_camera_preset, export_config, import_config,
+    CAMERA_PRESETS
 )
 from core.preview_mgr import preview_manager
 from core.telemetry import telemetry_service
@@ -30,6 +35,50 @@ router = APIRouter()
 
 _GLOBAL_API_TOKEN: Optional[str] = None
 _LAST_IP_CACHE: dict = {"ip": "127.0.0.1", "timestamp": 0.0}
+
+class PreviewTicketManager:
+    """
+    Gestor en memoria de tickets efímeros para el streaming seguro de previsualizaciones MJPEG (P1-01).
+    Evita exponer tokens de sesión de larga duración en URLs de tags <img>.
+    """
+    def __init__(self, default_ttl: int = 60):
+        self._tickets: dict[str, dict] = {}
+        self.default_ttl = default_ttl
+
+    def create_ticket(self, device_path: str, ttl: Optional[int] = None) -> str:
+        self._cleanup()
+        token = secrets.token_urlsafe(32)
+        ttl_sec = ttl if (ttl is not None and ttl > 0) else self.default_ttl
+        self._tickets[token] = {
+            "device_path": device_path,
+            "expires_at": time.time() + ttl_sec
+        }
+        return token
+
+    def validate_ticket(self, ticket: str, device_path: str) -> bool:
+        self._cleanup()
+        info = self._tickets.get(ticket)
+        if not info:
+            return False
+        if time.time() > info["expires_at"]:
+            self._tickets.pop(ticket, None)
+            return False
+
+        # Comparar device_path normalizado o resuelto
+        cam = find_camera_by_id_or_path(device_path)
+        target_dp = cam["device_path"] if cam else device_path
+        ticket_dp = info["device_path"]
+        ticket_cam = find_camera_by_id_or_path(ticket_dp)
+        resolved_ticket_dp = ticket_cam["device_path"] if ticket_cam else ticket_dp
+        return target_dp == resolved_ticket_dp
+
+    def _cleanup(self) -> None:
+        now = time.time()
+        expired = [k for k, v in self._tickets.items() if v["expires_at"] < now]
+        for k in expired:
+            self._tickets.pop(k, None)
+
+preview_ticket_mgr = PreviewTicketManager()
 
 def set_global_api_token(token: str):
     """Establece el token de sesión criptográfico generado al inicio de la aplicación."""
@@ -48,7 +97,16 @@ async def verify_api_token(
     """
     expected_token = getattr(request.app.state, "api_token", _GLOBAL_API_TOKEN)
     if expected_token is not None:
-        provided = x_rtms_token or token
+        provided = None
+        if isinstance(x_rtms_token, str) and x_rtms_token:
+            provided = x_rtms_token
+        elif hasattr(request, "headers") and request.headers.get("x-rtms-token"):
+            provided = request.headers.get("x-rtms-token")
+        elif isinstance(token, str) and token:
+            provided = token
+        elif hasattr(request, "query_params") and request.query_params.get("token"):
+            provided = request.query_params.get("token")
+
         if not provided or not secrets.compare_digest(str(provided), str(expected_token)):
             logger.warning("Petición rechazada: Token de seguridad X-RTMS-Token inválido o ausente.")
             raise HTTPException(status_code=403, detail="Acceso denegado: Token de seguridad inválido o ausente.")
@@ -174,7 +232,7 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         elif cam:
             passphrase_to_set = cam.get("srt_passphrase", "")
 
-    update_camera_config(
+    saved = update_camera_config(
         device_path=dp,
         resolution=config.resolution,
         fps=config.fps,
@@ -187,6 +245,8 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         zerolatency=config.zerolatency if config.zerolatency is not None else True,
         is_virtual=config.is_virtual if config.is_virtual is not None else False
     )
+    if not saved:
+        raise HTTPException(status_code=500, detail="Error al persistir la configuración de la cámara en disco.")
 
     if proc:
         proc.config["resolution"] = config.resolution
@@ -206,6 +266,22 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
 
     return {"status": "ok", "message": "Configuración guardada y aplicada"}
 
+@router.delete("/api/stream/{device_path:path}", dependencies=[Depends(verify_api_token)])
+async def delete_camera_endpoint(device_path: str):
+    """Elimina una cámara de la configuración persistida y detiene su proceso asociado (P1-06)."""
+    cam = find_camera_by_id_or_path(device_path)
+    dp = cam["device_path"] if cam else device_path
+
+    # Detener stream y eliminar de configuración persistida
+    removed = await stream_manager.remove_stream(dp)
+    if not removed and cam and "camera_id" in cam:
+        removed = await stream_manager.remove_stream(cam["camera_id"])
+
+    if not removed:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada en la configuración")
+
+    return {"status": "ok", "message": f"Cámara {dp} eliminada permanentemente"}
+
 @router.post("/api/stream/preset", dependencies=[Depends(verify_api_token)])
 async def apply_preset_endpoint(payload: ApplyPresetRequest):
     """Aplica un perfil predefinido a una cámara existente."""
@@ -214,7 +290,7 @@ async def apply_preset_endpoint(payload: ApplyPresetRequest):
 
     updated_cam = apply_camera_preset(dp, payload.preset_key)
     if not updated_cam:
-        raise HTTPException(status_code=404, detail="Perfil o cámara no encontrados")
+        raise HTTPException(status_code=404, detail="Perfil o cámara no encontrados, o error al persistir configuración.")
 
     proc = stream_manager.get_proc(dp)
     if proc:
@@ -231,7 +307,10 @@ async def toggle_cam_autostart(payload: CameraAutostartToggle):
     cam = find_camera_by_id_or_path(payload.device_path)
     dp = cam["device_path"] if cam else payload.device_path
 
-    set_camera_autostart(dp, payload.auto_start)
+    saved = set_camera_autostart(dp, payload.auto_start)
+    if not saved:
+        raise HTTPException(status_code=500, detail="Error al persistir el estado de autoarranque en disco.")
+
     proc = stream_manager.get_proc(dp)
     if proc and proc.config:
         proc.config["auto_start"] = payload.auto_start
@@ -286,8 +365,21 @@ async def power_status():
 
 @router.get("/api/config/export", dependencies=[Depends(verify_api_token)])
 async def export_config_endpoint(safe_mode: bool = True):
-    """Exporta la configuración completa para respaldo o migración (safe_mode oculta secretos por defecto)."""
-    return export_config(safe_mode=safe_mode)
+    """Exporta la configuración completa para respaldo o migración (por seguridad, siempre oculta secretos en GET) (P0-05)."""
+    return export_config(safe_mode=True)
+
+@router.post("/api/config/export/full", dependencies=[Depends(verify_api_token)])
+async def export_full_config_endpoint(payload: FullExportRequest):
+    """
+    Exporta la configuración completa incluyendo contraseñas sin enmascarar (P0-05).
+    Requiere confirmación explícita mediante confirm_export_secrets=True en el cuerpo.
+    """
+    if not payload.confirm_export_secrets:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe confirmar explícitamente la exportación de secretos con confirm_export_secrets=True."
+        )
+    return export_config(safe_mode=False)
 
 @router.post("/api/config/import", dependencies=[Depends(verify_api_token)])
 async def import_config_endpoint(payload: ImportConfigRequest):
@@ -301,16 +393,51 @@ async def import_config_endpoint(payload: ImportConfigRequest):
         logger.warning(f"Error sincronizando hardware tras importación de config: {e}")
     return {"status": "ok", "message": "Configuración importada y aplicada exitosamente"}
 
-@router.get("/api/stream/{device_path:path}/preview", dependencies=[Depends(verify_api_token)])
-async def stream_preview(device_path: str):
+@router.post("/api/preview/ticket", dependencies=[Depends(verify_api_token)])
+async def create_preview_ticket(payload: PreviewTicketRequest):
+    """Genera un ticket efímero de corta duración para previsualizaciones MJPEG seguras (P1-01)."""
+    cam = find_camera_by_id_or_path(payload.device_path)
+    dp = cam["device_path"] if cam else payload.device_path
+    ttl = payload.ttl_seconds if payload.ttl_seconds is not None else 60
+    ticket = preview_ticket_mgr.create_ticket(dp, ttl=ttl)
+    return {"ticket": ticket, "expires_in": ttl}
+
+@router.get("/api/stream/{device_path:path}/preview")
+async def stream_preview(
+    request: Request,
+    device_path: str,
+    ticket: Optional[str] = None,
+    token: Optional[str] = None
+):
     """
     Canaliza un stream MJPEG de baja latencia on-demand.
-    Si la cámara está emitiendo, lee localmente del flujo SRT/UDP sin tocar DirectShow.
-    Si la cámara está detenida, toma captura DirectShow para encuadre.
+    Soporta autenticación mediante ticket efímero (?ticket=...) o token (?token=... / header).
+    Controla concurrencia con semáforo global y slots por cámara (N8, P1-10).
     Al desconectarse el cliente, el generador se detiene inmediatamente liberando recursos al 0%.
     """
     cam = find_camera_by_id_or_path(device_path)
     dp = cam["device_path"] if cam else device_path
+
+    # 1. Autenticación (P1-01)
+    if ticket:
+        if not preview_ticket_mgr.validate_ticket(ticket, dp):
+            raise HTTPException(status_code=403, detail="Ticket de previsualización inválido o expirado.")
+    else:
+        # Fallback a token de sesión
+        await verify_api_token(request, token=token)
+
+    # 2. Verificación de binario FFmpeg (N3)
+    if not preview_manager.has_ffmpeg_binary():
+        raise HTTPException(status_code=503, detail="Binario de FFmpeg no disponible en el sistema.")
+
+    # 3. Control de concurrencia y ranura de cámara (N8, P1-10)
+    slot_acquired = await preview_manager.acquire_slot(dp)
+    if not slot_acquired:
+        raise HTTPException(
+            status_code=429,
+            detail="Límite de previsualizaciones concurrentes alcanzado o previsualización ya activa para esta cámara."
+        )
+
     proc = stream_manager.get_proc(dp)
     cfg = proc.config if (proc and proc.config) else (cam or {})
 
@@ -319,19 +446,30 @@ async def stream_preview(device_path: str):
         protocol = cfg.get("protocol", "srt")
         port = cfg.get("port", 9000)
         passphrase = cfg.get("srt_passphrase", "")
-        if protocol == "srt":
-            url = f"srt://127.0.0.1:{port}?mode=caller"
-            if passphrase:
-                url += f"&passphrase={passphrase}"
-        else:
-            url = f"udp://127.0.0.1:{port}"
-        gen = preview_manager.generate_mjpeg_stream(url, is_dshow=False)
+        latency = int(cfg.get("srt_latency", 120))
+        zerolatency = bool(cfg.get("zerolatency", True))
+        url = build_stream_url(
+            protocol=protocol,
+            port=port,
+            passphrase=passphrase,
+            mode="caller",
+            latency_ms=latency,
+            zerolatency=zerolatency
+        )
+        gen = preview_manager.generate_mjpeg_stream(url, is_dshow=False, identifier=dp)
     else:
         dshow_target = cfg.get("friendly_name", dp)
-        gen = preview_manager.generate_mjpeg_stream(dshow_target, is_dshow=True)
+        gen = preview_manager.generate_mjpeg_stream(dshow_target, is_dshow=True, identifier=dp)
+
+    async def stream_wrapper():
+        try:
+            async for chunk in gen:
+                yield chunk
+        finally:
+            await preview_manager.release_slot(dp)
 
     return StreamingResponse(
-        gen,
+        stream_wrapper(),
         media_type="multipart/x-mixed-replace; boundary=frame",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -343,6 +481,9 @@ async def stream_preview(device_path: str):
 @router.get("/api/stream/{device_path:path}/preview_frame", dependencies=[Depends(verify_api_token)])
 async def stream_preview_frame(device_path: str):
     """Retorna un único frame JPEG para vista estática de encuadre."""
+    if not preview_manager.has_ffmpeg_binary():
+        raise HTTPException(status_code=503, detail="Binario de FFmpeg no disponible en el sistema.")
+
     cam = find_camera_by_id_or_path(device_path)
     dp = cam["device_path"] if cam else device_path
     proc = stream_manager.get_proc(dp)
@@ -370,12 +511,16 @@ async def launch_external_ffplay(device_path: str):
         protocol = cfg.get("protocol", "srt")
         port = cfg.get("port", 9000)
         passphrase = cfg.get("srt_passphrase", "")
-        if protocol == "srt":
-            url = f"srt://127.0.0.1:{port}?mode=caller"
-            if passphrase:
-                url += f"&passphrase={passphrase}"
-        else:
-            url = f"udp://127.0.0.1:{port}"
+        latency = int(cfg.get("srt_latency", 120))
+        zerolatency = bool(cfg.get("zerolatency", True))
+        url = build_stream_url(
+            protocol=protocol,
+            port=port,
+            passphrase=passphrase,
+            mode="caller",
+            latency_ms=latency,
+            zerolatency=zerolatency
+        )
         ok = preview_manager.launch_ffplay(url, title=f"RTMS Monitor — {name} ({port})", is_dshow=False)
     else:
         ok = preview_manager.launch_ffplay(name, title=f"RTMS Encuadre DirectShow — {name}", is_dshow=True)
