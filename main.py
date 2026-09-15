@@ -16,6 +16,23 @@ from logging.handlers import RotatingFileHandler
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional
+import io
+
+class _NullWriter(io.StringIO):
+    """Fallback stream writer for GUI / noconsole environments where stdout/stderr is None."""
+    def write(self, s: str) -> int:
+        return len(s) if s else 0
+
+    def flush(self) -> None:
+        pass
+
+    def isatty(self) -> bool:
+        return False
+
+if sys.stdout is None:
+    sys.stdout = _NullWriter()
+if sys.stderr is None:
+    sys.stderr = _NullWriter()
 
 if getattr(sys, 'frozen', False):
     _APP_DIR = os.path.dirname(sys.executable)
@@ -53,13 +70,17 @@ _LOG_FILE = os.path.join(_BASE_DIR, "rtms.log")
 secret_filter = SecretFilter()
 file_handler = RotatingFileHandler(_LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8')
 file_handler.addFilter(secret_filter)
-stream_handler = logging.StreamHandler()
-stream_handler.addFilter(secret_filter)
+
+handlers = [file_handler]
+if sys.stderr is not None and not isinstance(sys.stderr, _NullWriter):
+    stream_handler = logging.StreamHandler(sys.stderr)
+    stream_handler.addFilter(secret_filter)
+    handlers.append(stream_handler)
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[file_handler, stream_handler]
+    handlers=handlers
 )
 logger = logging.getLogger("rtms.main")
 
@@ -173,11 +194,20 @@ def get_free_port(start_port=8000, end_port=8099) -> int:
 def run_fastapi(port: int):
     global _uvicorn_server
     logger.info(f"Lanzando servidor de API local en puerto {port}...")
-
-    app_with_cors = create_app(token=API_TOKEN, port=port)
-    config = uvicorn.Config(app_with_cors, host="127.0.0.1", port=port, log_level="warning", reload=False)
-    _uvicorn_server = uvicorn.Server(config)
-    _uvicorn_server.run()
+    try:
+        app_with_cors = create_app(token=API_TOKEN, port=port)
+        config = uvicorn.Config(
+            app_with_cors,
+            host="127.0.0.1",
+            port=port,
+            log_level="warning",
+            log_config=None,
+            reload=False
+        )
+        _uvicorn_server = uvicorn.Server(config)
+        _uvicorn_server.run()
+    except Exception as e:
+        logger.exception(f"Fallo crítico en servidor Uvicorn: {e}")
 
 _api_port = 8000
 
@@ -242,6 +272,9 @@ def on_closed():
     sys.exit(0)
 
 if __name__ == "__main__":
+    import multiprocessing
+    multiprocessing.freeze_support()
+
     # 0. Verificación estricta de instancia única (Single Instance Lock)
     if not acquire_single_instance_lock():
         print("[INFO] RTMS ya se encuentra en ejecución en este equipo. Abortando instancia secundaria.")
@@ -264,13 +297,17 @@ if __name__ == "__main__":
     _uvicorn_thread.start()
 
     # 2. Esperar a que FastAPI esté listo
-    retries = 25
+    retries = 30
     while retries > 0 and not is_port_open("127.0.0.1", _api_port):
+        if not _uvicorn_thread.is_alive():
+            logger.error("El hilo de FastAPI finalizó inesperadamente durante el arranque. Abortando.")
+            release_single_instance_lock()
+            sys.exit(1)
         time.sleep(0.2)
         retries -= 1
 
     if retries == 0:
-        logger.error("No se pudo iniciar el servidor backend FastAPI. Abortando.")
+        logger.error("No se pudo iniciar el servidor backend FastAPI. Tiempo de espera agotado. Abortando.")
         release_single_instance_lock()
         sys.exit(1)
 
