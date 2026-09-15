@@ -402,8 +402,18 @@ def export_config(safe_mode: bool = True, include_secrets: bool = False) -> Dict
 
 def import_config(new_config: Dict[str, Any]) -> bool:
     """Importa y valida una configuración externa, aplicando migraciones necesarias."""
-    if not isinstance(new_config, dict) or "cameras" not in new_config:
+    if not isinstance(new_config, dict):
         return False
-    migrated = migrate_config(new_config)
-    save_config(migrated)
-    return True
+    cameras = new_config.get("cameras")
+    if not isinstance(cameras, dict):
+        return False
+    for cam in cameras.values():
+        if not isinstance(cam, dict):
+            return False
+    try:
+        migrated = migrate_config(new_config)
+        save_config(migrated)
+        return True
+    except Exception as e:
+        logger.error(f"Fallo durante la importación y migración de configuración: {e}")
+        return False

@@ -4,11 +4,21 @@
 
 from core.doctor import (
     check_os,
+    check_ffmpeg_binary,
+    check_srt_support,
     check_network_ip,
     check_media_ports,
     check_config_storage,
     run_doctor
 )
+
+def test_doctor_check_ffmpeg_and_srt():
+    """Valida las verificaciones de disponibilidad de FFmpeg y soporte del protocolo SRT."""
+    ffmpeg_ok = check_ffmpeg_binary()
+    assert isinstance(ffmpeg_ok, bool)
+
+    srt_ok = check_srt_support()
+    assert isinstance(srt_ok, bool)
 
 def test_doctor_check_os():
     """Valida la detección del sistema operativo Windows."""

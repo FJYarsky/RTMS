@@ -89,3 +89,21 @@ def test_other_schemas():
 
     ic = ImportConfigRequest(config_data={"version": 3, "cameras": {}})
     assert ic.config_data["version"] == 3
+
+def test_import_config_request_validation():
+    """Valida que ImportConfigRequest exija un diccionario con estructura 'cameras'."""
+    # Válido
+    req = ImportConfigRequest(config_data={"version": 3, "cameras": {}})
+    assert req.config_data["version"] == 3
+
+    # Inválido: falta clave cameras
+    with pytest.raises(ValidationError):
+        ImportConfigRequest(config_data={"version": 3})
+
+    # Inválido: cameras no es diccionario
+    with pytest.raises(ValidationError):
+        ImportConfigRequest(config_data={"version": 3, "cameras": "not_a_dict"})
+
+    # Inválido: payload completo no es diccionario
+    with pytest.raises(ValidationError):
+        ImportConfigRequest(config_data="invalido")

@@ -283,10 +283,10 @@ function renderConnectPage() {
                 <span class="status-badge running"><span class="status-dot"></span>Transmitiendo</span>
             </div>
             <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">
-                Protocolo: <strong>${protocolLabel}</strong> | Resolución: <strong>${stream.resolution} @ ${stream.fps} FPS</strong> | Bitrate: <strong>${stream.bitrate} kbps</strong>
+                Protocolo: <strong>${escapeHtml(protocolLabel)}</strong> | Resolución: <strong>${escapeHtml(stream.resolution)} @ ${escapeHtml(stream.fps)} FPS</strong> | Bitrate: <strong>${escapeHtml(stream.bitrate)} kbps</strong>
             </div>
             <div class="copy-input-grp">
-                <input type="text" id="url-input-${globalIndex}" value="${clientUrl}" readonly>
+                <input type="text" id="url-input-${globalIndex}" value="${escapeHtml(clientUrl)}" readonly>
                 <button class="copy-icon-btn" onclick="copyUrlByIndex(${globalIndex})">Copiar URL</button>
             </div>
         `;
@@ -394,10 +394,10 @@ function createCameraCardElement(stream, index) {
         ${alertBanner}
 
         <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
-            <p>Puerto SRT/UDP: <strong>${stream.port}</strong></p>
-            <p>Protocolo: <strong>${protocolName}</strong></p>
-            <p>Perfil: <strong>${stream.resolution} @ ${stream.fps} FPS | ${stream.bitrate} kbps</strong></p>
-            <p>Codificador: <strong>${encText}</strong></p>
+            <p>Puerto SRT/UDP: <strong>${escapeHtml(stream.port)}</strong></p>
+            <p>Protocolo: <strong>${escapeHtml(protocolName)}</strong></p>
+            <p>Perfil: <strong>${escapeHtml(stream.resolution)} @ ${escapeHtml(stream.fps)} FPS | ${escapeHtml(stream.bitrate)} kbps</strong></p>
+            <p>Codificador: <strong>${escapeHtml(encText)}</strong></p>
             <div style="margin-top: 6px;">
                 <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--teal);">
                     <input type="checkbox" ${autostartChecked} onchange="toggleCamAutostart(${index}, this.checked)" style="display:inline-block;">
@@ -927,7 +927,7 @@ function openPreviewModal(index) {
     const isRunning = stream.status.state === 'running';
 
     infoEl.innerHTML = isRunning 
-        ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo (${stream.protocol.toUpperCase()}:${stream.port})</span>`
+        ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo (${escapeHtml(stream.protocol.toUpperCase())}:${escapeHtml(stream.port)})</span>`
         : `<span class="status-badge stopped"><span class="status-dot"></span>Encuadre DirectShow (Stream Detenido)</span>`;
 
     loader.style.display = 'flex';

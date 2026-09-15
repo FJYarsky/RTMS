@@ -44,3 +44,13 @@ class ApplyPresetRequest(BaseModel):
 
 class ImportConfigRequest(BaseModel):
     config_data: Dict[str, Any]
+
+    @field_validator("config_data")
+    @classmethod
+    def validate_config_data(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        """Valida que los datos de configuración contengan una estructura válida con el diccionario 'cameras'."""
+        if not isinstance(v, dict):
+            raise ValueError("El cuerpo de la configuración debe ser un objeto JSON/diccionario.")
+        if "cameras" not in v or not isinstance(v["cameras"], dict):
+            raise ValueError("La configuración debe contener un diccionario 'cameras'.")
+        return v

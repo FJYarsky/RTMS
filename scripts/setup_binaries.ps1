@@ -8,6 +8,9 @@
 # Automated FFmpeg & FFplay binary setup and SHA256 integrity validation
 $ErrorActionPreference = "Stop"
 
+# Forzar protocolos criptográficos TLS modernos (TLS 1.2 / TLS 1.3) para descargas seguras
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+
 $baseDir = Split-Path -Parent $PSScriptRoot
 $binDir = Join-Path $baseDir "bin"
 $ffmpegExe = Join-Path $binDir "ffmpeg.exe"

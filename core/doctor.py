@@ -18,7 +18,7 @@ sys.path.insert(0, _BASE_DIR)
 from core.__version__ import __version__
 from core.port_mgr import port_manager
 from core.config_mgr import load_config
-from core.hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN
+from core.hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN, _WIN_FLAGS
 
 def check_os() -> bool:
     is_win = platform.system() == "Windows"
@@ -32,7 +32,7 @@ def check_ffmpeg_binary() -> bool:
         print(f"[FAIL] FFmpeg: No encontrado en {_FFMPEG_BIN} ni en PATH del sistema")
         return False
     try:
-        res = subprocess.run([ffmpeg_exe, "-version"], capture_output=True, text=True, timeout=5)
+        res = subprocess.run([ffmpeg_exe, "-version"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS)
         first_line = res.stdout.splitlines()[0] if res.stdout else "Versión desconocida"
         print(f"[OK] FFmpeg ({ffmpeg_exe}): {first_line}")
         return True
@@ -46,7 +46,7 @@ def check_srt_support() -> bool:
         print("[FAIL] Protocolo SRT: FFmpeg ausente")
         return False
     try:
-        res = subprocess.run([ffmpeg_exe, "-protocols"], capture_output=True, text=True, timeout=5)
+        res = subprocess.run([ffmpeg_exe, "-protocols"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS)
         has_srt = "srt" in res.stdout.lower()
         print(f"[{'OK' if has_srt else 'FAIL'}] Protocolo SRT: {'Habilitado' if has_srt else 'No soportado por el build'}")
         return has_srt

@@ -16,6 +16,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - **Expansión Masiva de Suite de Pruebas**: Adición de 5 suites de pruebas unitarias (`test_secrets_mgr.py`, `test_single_instance.py`, `test_autostart.py`, `test_schemas.py`, `test_doctor.py`), alcanzando cobertura en todos los subsistemas del motor.
 - **Prevención de Fugas de Descriptores de Red**: Context managers `with socket.socket(...) as s:` en `api/routes.py` y `core/doctor.py`.
 - **Consistencia UI/Backend**: Sincronización del preset de máxima calidad ('best') a 6000 kbps entre el panel web y el motor de configuración.
+- **Blindaje contra Inyecciones DOM (XSS)**: Escapado integral con `escapeHtml` de propiedades de cámara (`resolution`, `protocol`, `encoder`, `url`) en la interfaz web (`gui/static/app.js`).
+- **Validación Estricta de Importación**: Validador Pydantic en `ImportConfigRequest` y verificación robusta de tipos en `core/config_mgr.py:import_config()`.
+- **Supresión de Ventanas de Consola en Diagnóstico**: Bandera `_WIN_FLAGS` incorporada en `core/doctor.py` para ejecuciones limpias de subprocesos FFmpeg.
+- **Seguridad Criptográfica en PowerShell**: Forzado explícito de TLS 1.2 / TLS 1.3 en `scripts/setup_binaries.ps1` para descargas seguras de binarios.
+- **Suite de Pruebas Ampliada a 68 Tests**: 100% de pruebas automáticas aprobadas.
 
 ## [2.2.0] — 2026-09-14
 
