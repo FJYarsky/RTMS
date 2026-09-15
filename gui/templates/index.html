@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- RTMS v2.2.0 Web UI Dashboard -->
+    <!-- RTMS v2.2.2 Web UI Dashboard -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="rtms-token" content="{{ api_token }}">
-    <title>RTMS v2.2.0 — Real-Time Multicam System</title>
+    <title>RTMS v{{ version }} — Real-Time Multicam System</title>
     <link rel="stylesheet" href="/static/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- ==============================================================================
-    RTMS — Real-Time Multicam System v2.2.0
+    RTMS — Real-Time Multicam System
     Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
     ============================================================================== -->
     
@@ -20,7 +19,7 @@
         <header>
             <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor">
                 <div class="logo-icon"></div>
-                <div class="logo-text">RTMS <span class="version-tag">v2.2.0</span></div>
+                <div class="logo-text">RTMS <span class="version-tag">v{{ version }}</span></div>
             </div>
 
             <!-- HUD de Telemetría en Tiempo Real -->
@@ -97,7 +96,7 @@
                 <div class="author-card" onclick="openAboutModal()">
                     <div class="author-title">Desarrollado por</div>
                     <div class="author-name">Joaquín Yarsky</div>
-                    <div class="author-sub">RTMS v2.2.0 • Soporte Oficial</div>
+                    <div class="author-sub">RTMS v{{ version }} • Soporte Oficial</div>
                     <button class="btn btn-author-contact">ℹ️ Acerca de / Contacto</button>
                 </div>
             </div>
@@ -305,7 +304,7 @@
                         <table class="system-table">
                             <tr>
                                 <td>Versión RTMS</td>
-                                <td>v2.2.0 (Build Septiembre 2026)</td>
+                                <td>v{{ version }} (Compilación Oficial)</td>
                             </tr>
                             <tr>
                                 <td>Plataforma</td>
@@ -353,12 +352,12 @@
 
                     <div class="form-grid" style="margin-bottom: 16px;">
                         <div class="form-group">
-                            <label class="form-label" for="config-preset">Plantilla de Calidad</label>
+                            <label class="form-label" for="config-preset">Perfil Predefinido de Transmisión</label>
                             <select class="form-ctrl" id="config-preset" onchange="applyQualityPreset(this.value)">
                                 <option value="custom">Personalizado...</option>
-                                <option value="best">El Mejor (1080p @ 60fps - 5000 kbps)</option>
-                                <option value="default" selected>Predeterminado (720p @ 30fps - 3000 kbps)</option>
-                                <option value="lowest">El Más Bajo (480p @ 24fps - 1500 kbps)</option>
+                                <option value="best">Alta Calidad / Broadcast (1080p @ 60 FPS — 6000 kbps)</option>
+                                <option value="default" selected>Estándar Equilibrado (720p @ 30 FPS — 3000 kbps)</option>
+                                <option value="lowest">Bajo Ancho de Banda (480p @ 24 FPS — 1500 kbps)</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -383,7 +382,7 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="config-bitrate">Bitrate de Video (kbps)</label>
+                            <label class="form-label" for="config-bitrate">Tasa de Bits / Bitrate (kbps)</label>
                             <input class="form-ctrl" type="number" id="config-bitrate" value="3000" min="500" max="50000" oninput="resetQualityPreset()">
                         </div>
                     </div>
@@ -392,54 +391,54 @@
                         <div class="form-group">
                             <label class="form-label" for="config-protocol">Protocolo de Red</label>
                             <select class="form-ctrl" id="config-protocol" onchange="handleProtocolChange(this.value)">
-                                <option value="srt" selected>SRT Listener (Baja latencia 1 a 1 - Recomendado)</option>
-                                <option value="udp">UDP Multicast (Múltiples receptores LAN)</option>
+                                <option value="srt" selected>SRT Listener (Ultra baja latencia punto a punto — Recomendado)</option>
+                                <option value="udp">UDP Multicast (Emisión simultánea a múltiples receptores LAN)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="config-encoder">Codificador FFmpeg</label>
+                            <label class="form-label" for="config-encoder">Codificador de Video</label>
                             <select class="form-ctrl" id="config-encoder">
-                                <option value="auto" selected>Auto-detectar GPU (Fallback a CPU)</option>
-                                <option value="h264_nvenc">NVIDIA NVENC H.264</option>
-                                <option value="h264_qsv">Intel QuickSync QSV H.264</option>
-                                <option value="h264_amf">AMD AMF H.264</option>
-                                <option value="libx264">Libx264 (CPU - Compatibilidad Universal)</option>
+                                <option value="auto" selected>Detección Automática de GPU (Conmutación suave a CPU)</option>
+                                <option value="h264_nvenc">NVIDIA NVENC H.264 (Acelerado por GPU)</option>
+                                <option value="h264_qsv">Intel QuickSync QSV H.264 (Acelerado por GPU)</option>
+                                <option value="h264_amf">AMD AMF H.264 (Acelerado por GPU)</option>
+                                <option value="libx264">libx264 (CPU — Máxima compatibilidad)</option>
                             </select>
                         </div>
                     </div>
 
                     <!-- AJUSTES DE EJECUCIÓN DESATENDIDA -->
                     <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px;">
-                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--teal); margin-bottom: 8px;">Opciones de Automatización</div>
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--teal); margin-bottom: 8px;">Opciones de Automatización y Rendimiento</div>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
                             <input type="checkbox" id="config-cam-autostart" checked style="display: inline-block;">
-                            <span>Iniciar transmisión automáticamente al encender el equipo (Desatendido)</span>
+                            <span>Iniciar transmisión automáticamente al arrancar RTMS</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
                             <input type="checkbox" id="config-zerolatency" checked style="display: inline-block;">
-                            <span>Activar modo de latencia cero real (sin búferes MPEG-TS)</span>
+                            <span>Modo de ultra baja latencia zerolatency (&lt;100ms real sin buffers)</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
                             <input type="checkbox" id="config-is-virtual" style="display: inline-block;">
-                            <span>Marcar como dispositivo virtual / secundario (ocultar en panel inferior)</span>
+                            <span>Clasificar como cámara virtual o secundaria (ocultar del panel principal)</span>
                         </label>
                     </div>
 
                     <!-- ADVANCED SRT SETTINGS COLLAPSIBLE -->
                     <div class="advanced-trigger" onclick="toggleAdvancedSettingsPanel()">
-                        <span>⚙️ Ajustes Avanzados SRT</span>
+                        <span>⚙️ Ajustes Avanzados de Transmisión (SRT)</span>
                         <span class="advanced-icon" id="advanced-chevron">&#9662;</span>
                     </div>
 
                     <div class="advanced-panel" id="config-advanced-panel">
                         <div class="form-grid">
                             <div class="form-group">
-                                <label class="form-label" for="config-srt-latency">Latencia SRT (ms)</label>
+                                <label class="form-label" for="config-srt-latency">Latencia de Buffer SRT (ms)</label>
                                 <input class="form-ctrl" type="number" id="config-srt-latency" value="120" min="10" max="5000">
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="config-srt-passphrase">Contraseña SRT (Opcional)</label>
-                                <input class="form-ctrl" type="text" id="config-srt-passphrase" placeholder="Mínimo 10 caracteres" minlength="10" maxlength="79">
+                                <label class="form-label" for="config-srt-passphrase">Frase de Paso / Passphrase SRT (Opcional)</label>
+                                <input class="form-ctrl" type="text" id="config-srt-passphrase" placeholder="Entre 10 y 79 caracteres" minlength="10" maxlength="79">
                             </div>
                         </div>
                     </div>
@@ -450,6 +449,7 @@
                 </form>
             </div>
             <div class="modal-foot">
+                <button class="btn btn-danger btn-sm" type="button" style="margin-right: auto;" onclick="deleteCurrentCamera()">🗑️ Eliminar Cámara</button>
                 <button class="btn btn-ghost" onclick="closeConfigModal()">Cancelar</button>
                 <button class="btn btn-primary" onclick="document.getElementById('form-submit-hidden').click()">Guardar y Aplicar</button>
             </div>
@@ -485,7 +485,7 @@
                     Real-Time Multicam System
                 </h2>
                 <div style="font-size: 0.9rem; color: var(--teal); font-weight: 700; margin-bottom: 16px;">
-                    Versión 2.2.0 • Producción y Streaming
+                    Versión {{ version }} • Producción y Streaming
                 </div>
 
                 <div class="about-author-box">
@@ -541,10 +541,10 @@
             <div class="modal-foot" style="justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <button class="btn btn-secondary btn-sm" id="preview-ffplay-btn" title="Abrir en ventana flotante externa con ultra baja latencia">
-                        📺 Abrir en FFplay Externo
+                        📺 Abrir Visor Nativo FFplay
                     </button>
                     <span style="font-size: 0.75rem; color: var(--text-secondary);">
-                        Consumo 0% al cerrar esta ventana
+                        Consumo de hardware: 0.00% al cerrar este visor
                     </span>
                 </div>
                 <button class="btn btn-ghost" onclick="closePreviewModal()">Cerrar</button>

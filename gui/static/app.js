@@ -1,5 +1,5 @@
 /* ==============================================================================
-   RTMS — Real-Time Multicam System v2.2.0
+   RTMS — Real-Time Multicam System v2.2.2
    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
    Controlador Frontend Asíncrono de SPA
 ============================================================================== */
@@ -307,9 +307,17 @@ function renderCamerasPage() {
     
     if (_streams.length === 0) {
         mainGrid.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-secondary);">
-                <p style="font-size: 1.1rem; margin-bottom: 12px;">No se han detectado cámaras DirectShow en el sistema.</p>
-                <p style="font-size: 0.85rem;">Conecta tus cámaras USB y haz clic en "Escanear Hardware".</p>
+            <div class="empty-state-card" style="grid-column: 1/-1; text-align: center; padding: 48px 24px; background: rgba(0, 0, 0, 0.2); border: 1px dashed var(--border-color); border-radius: var(--radius-lg); margin: 20px 0;">
+                <div style="font-size: 2.8rem; margin-bottom: 12px; filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.3));">📷</div>
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">
+                    No se han detectado cámaras DirectShow
+                </h3>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); max-width: 480px; margin: 0 auto 20px auto; line-height: 1.5;">
+                    Conecta tus cámaras web USB o tarjetas capturadoras HDMI/SDI y actualiza la lista de dispositivos multimedia del sistema.
+                </p>
+                <button class="btn btn-primary" onclick="scanHardwareDevices()">
+                    🔄 Escanear Dispositivos Ahora
+                </button>
             </div>
         `;
         if (virtualSection) virtualSection.style.display = 'none';
@@ -596,6 +604,29 @@ function closeConfigModal() {
     document.getElementById('config-modal-overlay').classList.remove('active');
 }
 
+async function deleteCurrentCamera() {
+    const dp = document.getElementById('config-device-path').value;
+    if (!dp) return;
+    if (!confirm("¿Estás seguro de que deseas eliminar permanentemente esta cámara de la configuración?")) {
+        return;
+    }
+    try {
+        const res = await apiFetch(`/api/stream/${encodeURIComponent(dp)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || "Cámara eliminada", 'success');
+            closeConfigModal();
+            fetchStatus();
+        } else {
+            showToast(data.detail || 'Error al eliminar cámara', 'error');
+        }
+    } catch (e) {
+        showToast('Error de comunicación con el servidor', 'error');
+    }
+}
+
 function handleProtocolChange(protocol) {
     const advPanel = document.getElementById('config-advanced-panel');
     const advTrigger = document.querySelector('.advanced-trigger');
@@ -652,9 +683,11 @@ async function submitCameraConfig(event) {
     const zeroLatency = document.getElementById('config-zerolatency').checked;
     const isVirtual = document.getElementById('config-is-virtual').checked;
     
-    if (protocol === 'srt' && srtPassphrase !== '' && srtPassphrase !== '••••••••' && srtPassphrase.length < 10) {
-        showToast("La contraseña SRT debe tener al menos 10 caracteres.", "error");
-        return;
+    if (protocol === 'srt' && srtPassphrase !== '' && srtPassphrase !== '••••••••') {
+        if (srtPassphrase.length < 10 || srtPassphrase.length > 79) {
+            showToast("La frase de paso SRT debe tener entre 10 y 79 caracteres.", "error");
+            return;
+        }
     }
     
     const payload = {
@@ -908,8 +941,8 @@ function triggerImportConfiguration() {
     input.click();
 }
 
-// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND
-function openPreviewModal(index) {
+// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND CON TICKETS EFÍMEROS (P1-01)
+async function openPreviewModal(index) {
     const stream = _streams[index];
     if (!stream) return;
 
@@ -923,7 +956,6 @@ function openPreviewModal(index) {
     if (!modal || !imgEl) return;
 
     titleEl.textContent = `Vista Previa — ${stream.friendly_name}`;
-    const token = getApiToken();
     const isRunning = stream.status.state === 'running';
 
     infoEl.innerHTML = isRunning 
@@ -932,9 +964,31 @@ function openPreviewModal(index) {
 
     loader.style.display = 'flex';
     imgEl.style.display = 'none';
+    modal.classList.add('active');
 
-    // Generar URL con token y cache-buster
-    const previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?token=${encodeURIComponent(token)}&t=${Date.now()}`;
+    let ticket = null;
+    try {
+        const ticketRes = await apiFetch('/api/preview/ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_path: stream.device_path, ttl_seconds: 60 })
+        });
+        if (ticketRes.ok) {
+            const ticketData = await ticketRes.json();
+            ticket = ticketData.ticket;
+        }
+    } catch (e) {
+        console.warn("No se pudo obtener ticket efímero de preview, recurriendo a fallback:", e);
+    }
+
+    // Generar URL con ticket efímero (o token fallback) y cache-buster
+    let previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?t=${Date.now()}`;
+    if (ticket) {
+        previewUrl += `&ticket=${encodeURIComponent(ticket)}`;
+    } else {
+        const token = getApiToken();
+        if (token) previewUrl += `&token=${encodeURIComponent(token)}`;
+    }
 
     imgEl.onload = () => {
         loader.style.display = 'none';
@@ -943,7 +997,7 @@ function openPreviewModal(index) {
 
     imgEl.onerror = () => {
         loader.style.display = 'none';
-        infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">(No disponible)</span>`;
+        infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">(No disponible o límite alcanzado)</span>`;
     };
 
     imgEl.src = previewUrl;
@@ -951,8 +1005,6 @@ function openPreviewModal(index) {
     if (ffplayBtn) {
         ffplayBtn.onclick = () => launchFFplayExternal(stream.device_path);
     }
-
-    modal.classList.add('active');
 }
 
 function closePreviewModal() {
