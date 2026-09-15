@@ -1,3 +1,4 @@
+' RTMS v2.2.0 Silent Background Launcher
 ' ==============================================================================
 ' RTMS v2.2.0 — Lanzador 100% Silencioso en Windows (VBScript)
 ' Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
