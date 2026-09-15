@@ -3,6 +3,8 @@
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
+"""Pytest configuration, async cleanup, and test isolation fixtures."""
+
 import sys
 import os
 import pytest
@@ -39,3 +41,4 @@ def cleanup_stream_manager():
     from core.ffmpeg_mgr import stream_manager
     if stream_manager._watchdog_task and not stream_manager._watchdog_task.done():
         stream_manager._watchdog_task.cancel()
+    stream_manager._procs.clear()
