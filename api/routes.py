@@ -169,8 +169,11 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
     # Si la contraseña enviada es la enmascarada "••••••••", preservar la existente
     passphrase_to_set = config.srt_passphrase
     proc = stream_manager.get_proc(dp)
-    if passphrase_to_set == "••••••••" and proc and proc.config:
-        passphrase_to_set = proc.config.get("srt_passphrase", "")
+    if passphrase_to_set == "••••••••":
+        if proc and proc.config:
+            passphrase_to_set = proc.config.get("srt_passphrase", "")
+        elif cam:
+            passphrase_to_set = cam.get("srt_passphrase", "")
 
     update_camera_config(
         device_path=dp,
@@ -293,7 +296,10 @@ async def import_config_endpoint(payload: ImportConfigRequest):
     success = import_config(payload.config_data)
     if not success:
         raise HTTPException(status_code=400, detail="Estructura de configuración inválida")
-    await sync_streams_with_hardware()
+    try:
+        await sync_streams_with_hardware()
+    except Exception as e:
+        logger.warning(f"Error sincronizando hardware tras importación de config: {e}")
     return {"status": "ok", "message": "Configuración importada y aplicada exitosamente"}
 
 @router.get("/api/stream/{device_path:path}/preview", dependencies=[Depends(verify_api_token)])

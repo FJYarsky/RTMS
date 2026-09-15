@@ -3,7 +3,7 @@
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal, Dict, Any
 
 class AutostartToggle(BaseModel):
@@ -29,6 +29,14 @@ class CameraConfigUpdate(BaseModel):
     auto_start: Optional[bool] = True
     zerolatency: Optional[bool] = True
     is_virtual: Optional[bool] = False
+
+    @field_validator("srt_passphrase")
+    @classmethod
+    def validate_passphrase_length(cls, v: Optional[str]) -> Optional[str]:
+        """Valida que la passphrase SRT cumpla con los requisitos del protocolo (10-79 chars) si no está vacía ni enmascarada."""
+        if v and v != "••••••••" and not (10 <= len(v) <= 79):
+            raise ValueError("La passphrase SRT debe tener entre 10 y 79 caracteres según el estándar del protocolo.")
+        return v
 
 class ApplyPresetRequest(BaseModel):
     device_path: str

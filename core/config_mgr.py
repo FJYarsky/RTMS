@@ -178,7 +178,10 @@ def load_config() -> Dict[str, Any]:
                 for cam in migrated.get("cameras", {}).values():
                     p = cam.get("port")
                     if p:
-                        port_manager.register_port(int(p))
+                        try:
+                            port_manager.register_port(int(p))
+                        except (ValueError, TypeError) as pe:
+                            logger.warning(f"Puerto corrupto ignorado en configuración: {p!r} ({pe})")
                 return _unprotect_config_cameras(migrated)
         except (json.JSONDecodeError, OSError) as e:
             logger.error(f"Configuración corrupta o ilegible ({e}). Intentando recuperación desde backup...")

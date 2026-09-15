@@ -191,10 +191,10 @@ def apply_network_power_settings() -> bool:
 
     success = True
     try:
-        r1 = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd_1], capture_output=True, text=True, check=False, creationflags=_WIN_NO_WINDOW)
+        r1 = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd_1], capture_output=True, text=True, check=False, timeout=15, creationflags=_WIN_NO_WINDOW)
         if r1.returncode != 0:
             success = False
-        r2 = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd_2], capture_output=True, text=True, check=False, creationflags=_WIN_NO_WINDOW)
+        r2 = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd_2], capture_output=True, text=True, check=False, timeout=15, creationflags=_WIN_NO_WINDOW)
         if r2.returncode != 0:
             success = False
     except Exception as e:
@@ -301,9 +301,9 @@ def setup_windows_environment() -> Dict[str, Any]:
     active_guid = get_active_scheme_guid()
     if active_guid:
         try:
-            r1 = subprocess.run(["powercfg", "-setacvalueindex", active_guid, "2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "0"], check=False, capture_output=True, creationflags=_WIN_NO_WINDOW)
-            r2 = subprocess.run(["powercfg", "-setdcvalueindex", active_guid, "2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "0"], check=False, capture_output=True, creationflags=_WIN_NO_WINDOW)
-            subprocess.run(["powercfg", "-setactive", active_guid], check=False, capture_output=True, creationflags=_WIN_NO_WINDOW)
+            r1 = subprocess.run(["powercfg", "-setacvalueindex", active_guid, "2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "0"], check=False, capture_output=True, timeout=15, creationflags=_WIN_NO_WINDOW)
+            r2 = subprocess.run(["powercfg", "-setdcvalueindex", active_guid, "2a737441-1930-4402-8d77-b2bebba308a3", "48e6b7a6-50f5-4782-a5d4-53bb8f07e226", "0"], check=False, capture_output=True, timeout=15, creationflags=_WIN_NO_WINDOW)
+            subprocess.run(["powercfg", "-setactive", active_guid], check=False, capture_output=True, timeout=15, creationflags=_WIN_NO_WINDOW)
             if r1.returncode == 0 and r2.returncode == 0:
                 applied.append("Suspensión selectiva USB desactivada (AC y DC)")
             else:
@@ -326,7 +326,7 @@ def setup_windows_environment() -> Dict[str, Any]:
 
     for cmd, desc in cmds_to_run:
         try:
-            res = subprocess.run(cmd, check=False, capture_output=True, creationflags=_WIN_NO_WINDOW)
+            res = subprocess.run(cmd, check=False, capture_output=True, timeout=15, creationflags=_WIN_NO_WINDOW)
             if res.returncode == 0:
                 applied.append(desc)
             else:

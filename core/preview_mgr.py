@@ -36,7 +36,14 @@ class PreviewManager:
     def __init__(self):
         self._active_ffplay: Dict[str, subprocess.Popen] = {}
 
+    def _reap_dead_processes(self):
+        """Limpia referencias a procesos FFplay que ya terminaron para evitar acumulación de handles muertos."""
+        dead_keys = [url for url, proc in self._active_ffplay.items() if proc.poll() is not None]
+        for key in dead_keys:
+            self._active_ffplay.pop(key, None)
+
     def launch_ffplay(self, url: str, title: str = "RTMS Preview", is_dshow: bool = False) -> bool:
+        self._reap_dead_processes()
         ffplay_bin = get_ffplay_bin()
         if not os.path.exists(ffplay_bin) and not shutil.which("ffplay"):
             logger.error(f"Binario FFplay no encontrado en {ffplay_bin}")
@@ -211,6 +218,7 @@ class PreviewManager:
                 except Exception:
                     try:
                         proc.kill()
+                        await asyncio.wait_for(proc.wait(), timeout=1.0)
                     except Exception:
                         pass
                 logger.info(f"Worker de vista previa detenido ({input_source}). Consumo: 0.0%")

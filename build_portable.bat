@@ -109,6 +109,12 @@ if exist "THIRD_PARTY_NOTICES.md" (
 
 REM Copiar WebView2Loader.dll a dist/rtms/ para soporte nativo de Edge Chromium
 set "WEBVIEW2_DLL=bin\python\Lib\site-packages\webview\lib\runtimes\win-x64\native\WebView2Loader.dll"
+if not exist "%WEBVIEW2_DLL%" (
+    REM Fallback: localizar dinámicamente usando el intérprete Python activo
+    for /f "usebackq delims=" %%D in (`%PYTHON_EXE% -c "import webview, os; print(os.path.join(os.path.dirname(webview.__file__), 'lib', 'runtimes', 'win-x64', 'native', 'WebView2Loader.dll'))" 2^>nul`) do (
+        set "WEBVIEW2_DLL=%%D"
+    )
+)
 if exist "%WEBVIEW2_DLL%" (
     echo [INFO] Copiando WebView2Loader.dll a dist\rtms...
     copy /Y "%WEBVIEW2_DLL%" "dist\rtms\" >nul

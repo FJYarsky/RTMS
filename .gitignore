@@ -41,6 +41,7 @@ config/power_backup.json
 # IDEs & OS files
 .vscode/
 .idea/
+.env
 Thumbs.db
 ehthumbs.db
 Desktop.ini
