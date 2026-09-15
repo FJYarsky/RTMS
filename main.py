@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Real-Time Multicam System
+# RTMS v2.2.2 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -31,7 +31,6 @@ from core.__version__ import __version__
 from core.single_instance import acquire_single_instance_lock, release_single_instance_lock
 
 import uvicorn
-import webview
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -39,6 +38,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.system_env import setup_firewall_rules, acquire_stay_awake, release_stay_awake
 from core.ffmpeg_mgr import sync_streams_with_hardware, stream_manager
+from core.preview_mgr import preview_manager
+from core.telemetry import telemetry_service
+from core.sanitizer import SecretFilter
 from core.tray_icon import SystemTrayManager
 from api.routes import router as api_router, set_global_api_token
 
@@ -46,15 +48,18 @@ from api.routes import router as api_router, set_global_api_token
 API_TOKEN = secrets.token_urlsafe(32)
 set_global_api_token(API_TOKEN)
 
-# Configuración de Logging con Rotación (5 MB x 3 copias para evitar crecimiento infinito)
+# Configuración de Logging con Rotación y Filtro de Secretos (P0-02, P1-15)
 _LOG_FILE = os.path.join(_BASE_DIR, "rtms.log")
+secret_filter = SecretFilter()
+file_handler = RotatingFileHandler(_LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8')
+file_handler.addFilter(secret_filter)
+stream_handler = logging.StreamHandler()
+stream_handler.addFilter(secret_filter)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[
-        RotatingFileHandler(_LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+    handlers=[file_handler, stream_handler]
 )
 logger = logging.getLogger("rtms.main")
 
@@ -66,6 +71,7 @@ _uvicorn_thread = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Iniciando RTMS API Backend v{__version__}...")
+    app.state.loop = asyncio.get_running_loop()
     setup_firewall_rules()
     acquire_stay_awake()
 
@@ -77,11 +83,19 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    logger.info("Apagando backend RTMS. Deteniendo transmisiones de forma limpia...")
+    logger.info("Apagando backend RTMS. Deteniendo transmisiones y previsualizaciones limpiamente...")
     try:
         await stream_manager.stop_all()
     except Exception as e:
         logger.error(f"Error deteniendo streams durante el shutdown: {e}")
+    try:
+        await preview_manager.stop_all()
+    except Exception as e:
+        logger.error(f"Error deteniendo previews durante el shutdown: {e}")
+    try:
+        telemetry_service.shutdown()
+    except Exception as e:
+        logger.error(f"Error en shutdown de telemetría: {e}")
     finally:
         release_stay_awake()
 
@@ -91,12 +105,21 @@ def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
     application = FastAPI(title="RTMS API", version=__version__, lifespan=lifespan)
     application.state.api_token = token
 
+    # Middleware de Cabeceras de Seguridad HTTP (P2-10)
+    @application.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        return response
+
     if port:
         application.add_middleware(
             CORSMiddleware,
             allow_origins=[f"http://127.0.0.1:{port}", f"http://localhost:{port}"],
             allow_credentials=False,
-            allow_methods=["GET", "POST"],
+            allow_methods=["GET", "POST", "DELETE"],
             allow_headers=["*"],
         )
 
@@ -121,7 +144,7 @@ def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
             return tmpl.TemplateResponse(
                 request=request,
                 name="index.html",
-                context={"api_token": token}
+                context={"api_token": token, "version": __version__}
             )
 
     return application
@@ -182,19 +205,34 @@ def on_closed():
         except Exception as e:
             logger.debug(f"Error al detener system tray: {e}")
 
-    # 2. Notificar a Uvicorn para cierre ordenado (su lifespan ejecutará stream_manager.stop_all)
+    # 2. Notificar a Uvicorn para cierre ordenado (su lifespan ejecutará stream_manager y preview_manager stop_all)
     if _uvicorn_server:
         _uvicorn_server.should_exit = True
 
     if _uvicorn_thread and _uvicorn_thread.is_alive():
         _uvicorn_thread.join(timeout=3.0)
 
-    # 3. Fallback: Si Uvicorn no estaba activo o no corrió lifespan, asegurar detención de streams
+    # 3. Fallback: Si Uvicorn no estaba activo o no corrió lifespan, asegurar detención
     try:
-        if stream_manager.has_active_streams:
-            asyncio.run(stream_manager.stop_all())
+        loop = getattr(app.state, "loop", None)
+        if loop and loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(
+                asyncio.gather(stream_manager.stop_all(), preview_manager.stop_all(), return_exceptions=True),
+                loop
+            )
+            try:
+                future.result(timeout=4.0)
+            except Exception:
+                pass
+        else:
+            asyncio.run(asyncio.gather(stream_manager.stop_all(), preview_manager.stop_all(), return_exceptions=True))
     except Exception as e:
         logger.debug(f"Aviso en verificación de detención de streams: {e}")
+
+    try:
+        telemetry_service.shutdown()
+    except Exception:
+        pass
 
     # 4. Liberar bloqueo de instancia única
     release_single_instance_lock()
@@ -255,8 +293,9 @@ if __name__ == "__main__":
                 pass
         return True
 
-    # 5. Crear ventana nativa con pywebview
+    # 5. Crear ventana nativa con pywebview (importación perezosa/segura P4)
     try:
+        import webview
         _main_window = webview.create_window(
             title=f"RTMS v{__version__} — Real-Time Multicam System",
             url=f"http://127.0.0.1:{_api_port}",
