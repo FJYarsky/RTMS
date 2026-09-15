@@ -1,4 +1,4 @@
-name: RTMS CI Pipeline (v2.1.0)
+name: RTMS CI Pipeline (v2.2.0)
 
 on:
   push:

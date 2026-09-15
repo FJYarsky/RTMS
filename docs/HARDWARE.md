@@ -1,6 +1,6 @@
-# Matriz de Compatibilidad de Hardware y Encoders — RTMS v2.1.0
+# Matriz de Compatibilidad de Hardware y Encoders — RTMS v2.2.0
 
-Este documento describe la matriz de compatibilidad validada de RTMS para captura de video DirectShow en Windows y codificación acelerada por hardware o CPU.
+Este documento describe la matriz de compatibilidad validada de RTMS para captura de video DirectShow en Windows, codificación acelerada por hardware o CPU, y telemetría en tiempo real.
 
 ---
 
@@ -14,7 +14,7 @@ Este documento describe la matriz de compatibilidad validada de RTMS para captur
 | **`libx264`** | CPU | Cualquier procesador x86_64 | Variable según núcleos | `preset=ultrafast`, `tune=zerolatency` |
 
 > [!NOTE]
-> **Autodetección de GPU**: Al iniciar cada stream en modo `"auto"`, RTMS efectúa una prueba de inicialización con un lienzo de resolución estándar (`640x360`). Si la GPU no responde o carece de memoria VRAM disponible, el sistema conmuta automáticamente y sin interrupción humana al modo CPU (`libx264`).
+> **Autodetección y Telemetría en Vivo de GPU**: Al iniciar cada stream en modo `"auto"`, RTMS efectúa una prueba de inicialización con un lienzo de resolución estándar (`640x360`). Si la GPU no responde o carece de memoria VRAM disponible, el sistema conmuta automáticamente y sin interrupción humana al modo CPU (`libx264`). Además, el motor de telemetría HUD consulta en tiempo real mediante NVML directo (`nvml.dll`) el porcentaje de utilización y consumo de VRAM de la GPU.
 
 ---
 

@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.1.0 — Tests Unitarios para Configuración (core/config_mgr.py)
+# RTMS v2.2.0 — Tests Unitarios para Configuración (core/config_mgr.py)
 # ==============================================================================
 
 from core.config_mgr import is_virtual_device, get_or_allocate_camera_config

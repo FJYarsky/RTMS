@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="rtms-token" content="{{ api_token }}">
-    <title>RTMS v2.1.0 — Real-Time Multicam System</title>
+    <title>RTMS v2.2.0 — Real-Time Multicam System</title>
     <link rel="stylesheet" href="/static/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- ==============================================================================
-    RTMS — Real-Time Multicam System v2.1.0
+    RTMS — Real-Time Multicam System v2.2.0
     Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
     ============================================================================== -->
     
@@ -19,7 +19,7 @@
         <header>
             <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor">
                 <div class="logo-icon"></div>
-                <div class="logo-text">RTMS <span class="version-tag">v2.1.0</span></div>
+                <div class="logo-text">RTMS <span class="version-tag">v2.2.0</span></div>
             </div>
 
             <!-- HUD de Telemetría en Tiempo Real -->
@@ -28,11 +28,19 @@
                     <span class="hud-label">CPU</span>
                     <span class="hud-val" id="hud-cpu-val">0%</span>
                 </div>
+                <div class="hud-item" title="Uso actual de tarjeta gráfica (GPU)" id="hud-gpu-item">
+                    <span class="hud-label">GPU</span>
+                    <span class="hud-val" id="hud-gpu-val">–</span>
+                </div>
                 <div class="hud-item" title="Uso actual de memoria RAM">
                     <span class="hud-label">RAM</span>
                     <span class="hud-val" id="hud-ram-val">0%</span>
                 </div>
-                <div class="hud-item" title="Ancho de banda total emitido">
+                <div class="hud-item" title="Tráfico actual de red del sistema" id="hud-net-item">
+                    <span class="hud-label">RED</span>
+                    <span class="hud-val" id="hud-net-val">0 kbps</span>
+                </div>
+                <div class="hud-item" title="Ancho de banda total emitido (Streams RTMS)">
                     <span class="hud-label">BITRATE</span>
                     <span class="hud-val" id="hud-bitrate-val">0 kbps</span>
                 </div>
@@ -88,7 +96,7 @@
                 <div class="author-card" onclick="openAboutModal()">
                     <div class="author-title">Desarrollado por</div>
                     <div class="author-name">Joaquín Yarsky</div>
-                    <div class="author-sub">RTMS v2.1.0 • Soporte Oficial</div>
+                    <div class="author-sub">RTMS v2.2.0 • Soporte Oficial</div>
                     <button class="btn btn-author-contact">ℹ️ Acerca de / Contacto</button>
                 </div>
             </div>
@@ -296,7 +304,7 @@
                         <table class="system-table">
                             <tr>
                                 <td>Versión RTMS</td>
-                                <td>v2.1.0 (Build Septiembre 2026)</td>
+                                <td>v2.2.0 (Build Septiembre 2026)</td>
                             </tr>
                             <tr>
                                 <td>Plataforma</td>
@@ -476,7 +484,7 @@
                     Real-Time Multicam System
                 </h2>
                 <div style="font-size: 0.9rem; color: var(--teal); font-weight: 700; margin-bottom: 16px;">
-                    Versión 2.1.0 • Producción y Streaming
+                    Versión 2.2.0 • Producción y Streaming
                 </div>
 
                 <div class="about-author-box">

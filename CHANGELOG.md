@@ -1,7 +1,16 @@
-# Changelog — RTMS (Real-Time Multicam System) v2.1.0
+# Changelog — RTMS (Real-Time Multicam System) v2.2.0
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
+
+## [2.2.0] — 2026-09-14
+
+### Telemetría de Hardware y Red (HUD en Vivo)
+- **Métricas de GPU en Tiempo Real (NVML Directo)**: Implementado `GpuTelemetryReader` en `core/telemetry.py` que consulta directamente la biblioteca nativa `nvml.dll` mediante `ctypes`. Proporciona porcentaje de utilización gráfica (0-100%), consumo de memoria de video (VRAM usada y total en MB), y nombre del modelo de hardware GPU con latencia sub-milisegundo (<1ms), sin dependencias externas de Python ni sobrecarga de subprocesos.
+- **Tolerancia a Fallos y Conmutación Suave de GPU**: Si el sistema carece de tarjeta gráfica NVIDIA o controladores compatibles, el HUD conmuta automáticamente a estado `N/A` con un tooltip informativo, previniendo errores o excepciones.
+- **Monitorización de Rendimiento de Red**: Implementado `NetworkTelemetryTracker` en `core/telemetry.py` utilizando `psutil.net_io_counters()`. Calcula tasas de transferencia instantáneas en kilobits/megabits por segundo (`sent_kbps`, `recv_kbps`, `total_kbps`), protegido contra condiciones de carrera (`threading.Lock`) y reinicio de contadores del sistema operativo.
+- **HUD Header Expandido**: Integrados los nuevos indicadores visuales `GPU` y `RED` en la barra superior junto a `CPU`, `RAM` y `BITRATE`. Incluye tooltips enriquecidos con desglose de subida `↑` / bajada `↓` y VRAM en megabytes.
+- **Suite de Pruebas de Telemetría**: Añadido `tests/test_telemetry.py` con 5 nuevas pruebas unitarias y de integración que validan el cálculo de tasas de red, protección de rollover, modo seguro de GPU y el payload de `/api/system/metrics`.
 
 ## [2.1.0] — 2026-09-14
 

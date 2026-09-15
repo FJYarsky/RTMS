@@ -1,10 +1,10 @@
-# RTMS — Real-Time Multicam System v2.1.0
+# RTMS — Real-Time Multicam System v2.2.0
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-blue?logo=windows)](https://microsoft.com)
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP%20Multicast-teal)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Security-Strict%20Zero--Secret%20Logs-green.svg)](#-seguridad-y-hardening)
 [![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-35%20Passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-40%20Passing-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Joaqu%C3%ADn%20Yarsky-orange)](mailto:joaquinyarsky@gmail.com)
 
@@ -14,7 +14,7 @@ Permite conectar múltiples cámaras mediante **DirectShow** (webcams USB, captu
 
 ---
 
-## 🔒 Seguridad y Hardening (v2.1.0)
+## 🔒 Seguridad y Hardening (v2.2.0)
 
 * **Vista Previa On-Demand Desacoplada**: Monitorización de video en vivo (MJPEG web y FFplay nativo) totalmente independiente del pipeline de emisión principal, garantizando 0.00% de uso de CPU/GPU en reposo y sin riesgo de bloqueo por buffers de lectura lenta.
 * **Cero Secretos en Logs y Memoria**: Implementación de un módulo de sanitización centralizado (`core/sanitizer.py`) que enmascara automáticamente contraseñas SRT y tokens en comandos FFmpeg, buffers de memoria y archivos de registro en disco.
@@ -29,6 +29,10 @@ Permite conectar múltiples cámaras mediante **DirectShow** (webcams USB, captu
 
 ## 🚀 Características Principales
 
+* **Telemetría Integral de Sistema y Red en Tiempo Real (HUD Header)**:
+  * Monitoreo continuo de carga de CPU, consumo de memoria RAM y ancho de banda total emitido por stream.
+  * **Monitor de GPU de Latencia Cero (<1ms)**: Consulta directa mediante NVML nativo (`nvml.dll` vía `ctypes`) con porcentaje de utilización gráfica, VRAM activa/total y detección de modelo de hardware (conmutación transparente a `N/A` en sistemas sin GPU compatible).
+  * **Monitor de Tráfico de Red**: Medición diferencial de ancho de banda total, velocidad de subida (`↑`) y bajada (`↓`) del sistema operativo en tiempo real.
 * **Vista Previa de Video On-Demand y Modo Encuadre**:
   * Visualización en tiempo real vía MJPEG Streaming en la UI web y ventana externa con FFplay.
   * Captura de cuadro estático para encuadre DirectShow cuando la cámara está detenida.
@@ -66,7 +70,8 @@ RTMS/
 │   ├── routes.py          # Endpoints de control, telemetría, vistas previas y configuración
 │   └── schemas.py         # Modelos de datos Pydantic estrictos
 ├── core/                  # Lógica del motor y resiliencia de sistema
-│   ├── __version__.py     # Fuente única y centralizada de versión (v2.1.0)
+│   ├── __version__.py     # Fuente única y centralizada de versión (v2.2.0)
+│   ├── telemetry.py       # Telemetría de GPU (NVML nativo <1ms) y rendimiento de red
 │   ├── sanitizer.py       # Sanitización estricta de contraseñas y secretos
 │   ├── secrets_mgr.py     # Cifrado nativo de contraseñas con Windows DPAPI
 │   ├── port_mgr.py        # Gestor de puertos sin colisiones de red
@@ -87,7 +92,8 @@ RTMS/
 │   └── TROUBLESHOOTING.md # Guía paso a paso de resolución de problemas
 ├── scripts/               # Scripts de instalación y soporte
 │   └── setup_binaries.ps1 # Descarga segura de FFmpeg con verificación SHA256
-├── tests/                 # Suite de 35 pruebas automatizadas (pytest)
+├── tests/                 # Suite de 40 pruebas automatizadas (pytest)
+│   ├── test_telemetry.py
 │   ├── test_sanitizer.py
 │   ├── test_command_builder.py
 │   ├── test_config_persistence.py

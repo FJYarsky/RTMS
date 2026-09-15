@@ -1,13 +1,13 @@
 @echo off
 REM ==============================================================================
-REM RTMS v2.1.0 — Build Script para ejecutable nativo portable (pywebview)
+REM RTMS v2.2.0 — Build Script para ejecutable nativo portable (pywebview)
 REM Genera rtms.exe en la carpeta dist/
 REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 REM ==============================================================================
 
 echo.
 echo ============================================================
-echo  RTMS v2.1.0 — Creando aplicacion nativa con PyInstaller
+echo  RTMS v2.2.0 — Creando aplicacion nativa con PyInstaller
 echo ============================================================
 echo.
 
@@ -69,6 +69,7 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
   --hidden-import=pystray ^
   --hidden-import=PIL ^
   --hidden-import=psutil ^
+  --hidden-import=core.telemetry ^
   --collect-all=uvicorn ^
   --collect-all=fastapi ^
   --collect-all=webview ^

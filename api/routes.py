@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.1.0 — Real-Time Multicam System
+# RTMS v2.2.0 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -23,6 +23,7 @@ from core.config_mgr import (
     apply_camera_preset, export_config, import_config, CAMERA_PRESETS
 )
 from core.preview_mgr import preview_manager
+from core.telemetry import telemetry_service
 
 logger = logging.getLogger("rtms.routes")
 router = APIRouter()
@@ -116,22 +117,15 @@ async def get_status():
 
 @router.get("/api/system/metrics", dependencies=[Depends(verify_api_token)])
 async def get_system_metrics():
-    """Retorna métricas de hardware (CPU, RAM) y telemetría de streams en vivo para el HUD."""
-    cpu_pct = psutil.cpu_percent(interval=None)
-    mem = psutil.virtual_memory()
-
+    """Retorna métricas de hardware (CPU, GPU, RAM), red y telemetría de streams en vivo para el HUD."""
     statuses = get_all_stream_statuses()
     running_streams = [s for s in statuses if s["status"]["state"] == "running"]
     total_bitrate = sum(s["status"]["current_bitrate_kbps"] for s in running_streams)
 
-    return {
-        "cpu_percent": cpu_pct,
-        "memory_percent": mem.percent,
-        "memory_used_mb": round(mem.used / (1024 * 1024), 1),
-        "memory_total_mb": round(mem.total / (1024 * 1024), 1),
-        "active_streams_count": len(running_streams),
-        "total_bitrate_kbps": round(total_bitrate, 1)
-    }
+    return telemetry_service.collect(
+        active_streams_count=len(running_streams),
+        total_bitrate_kbps=total_bitrate,
+    )
 
 @router.post("/api/system/emergency_stop", dependencies=[Depends(verify_api_token)])
 async def emergency_stop():

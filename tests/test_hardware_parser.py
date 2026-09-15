@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.1.0 — Tests Unitarios para Analizador de DirectShow (core/hardware.py)
+# RTMS v2.2.0 — Tests Unitarios para Analizador de DirectShow (core/hardware.py)
 # ==============================================================================
 
 from core.hardware import parse_dshow_output

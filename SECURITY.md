@@ -1,4 +1,4 @@
-# Política de Seguridad — RTMS v2.1.0
+# Política de Seguridad — RTMS v2.2.0
 
 ## Versiones Soportadas
 
@@ -6,8 +6,8 @@ Actualmente, solo la versión más reciente recibe actualizaciones activas y par
 
 | Versión | Soportada |
 | ------- | --------- |
-| 2.1.0   | :white_check_mark: |
-| < 2.1.0 | :x: |
+| 2.2.0   | :white_check_mark: |
+| < 2.2.0 | :x: |
 
 ---
 

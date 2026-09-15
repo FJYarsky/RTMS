@@ -1,6 +1,6 @@
 {
-    "_comment": "RTMS v2.1.0 — Plantilla limpia de configuracion para produccion",
-    "version": "2.1.0",
+    "_comment": "RTMS v2.2.0 — Plantilla limpia de configuracion para produccion",
+    "version": "2.2.0",
     "config_schema_version": 3,
     "cameras": {},
     "next_port": 9000,

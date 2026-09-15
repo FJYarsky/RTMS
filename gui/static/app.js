@@ -1,5 +1,5 @@
 /* ==============================================================================
-   RTMS — Real-Time Multicam System v2.1.0
+   RTMS — Real-Time Multicam System v2.2.0
    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
    Controlador Frontend Asíncrono de SPA
 ============================================================================== */
@@ -181,12 +181,52 @@ async function fetchMetrics() {
         if (!res.ok) return;
         const data = await res.json();
         
+        // CPU
         const cpuEl = document.getElementById('hud-cpu-val');
         if (cpuEl) cpuEl.textContent = `${Math.round(data.cpu_percent)}%`;
+
+        // GPU
+        const gpuEl = document.getElementById('hud-gpu-val');
+        const gpuItem = document.getElementById('hud-gpu-item');
+        if (gpuEl) {
+            if (data.gpu_available && data.gpu_percent !== null && data.gpu_percent !== undefined) {
+                gpuEl.textContent = `${Math.round(data.gpu_percent)}%`;
+                if (gpuItem && data.gpu_name) {
+                    const vram = (data.gpu_memory_used_mb !== null && data.gpu_memory_total_mb !== null)
+                        ? ` (VRAM: ${Math.round(data.gpu_memory_used_mb)} / ${Math.round(data.gpu_memory_total_mb)} MB)`
+                        : '';
+                    gpuItem.title = `${data.gpu_name}${vram}`;
+                }
+            } else {
+                gpuEl.textContent = 'N/A';
+                if (gpuItem) gpuItem.title = 'Sin GPU dedicada detectada o métricas no disponibles';
+            }
+        }
         
+        // RAM
         const ramEl = document.getElementById('hud-ram-val');
         if (ramEl) ramEl.textContent = `${Math.round(data.memory_percent)}%`;
+
+        // RED
+        const netEl = document.getElementById('hud-net-val');
+        const netItem = document.getElementById('hud-net-item');
+        if (netEl) {
+            const total = data.net_total_kbps || 0;
+            const sent = data.net_sent_kbps || 0;
+            const recv = data.net_recv_kbps || 0;
+            if (total >= 1000) {
+                netEl.textContent = `${(total / 1000).toFixed(1)} Mbps`;
+            } else {
+                netEl.textContent = `${Math.round(total)} kbps`;
+            }
+            if (netItem) {
+                const sStr = sent >= 1000 ? `${(sent / 1000).toFixed(1)} Mbps` : `${Math.round(sent)} kbps`;
+                const rStr = recv >= 1000 ? `${(recv / 1000).toFixed(1)} Mbps` : `${Math.round(recv)} kbps`;
+                netItem.title = `Red del Sistema: ↑ ${sStr} (Subida) / ↓ ${rStr} (Bajada)`;
+            }
+        }
         
+        // BITRATE
         const brEl = document.getElementById('hud-bitrate-val');
         if (brEl) {
             if (data.total_bitrate_kbps > 1000) {

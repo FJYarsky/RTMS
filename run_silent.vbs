@@ -1,5 +1,5 @@
 ' ==============================================================================
-' RTMS v2.1.0 — Lanzador 100% Silencioso en Windows (VBScript)
+' RTMS v2.2.0 — Lanzador 100% Silencioso en Windows (VBScript)
 ' Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 ' ==============================================================================
 

@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.1.0 — Descargador y Verificador de Binarios FFmpeg
+# RTMS v2.2.0 — Descargador y Verificador de Binarios FFmpeg
 # Descarga FFmpeg con soporte DirectShow, NVENC y SRT (Gyan.dev Release Essentials)
 # Con verificación estricta de integridad criptográfica SHA256
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
@@ -12,7 +12,7 @@ $binDir = Join-Path $baseDir "bin"
 $ffmpegExe = Join-Path $binDir "ffmpeg.exe"
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " RTMS v2.1.0 — Verificador de Binarios FFmpeg" -ForegroundColor Cyan
+Write-Host " RTMS v2.2.0 — Verificador de Binarios FFmpeg" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
 if (Test-Path $ffmpegExe) {

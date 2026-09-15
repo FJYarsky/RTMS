@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.1.0 — Configuración de pytest y aislamiento de entorno
+# RTMS v2.2.0 — Configuración de pytest y aislamiento de entorno
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -31,3 +31,11 @@ def isolate_test_config(tmp_path, monkeypatch):
     if hasattr(sys.modules.get("core.config_mgr"), "_LAST_SAVED_CONFIG"):
         monkeypatch.setattr("core.config_mgr._LAST_SAVED_CONFIG", None)
     yield
+
+@pytest.fixture(autouse=True)
+def cleanup_stream_manager():
+    """Garantiza la cancelación limpia de tareas de watchdog asíncronas tras cada test."""
+    yield
+    from core.ffmpeg_mgr import stream_manager
+    if stream_manager._watchdog_task and not stream_manager._watchdog_task.done():
+        stream_manager._watchdog_task.cancel()
