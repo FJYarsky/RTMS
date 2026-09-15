@@ -961,7 +961,7 @@ input[type="checkbox"]:checked + .switch-toggle::after {
 }
 
 /* ==============================================================================
-   RTMS v2.2.2 EXTENSIONS (HUD, EMERGENCY, ABOUT, VIRTUAL CAMERAS)
+   RTMS v2.2.3 EXTENSIONS (HUD, EMERGENCY, ABOUT, VIRTUAL CAMERAS)
    ============================================================================== */
 
 /* Version tag in Header */
@@ -1213,6 +1213,42 @@ input[type="checkbox"]:checked + .switch-toggle::after {
     border-color: var(--teal) !important;
     background: rgba(20, 184, 166, 0.04) !important;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Inline Copy Chip Button (Quick Copy for mpegts and stream params) */
+.btn-copy-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(20, 184, 166, 0.12);
+    border: 1px solid rgba(20, 184, 166, 0.35);
+    border-radius: 6px;
+    padding: 2px 10px;
+    color: var(--teal);
+    font-family: inherit;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+}
+
+.btn-copy-chip:hover {
+    background: rgba(20, 184, 166, 0.25);
+    border-color: var(--teal);
+    box-shadow: 0 0 10px var(--teal-glow);
+    transform: translateY(-1px);
+}
+
+.btn-copy-chip:active {
+    transform: translateY(0);
+}
+
+.btn-copy-chip code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-weight: 700;
+    color: #ffffff;
 }
 
 

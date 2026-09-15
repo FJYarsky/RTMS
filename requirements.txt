@@ -1,20 +1,20 @@
 # ==============================================================================
-# RTMS v2.2.2 — Dependencias de Producción
+# RTMS v2.2.3 — Dependencias de Producción
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
 # Core ASGI framework and live hardware monitoring libraries
 # Framework Web y Servidor ASGI
 fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
+uvicorn[standard]>=0.52.4
 pydantic>=2.8.2
-starlette>=0.38.2
-jinja2>=3.1.4
+starlette>=1.3.1
+jinja2>=3.1.6
 
 # Interfaz Nativa de Escritorio y Bandeja del Sistema
 pywebview>=5.1
 pystray>=0.19.5
-pillow>=10.4.0
+pillow>=12.3.0
 
 # Telemetría de Sistema y Hardware
-psutil>=6.0.0
+psutil>=7.2.2

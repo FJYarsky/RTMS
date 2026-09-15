@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.2 — Security Audit Verification Tests
+# RTMS v2.2.3 — Security Audit Verification Tests
 # Tests TEST-01 to TEST-04 covering P0 and P1 audit findings
 # ==============================================================================
 

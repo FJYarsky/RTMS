@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.2 — Tests de Autoarranque en Windows (core/autostart.py)
+# RTMS v2.2.3 — Tests de Autoarranque en Windows (core/autostart.py)
 # ==============================================================================
 
 from core.autostart import (

@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.2 — Configuración de pytest y aislamiento de entorno
+# RTMS v2.2.3 — Configuración de pytest y aislamiento de entorno
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 

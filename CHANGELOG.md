@@ -3,6 +3,25 @@
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.2.3] — 2026-09-15
+
+### Seguridad y Mitigación de Vulnerabilidades (Dependabot)
+- **Remediación Integral de 28 Alertas de Dependabot**:
+  - **Pillow (`>=12.3.0` / lockfile `12.3.0`)**: Mitigadas 18 vulnerabilidades (12 High, 6 Medium), incluyendo CVE-2026-55798 (inyección de comandos en `WindowsViewer` sobre Windows), corrupción de memoria por heap out-of-bounds write en `ImageFilter.RankFilter`, `paste()` y `crop()`, y bypass de bombas de descompresión en fuentes tipográficas y PSDs.
+  - **Starlette (`>=1.3.1` / lockfile `1.6.0`)**: Mitigadas 6 vulnerabilidades (3 High, 2 Medium, 1 Low), destacando CVE-2026-48818 (SSRF y fuga de credenciales NetNTLM en Windows vía rutas UNC en `StaticFiles`), mitigando riesgos locales en la red LAN del operador, además de DoS cuadrático por Range headers en `FileResponse` y desbordamiento en `request.form()`.
+  - **Jinja2 (`>=3.1.6` / lockfile `3.1.6`)**: Mitigadas 3 vulnerabilidades de escape de sandbox (CVE-2024-56326, CVE-2024-56201, CVE-2025-27516) mediante referencias indirectas y filtros a `format`.
+  - **Pytest (`>=9.0.3` / lockfile `9.1.1`)**: Mitigada vulnerabilidad en gestión de carpetas temporales compartidas (CVE-2025-71176).
+  - **Ecosistema Sincronizado**: Actualizadas dependencias asociadas a versiones estables y compatibles: FastAPI (`0.141.1`), Uvicorn (`0.53.0`), Pydantic (`2.13.5`), Psutil (`7.2.2`), Ruff (`0.16.7`) y PyInstaller (`6.22.3`).
+
+### Pipelines de Integración Continua (GitHub Actions CI)
+- **Reparación del Pipeline de CI**: Eliminadas importaciones redundantes e inactivas en `tests/test_fastapi_headless.py` que causaban fallo inmediato en la regla `F401` de Ruff en GitHub Actions.
+- **Consolidación de PRs de Dependabot**: Unificación de 7 PRs parciales en un único conjunto de dependencias verificado y libre de vulnerabilidades.
+
+### Interfaz de Usuario y Experiencia de Operación (Dashboard)
+- **Corrección de Layout en Codificador de Video**: Reestructurado el formulario modal para ubicar el selector de codificador de hardware (`#config-encoder`) en una fila dedicada inferior de ancho completo (`100%`), eliminando definitivamente el recorte de etiquetas descriptivas de GPU (NVENC, QSV, AMF, CPU).
+- **Copiado Rápido de `mpegts`**: Implementado chip interactivo `.btn-copy-chip` en la Guía de Configuración de OBS Studio que permite copiar el valor `mpegts` al portapapeles con un solo clic y retroalimentación inmediata vía toast.
+- **Portapapeles Seguro y Asíncrono**: Modernizado el servicio de copia en `app.js` con soporte prioritario para la API nativa `navigator.clipboard` y degradación elegante.
+
 ## [2.2.2] — 2026-09-15
 
 ### Seguridad y Blindaje Criptográfico (DPAPI & Secretos)

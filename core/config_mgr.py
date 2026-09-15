@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.2 — Real-Time Multicam System
+# RTMS v2.2.3 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -112,7 +112,7 @@ def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
 def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Migra configuraciones heredadas hacia el esquema más reciente de forma incremental.
-    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (v2.0.4 / v2.1.0 / v2.2.0 / v2.2.1 / v2.2.2 con camera_id y passphrases seguras).
+    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (v2.0.4 / v2.1.0 / v2.2.0 / v2.2.1 / v2.2.3 con camera_id y passphrases seguras).
     Rechaza esquemas futuros con UnsupportedConfigSchemaError (P1-03).
     """
     schema_ver = data.get("config_schema_version", 1)

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- RTMS v2.2.2 Web UI Dashboard -->
+    <!-- RTMS v2.2.3 Web UI Dashboard -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="rtms-token" content="{{ api_token }}">
@@ -161,7 +161,13 @@
                                 <div class="step-number">4</div>
                                 <div class="step-details">
                                     <div class="step-title">Formato de entrada</div>
-                                    <div class="step-desc">En el campo <strong>Formato de entrada</strong> escribe <code>mpegts</code>.</div>
+                                    <div class="step-desc" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <span>En el campo <strong>Formato de entrada</strong> escribe o copia:</span>
+                                        <button type="button" class="btn-copy-chip" onclick="copyMpegts()" title="Clic para copiar 'mpegts' al portapapeles">
+                                            <code>mpegts</code>
+                                            <span style="font-size: 0.75rem; font-weight: 600;">📋 Copiar</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -387,24 +393,23 @@
                         </div>
                     </div>
 
-                    <div class="form-grid" style="margin-bottom: 16px;">
-                        <div class="form-group">
-                            <label class="form-label" for="config-protocol">Protocolo de Red</label>
-                            <select class="form-ctrl" id="config-protocol" onchange="handleProtocolChange(this.value)">
-                                <option value="srt" selected>SRT Listener (Ultra baja latencia punto a punto — Recomendado)</option>
-                                <option value="udp">UDP Multicast (Emisión simultánea a múltiples receptores LAN)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="config-encoder">Codificador de Video</label>
-                            <select class="form-ctrl" id="config-encoder">
-                                <option value="auto" selected>Detección Automática de GPU (Conmutación suave a CPU)</option>
-                                <option value="h264_nvenc">NVIDIA NVENC H.264 (Acelerado por GPU)</option>
-                                <option value="h264_qsv">Intel QuickSync QSV H.264 (Acelerado por GPU)</option>
-                                <option value="h264_amf">AMD AMF H.264 (Acelerado por GPU)</option>
-                                <option value="libx264">libx264 (CPU — Máxima compatibilidad)</option>
-                            </select>
-                        </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label" for="config-protocol">Protocolo de Red</label>
+                        <select class="form-ctrl" id="config-protocol" onchange="handleProtocolChange(this.value)">
+                            <option value="srt" selected>SRT Listener (Ultra baja latencia punto a punto — Recomendado)</option>
+                            <option value="udp">UDP Multicast (Emisión simultánea a múltiples receptores LAN)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label" for="config-encoder">Codificador de Video</label>
+                        <select class="form-ctrl" id="config-encoder" style="width: 100%;">
+                            <option value="auto" selected>Detección Automática de GPU (Conmutación suave a CPU)</option>
+                            <option value="h264_nvenc">NVIDIA NVENC H.264 (Acelerado por GPU)</option>
+                            <option value="h264_qsv">Intel QuickSync QSV H.264 (Acelerado por GPU)</option>
+                            <option value="h264_amf">AMD AMF H.264 (Acelerado por GPU)</option>
+                            <option value="libx264">libx264 (CPU — Máxima compatibilidad)</option>
+                        </select>
                     </div>
 
                     <!-- AJUSTES DE EJECUCIÓN DESATENDIDA -->

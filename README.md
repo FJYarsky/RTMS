@@ -1,4 +1,4 @@
-# RTMS — Real-Time Multicam System v2.2.2
+# RTMS — Real-Time Multicam System v2.2.3
 
 <div align="center">
 
@@ -6,7 +6,7 @@
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Seguridad-DPAPI%20%7C%20Token-10b981)](#-seguridad)
 [![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Pruebas-80%20Aprobadas-10b981)](tests/)
+[![Tests](https://img.shields.io/badge/Pruebas-83%20Aprobadas-10b981)](tests/)
 [![License](https://img.shields.io/badge/Licencia-MIT-gray.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Autor-Joaqu%C3%ADn%20Yarsky-f59e0b)](mailto:joaquinyarsky@gmail.com)
 
@@ -95,7 +95,7 @@ RTMS/
 ├── gui/                   # Panel de control web (SPA, plantillas y estilos)
 ├── docs/                  # Guías de compatibilidad de hardware y troubleshooting
 ├── scripts/               # Scripts de descarga y verificación de FFmpeg
-├── tests/                 # Suite de pruebas automatizadas (80 tests)
+├── tests/                 # Suite de pruebas automatizadas (83 tests)
 ├── config/                # Plantilla de configuración (config.example.json)
 ├── main.py                # Punto de entrada de la aplicación
 ├── run.bat                # Lanzador rápido para Windows
@@ -108,7 +108,7 @@ RTMS/
 ## 🧪 Pruebas Automatizadas
 
 ```bash
-# Ejecutar suite completa (80 tests):
+# Ejecutar suite completa (83 tests):
 pytest tests/ -v
 
 # Verificación de estilo con Ruff:

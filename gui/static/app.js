@@ -1,5 +1,5 @@
 /* ==============================================================================
-   RTMS — Real-Time Multicam System v2.2.2
+   RTMS — Real-Time Multicam System v2.2.3
    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
    Controlador Frontend Asíncrono de SPA
 ============================================================================== */
@@ -100,14 +100,26 @@ function showToast(message, type = 'info') {
 }
 
 // UTILIDADES DE PORTAPAPELES
-function copyText(text) {
-    const el = document.createElement('textarea');
-    el.value = text;
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-    showToast("Copiado al portapapeles", "success");
+async function copyText(text, label = "") {
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+        }
+        showToast(label ? `Copiado al portapapeles: ${label}` : "Copiado al portapapeles", "success");
+    } catch (e) {
+        showToast("No se pudo copiar automáticamente", "error");
+    }
+}
+
+function copyMpegts() {
+    copyText("mpegts", "mpegts");
 }
 
 function copyServerIp() {

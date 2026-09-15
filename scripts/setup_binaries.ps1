@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.2 -- Descargador y Verificador de Binarios FFmpeg
+# RTMS v2.2.3 -- Descargador y Verificador de Binarios FFmpeg
 # Descarga FFmpeg con soporte DirectShow, NVENC y SRT (Gyan.dev Release Essentials)
 # Con verificacion estricta de integridad criptografica SHA256
 # Desarrollado y soporte: Joaquin Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
@@ -18,7 +18,7 @@ $ffmpegExe = Join-Path $binDir "ffmpeg.exe"
 $ffplayExe = Join-Path $binDir "ffplay.exe"
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " RTMS v2.2.2 -- Verificador de Binarios FFmpeg y FFplay" -ForegroundColor Cyan
+Write-Host " RTMS v2.2.3 -- Verificador de Binarios FFmpeg y FFplay" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
 if ((Test-Path $ffmpegExe) -and (Test-Path $ffplayExe)) {
@@ -41,7 +41,7 @@ $shaPath = Join-Path $binDir "ffmpeg_temp.zip.sha256"
 # 1. Descargar paquete ZIP y suma de verificacion oficial
 Write-Host "[INFO] Descargando checksum SHA256 oficial desde: $shaUrl" -ForegroundColor Cyan
 if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-    curl.exe -f -sSL -A "RTMS-Installer/2.2.2" -o $shaPath $shaUrl
+    curl.exe -f -sSL -A "RTMS-Installer/2.2.3" -o $shaPath $shaUrl
 } else {
     Invoke-WebRequest -Uri $shaUrl -OutFile $shaPath -UseBasicParsing
 }
@@ -51,7 +51,7 @@ Write-Host "[INFO] Hash esperado: $expectedSha" -ForegroundColor Gray
 
 Write-Host "[INFO] Descargando FFmpeg oficial desde: $downloadUrl" -ForegroundColor Cyan
 if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-    curl.exe -f -L -A "RTMS-Installer/2.2.2" -o $zipPath $downloadUrl
+    curl.exe -f -L -A "RTMS-Installer/2.2.3" -o $zipPath $downloadUrl
 } else {
     Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing
 }

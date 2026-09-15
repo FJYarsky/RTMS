@@ -1,11 +1,10 @@
-﻿# ==============================================================================
-# RTMS v2.2.2 — Test de Arranque Headless / Sin Consola (main.py)
+# ==============================================================================
+# RTMS v2.2.3 — Test de Arranque Headless / Sin Consola (main.py)
 # ==============================================================================
 
 import sys
 import uvicorn
-import pytest
-from main import create_app, _NullWriter, is_port_open, get_free_port
+from main import _NullWriter, create_app, get_free_port
 
 def test_null_writer_interface():
     """Valida que _NullWriter implemente la interfaz básica de un stream writer."""
