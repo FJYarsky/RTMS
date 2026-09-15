@@ -1,14 +1,14 @@
 @echo off
-REM RTMS v2.2.0 Automated Portable Packager
+REM RTMS v2.2.1 Automated Portable Packager
 REM ==============================================================================
-REM RTMS v2.2.0 — Build Script para ejecutable nativo portable (pywebview)
+REM RTMS v2.2.1 — Build Script para ejecutable nativo portable (pywebview)
 REM Genera rtms.exe en la carpeta dist/
 REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 REM ==============================================================================
 
 echo.
 echo ============================================================
-echo  RTMS v2.2.0 — Creando aplicacion nativa con PyInstaller
+echo  RTMS v2.2.1 — Creando aplicacion nativa con PyInstaller
 echo ============================================================
 echo.
 
