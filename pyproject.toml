@@ -8,6 +8,12 @@ authors = [
     { name = "Joaquín Yarsky", email = "joaquinyarsky@gmail.com" }
 ]
 license = { text = "MIT" }
+keywords = ["streaming", "srt", "multicam", "ffmpeg", "directshow", "obs", "vmix"]
+
+[project.urls]
+Homepage = "https://github.com/FJYarsky/RTMS"
+Repository = "https://github.com/FJYarsky/RTMS"
+Issues = "https://github.com/FJYarsky/RTMS/issues"
 
 [tool.ruff]
 line-length = 120

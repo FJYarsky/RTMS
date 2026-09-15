@@ -1,4 +1,4 @@
-# Guía de Contribución — RTMS
+# Guía de Contribución — RTMS v2.1.0
 
 ¡Gracias por tu interés en contribuir a **RTMS (Real-Time Multicam System)**!
 
