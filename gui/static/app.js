@@ -1,6 +1,6 @@
 /* ==============================================================================
    RTMS — Real-Time Multicam System v2.1.0
-   Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
+   Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
    Controlador Frontend Asíncrono de SPA
 ============================================================================== */
 
