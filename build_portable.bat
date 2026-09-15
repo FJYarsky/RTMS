@@ -1,18 +1,30 @@
 @echo off
-REM RTMS v2.2.0 Automated Portable Packager
+REM RTMS v2.2.2 Automated Portable Packager
 REM ==============================================================================
-REM RTMS v2.2.0 — Build Script para ejecutable nativo portable (pywebview)
+REM RTMS v2.2.2 — Build Script para ejecutable nativo portable (pywebview)
 REM Genera rtms.exe en la carpeta dist/
 REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 REM ==============================================================================
 
 echo.
 echo ============================================================
-echo  RTMS v2.2.0 — Creando aplicacion nativa con PyInstaller
+echo  RTMS v2.2.2 — Creando aplicacion nativa con PyInstaller
 echo ============================================================
 echo.
 
 cd /d "%~dp0"
+
+REM Validar presencia obligatoria de binarios multimedia (P1-13)
+if not exist "bin\ffmpeg.exe" (
+    echo [ERROR] bin\ffmpeg.exe no fue encontrado.
+    echo Ejecute powershell -ExecutionPolicy Bypass -File scripts\setup_binaries.ps1 primero.
+    exit /b 1
+)
+if not exist "bin\ffplay.exe" (
+    echo [ERROR] bin\ffplay.exe no fue encontrado.
+    echo Ejecute powershell -ExecutionPolicy Bypass -File scripts\setup_binaries.ps1 primero.
+    exit /b 1
+)
 
 REM Detectar interprete de Python preferido
 if exist "bin\python\python.exe" (
