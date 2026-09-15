@@ -1,4 +1,4 @@
-# Changelog — RTMS (Real-Time Multicam System) v2.2.0
+# Changelog — RTMS (Real-Time Multicam System) v2.2.1
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
@@ -136,4 +136,4 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Soporte básico de UDP Multicast y SRT.
 - Optimizaciones de energía en Windows y reglas de firewall.
 
-<!-- RTMS v2.2.0 Changelog -->
+<!-- RTMS v2.2.1 Changelog -->
