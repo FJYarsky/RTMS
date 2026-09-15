@@ -1,7 +1,7 @@
-"""Unit and integration tests for GPU and network telemetry in RTMS v2.2.0."""
+"""Unit and integration tests for GPU and network telemetry in RTMS v2.2.2."""
 
 # ==============================================================================
-# RTMS v2.2.0 — Tests de Telemetría (tests/test_telemetry.py)
+# RTMS v2.2.2 — Tests de Telemetría (tests/test_telemetry.py)
 # ==============================================================================
 
 from unittest.mock import MagicMock, patch

@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Tests de Validación de Esquemas Pydantic (api/schemas.py)
+# RTMS v2.2.2 — Tests de Validación de Esquemas Pydantic (api/schemas.py)
 # ==============================================================================
 
 import pytest

@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Tests de Gestión de Secretos y Cifrado DPAPI (core/secrets_mgr.py)
+# RTMS v2.2.2 — Tests de Gestión de Secretos y Cifrado DPAPI (core/secrets_mgr.py)
 # ==============================================================================
 
 import sys

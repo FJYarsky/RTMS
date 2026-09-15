@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Tests de Herramienta de Diagnóstico CLI (core/doctor.py)
+# RTMS v2.2.2 — Tests de Herramienta de Diagnóstico CLI (core/doctor.py)
 # ==============================================================================
 
 from core.doctor import (
