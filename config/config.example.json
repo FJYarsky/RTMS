@@ -1,6 +1,6 @@
 {
-    "_comment": "RTMS v2.2.0 — Production configuration template with hardware acceleration",
-    "version": "2.2.0",
+    "_comment": "RTMS v2.2.1 — Production configuration template with hardware acceleration",
+    "version": "2.2.1",
     "config_schema_version": 3,
     "cameras": {},
     "next_port": 9000,
