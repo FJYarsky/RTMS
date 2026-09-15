@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Real-Time Multicam System
+# RTMS v2.2.1 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -121,7 +121,7 @@ def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
             return tmpl.TemplateResponse(
                 request=request,
                 name="index.html",
-                context={"api_token": token}
+                context={"api_token": token, "version": __version__}
             )
 
     return application
