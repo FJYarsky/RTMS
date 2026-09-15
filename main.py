@@ -3,6 +3,8 @@
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
+"""RTMS application entrypoint, desktop lifecycle, and CLI runner."""
+
 import sys
 import os
 import time
