@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Tests de Instancia Única Win32 Mutex (core/single_instance.py)
+# RTMS v2.2.1 — Tests de Instancia Única Win32 Mutex (core/single_instance.py)
 # ==============================================================================
 
 from core.single_instance import (

@@ -21,7 +21,7 @@ def test_save_and_load_isolated():
 
 def test_export_config_safe_mode():
     cfg = {
-        "version": "2.2.0",
+        "version": "2.2.1",
         "cameras": {
             "cam1": {
                 "friendly_name": "Camera 1",
