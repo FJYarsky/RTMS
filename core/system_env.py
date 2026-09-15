@@ -363,18 +363,18 @@ def setup_firewall_rules(port_range: str = "9000-9200") -> bool:
     try:
         # Verificar si la regla ya existe
         check_cmd = ["netsh", "advfirewall", "firewall", "show", "rule", "name=RTMS_Media_Ports"]
-        check_res = subprocess.run(check_cmd, check=False, capture_output=True, text=True, creationflags=_WIN_NO_WINDOW)
+        check_res = subprocess.run(check_cmd, check=False, capture_output=True, text=True, timeout=15, creationflags=_WIN_NO_WINDOW)
         if check_res.returncode == 0:
             logger.info("Regla RTMS_Media_Ports ya existente detectada; renovando...")
             subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule", "name=RTMS_Media_Ports"],
-                           check=False, capture_output=True, text=True, creationflags=_WIN_NO_WINDOW)
+                           check=False, capture_output=True, text=True, timeout=15, creationflags=_WIN_NO_WINDOW)
 
         cmd_fw_srt = [
             "netsh", "advfirewall", "firewall", "add", "rule",
             "name=RTMS_Media_Ports", "dir=in", "action=allow",
             "protocol=UDP", f"localport={port_range}", "profile=private"
         ]
-        res = subprocess.run(cmd_fw_srt, check=False, capture_output=True, text=True, creationflags=_WIN_NO_WINDOW)
+        res = subprocess.run(cmd_fw_srt, check=False, capture_output=True, text=True, timeout=15, creationflags=_WIN_NO_WINDOW)
         if res.returncode == 0:
             logger.info("Reglas del Firewall de Windows configuradas exitosamente.")
             return True
@@ -390,7 +390,7 @@ def remove_firewall_rules() -> bool:
         return False
     try:
         cmd = ["netsh", "advfirewall", "firewall", "delete", "rule", "name=RTMS_Media_Ports"]
-        res = subprocess.run(cmd, check=False, capture_output=True, text=True, creationflags=_WIN_NO_WINDOW)
+        res = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=15, creationflags=_WIN_NO_WINDOW)
         return res.returncode == 0
     except Exception as e:
         logger.error(f"Error al remover regla de firewall: {e}")

@@ -191,7 +191,7 @@ def on_closed():
 
     # 3. Fallback: Si Uvicorn no estaba activo o no corrió lifespan, asegurar detención de streams
     try:
-        if any(p.is_alive for p in stream_manager._procs.values()):
+        if stream_manager.has_active_streams:
             asyncio.run(stream_manager.stop_all())
     except Exception as e:
         logger.debug(f"Aviso en verificación de detención de streams: {e}")

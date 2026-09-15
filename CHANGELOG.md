@@ -3,6 +3,20 @@
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
+## [2.2.1] — 2026-09-15
+
+### Auditoría Exhaustiva y Hardening de Completitud
+- **Aislamiento Seguro en Tests (Fix CRITICAL)**: Reemplazado mock global de `os.path.exists` en `tests/test_command_builder.py` por parche modular con `monkeypatch`, evitando efectos colaterales en la biblioteca estándar y `asyncio`.
+- **Tolerancia a Puertos Corruptos (Fix HIGH)**: Manejo seguro con `try/except (ValueError, TypeError)` en `core/config_mgr.py` al deserializar puertos de cámaras, garantizando la recuperación automática ante archivos dañados.
+- **Preservación Estricta de Secretos SRT (Fix HIGH)**: Corrección en `/api/stream/config` para evitar la sobreescritura accidental con la máscara literal (`••••••••`) cuando el proceso se encuentra fuera de línea.
+- **Prevención de Bloqueos por Subprocesos (Fix HIGH)**: Añadido `timeout=15` a todas las invocaciones de `powercfg`, `powershell` y `netsh` en `core/system_env.py` para impedir bloqueos indefinidos del sistema.
+- **Detección Dinámica de WebView2Loader.dll (Fix HIGH)**: Soporte dinámico en `build_portable.bat` para compilar con cualquier distribución de Python de Windows.
+- **Ciclo de Vida Limpio de Procesos (Fix MEDIUM)**: Eliminación de riesgo de procesos zombie en `core/preview_mgr.py` con `await proc.wait()` y recolección automática de instancias inactivas de `ffplay`.
+- **Validación Backend de Frases de Paso SRT (Fix MEDIUM)**: Regla de validación con Pydantic (`@field_validator`) asegurando entre 10 y 79 caracteres conforme al estándar del protocolo SRT.
+- **Expansión Masiva de Suite de Pruebas**: Adición de 5 suites de pruebas unitarias (`test_secrets_mgr.py`, `test_single_instance.py`, `test_autostart.py`, `test_schemas.py`, `test_doctor.py`), alcanzando cobertura en todos los subsistemas del motor.
+- **Prevención de Fugas de Descriptores de Red**: Context managers `with socket.socket(...) as s:` en `api/routes.py` y `core/doctor.py`.
+- **Consistencia UI/Backend**: Sincronización del preset de máxima calidad ('best') a 6000 kbps entre el panel web y el motor de configuración.
+
 ## [2.2.0] — 2026-09-14
 
 ### Telemetría de Hardware y Red (HUD en Vivo)

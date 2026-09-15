@@ -82,11 +82,10 @@ async def check_directshow_cameras() -> bool:
 
 def check_network_ip() -> bool:
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(0.5)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(0.5)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
         print(f"[OK] Red LAN (IP de Emisión): {ip}")
         return True
     except Exception:

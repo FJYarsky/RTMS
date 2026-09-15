@@ -4,7 +4,7 @@
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP%20Multicast-teal)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Security-Strict%20Zero--Secret%20Logs-green.svg)](#-seguridad-y-hardening)
 [![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Tests-40%20Passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-64%20Passing-brightgreen.svg)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Joaqu%C3%ADn%20Yarsky-orange)](mailto:joaquinyarsky@gmail.com)
 
@@ -92,7 +92,7 @@ RTMS/
 │   └── TROUBLESHOOTING.md # Guía paso a paso de resolución de problemas
 ├── scripts/               # Scripts de instalación y soporte
 │   └── setup_binaries.ps1 # Descarga segura de FFmpeg con verificación SHA256
-├── tests/                 # Suite de 40 pruebas automatizadas (pytest)
+├── tests/                 # Suite de 64 pruebas automatizadas (pytest)
 │   ├── test_telemetry.py
 │   ├── test_sanitizer.py
 │   ├── test_command_builder.py
@@ -103,7 +103,12 @@ RTMS/
 │   ├── test_stream_lifecycle.py
 │   ├── test_security.py
 │   ├── test_config_mgr.py
-│   └── test_hardware_parser.py
+│   ├── test_hardware_parser.py
+│   ├── test_secrets_mgr.py
+│   ├── test_single_instance.py
+│   ├── test_autostart.py
+│   ├── test_schemas.py
+│   └── test_doctor.py
 ├── pyproject.toml         # Configuración del proyecto, ruff y pytest
 ├── requirements.txt       # Dependencias exclusivas de producción
 ├── requirements-dev.txt   # Dependencias de desarrollo, testing y linting

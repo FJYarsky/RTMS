@@ -621,7 +621,7 @@ function applyQualityPreset(preset) {
     if (preset === 'best') {
         document.getElementById('config-resolution').value = '1080p';
         document.getElementById('config-fps').value = '60';
-        document.getElementById('config-bitrate').value = 5000;
+        document.getElementById('config-bitrate').value = 6000;
     } else if (preset === 'default') {
         document.getElementById('config-resolution').value = '720p';
         document.getElementById('config-fps').value = '30';

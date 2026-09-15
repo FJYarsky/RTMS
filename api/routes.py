@@ -62,13 +62,12 @@ def get_local_ip() -> str:
 
     ip = "127.0.0.1"
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.settimeout(0.2)
-        s.connect(("8.8.8.8", 80))
-        candidate = s.getsockname()[0]
-        s.close()
-        if candidate and not candidate.startswith("127."):
-            ip = candidate
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(0.2)
+            s.connect(("8.8.8.8", 80))
+            candidate = s.getsockname()[0]
+            if candidate and not candidate.startswith("127."):
+                ip = candidate
     except Exception:
         try:
             addrs = psutil.net_if_addrs()

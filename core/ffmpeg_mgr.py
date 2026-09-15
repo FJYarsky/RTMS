@@ -552,6 +552,11 @@ class StreamManager:
             elif proc.config.get("auto_start", False) and proc.state == State.STOPPED and not proc._stop_evt.is_set():
                 asyncio.create_task(self.start_stream(dp))
 
+    @property
+    def has_active_streams(self) -> bool:
+        """Indica si existe al menos un proceso de transmisión activo en ejecución."""
+        return any(proc.is_alive for proc in self._procs.values())
+
     def get_all_statuses(self) -> List[Dict[str, Any]]:
         statuses = []
         for dp, proc in self._procs.items():
