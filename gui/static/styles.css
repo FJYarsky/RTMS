@@ -961,7 +961,7 @@ input[type="checkbox"]:checked + .switch-toggle::after {
 }
 
 /* ==============================================================================
-   RTMS v2.2.0 EXTENSIONS (HUD, EMERGENCY, ABOUT, VIRTUAL CAMERAS)
+   RTMS v2.2.1 EXTENSIONS (HUD, EMERGENCY, ABOUT, VIRTUAL CAMERAS)
    ============================================================================== */
 
 /* Version tag in Header */
@@ -1203,4 +1203,16 @@ input[type="checkbox"]:checked + .switch-toggle::after {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* Empty State Card Enhancement */
+.empty-state-card {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.empty-state-card:hover {
+    border-color: var(--teal) !important;
+    background: rgba(20, 184, 166, 0.04) !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
 

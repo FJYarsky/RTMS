@@ -1,5 +1,5 @@
 /* ==============================================================================
-   RTMS — Real-Time Multicam System v2.2.0
+   RTMS — Real-Time Multicam System v2.2.1
    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
    Controlador Frontend Asíncrono de SPA
 ============================================================================== */
@@ -307,9 +307,17 @@ function renderCamerasPage() {
     
     if (_streams.length === 0) {
         mainGrid.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-secondary);">
-                <p style="font-size: 1.1rem; margin-bottom: 12px;">No se han detectado cámaras DirectShow en el sistema.</p>
-                <p style="font-size: 0.85rem;">Conecta tus cámaras USB y haz clic en "Escanear Hardware".</p>
+            <div class="empty-state-card" style="grid-column: 1/-1; text-align: center; padding: 48px 24px; background: rgba(0, 0, 0, 0.2); border: 1px dashed var(--border-color); border-radius: var(--radius-lg); margin: 20px 0;">
+                <div style="font-size: 2.8rem; margin-bottom: 12px; filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.3));">📷</div>
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">
+                    No se han detectado cámaras DirectShow
+                </h3>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); max-width: 480px; margin: 0 auto 20px auto; line-height: 1.5;">
+                    Conecta tus cámaras web USB o tarjetas capturadoras HDMI/SDI y actualiza la lista de dispositivos multimedia del sistema.
+                </p>
+                <button class="btn btn-primary" onclick="scanHardwareDevices()">
+                    🔄 Escanear Dispositivos Ahora
+                </button>
             </div>
         `;
         if (virtualSection) virtualSection.style.display = 'none';
@@ -652,9 +660,11 @@ async function submitCameraConfig(event) {
     const zeroLatency = document.getElementById('config-zerolatency').checked;
     const isVirtual = document.getElementById('config-is-virtual').checked;
     
-    if (protocol === 'srt' && srtPassphrase !== '' && srtPassphrase !== '••••••••' && srtPassphrase.length < 10) {
-        showToast("La contraseña SRT debe tener al menos 10 caracteres.", "error");
-        return;
+    if (protocol === 'srt' && srtPassphrase !== '' && srtPassphrase !== '••••••••') {
+        if (srtPassphrase.length < 10 || srtPassphrase.length > 79) {
+            showToast("La frase de paso SRT debe tener entre 10 y 79 caracteres.", "error");
+            return;
+        }
     }
     
     const payload = {
