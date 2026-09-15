@@ -3,6 +3,7 @@
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
+# Core ASGI framework and live hardware monitoring libraries
 # Framework Web y Servidor ASGI
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
