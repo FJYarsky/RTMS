@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Real-Time Multicam System
+# RTMS v2.2.2 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -13,7 +13,7 @@ from collections import deque
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
-from core.sanitizer import sanitize_command_for_log, sanitize_log_line
+from core.sanitizer import sanitize_command_for_log, sanitize_log_line, sanitize_url
 from .hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN, hardware_detector
 from .config_mgr import get_or_allocate_camera_config
 from .port_mgr import port_manager
@@ -22,15 +22,62 @@ logger = logging.getLogger("rtms.ffmpeg_mgr")
 
 _WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
 
+class ErrorCategory(str, Enum):
+    """Taxonomía formal de categorías de error para diagnósticos y políticas de reconexión (P1-07)."""
+    CONFIGURATION  = "configuration"
+    DEVICE         = "device"
+    ENCODER        = "encoder"
+    NETWORK        = "network"
+    PORT_COLLISION = "port_collision"
+    PROCESS        = "process"
+    AUTHENTICATION = "authentication"
+    UNKNOWN        = "unknown"
+
 class State(str, Enum):
-    STOPPED      = "stopped"
-    STARTING     = "starting"
-    RUNNING      = "running"
-    ERROR        = "error"
-    RESTARTING   = "restarting"
-    RECOVERING   = "recovering"
-    STOPPING     = "stopping"
-    DISCONNECTED = "disconnected"
+    STOPPED                      = "stopped"
+    STARTING                     = "starting"
+    RUNNING                      = "running"
+    ERROR                        = "error"
+    RESTARTING                   = "restarting"
+    RECOVERING                   = "recovering"
+    STOPPING                     = "stopping"
+    DISCONNECTED                 = "disconnected"
+    MANUAL_INTERVENTION_REQUIRED = "manual_intervention_required"
+
+def build_multicast_url(port: int) -> str:
+    """Calcula y retorna la URL multicast UDP para el puerto indicado (N2)."""
+    ip_last_octet = (int(port) % 200) + 1
+    return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=65535"
+
+def build_stream_url(
+    protocol: str,
+    port: int,
+    passphrase: str = "",
+    mode: str = "listener",
+    latency_ms: int = 120,
+    zerolatency: bool = True
+) -> str:
+    """Construye la URL normalizada de transmisión para SRT o UDP con codificación segura (N2, N9)."""
+    if protocol == "udp":
+        return build_multicast_url(port)
+
+    # Protocolo SRT
+    latency_us = int(latency_ms) * 1000
+    host = "0.0.0.0" if mode == "listener" else "127.0.0.1"
+    drop_flag = "1" if zerolatency else "0"
+    params = {
+        "mode": mode,
+        "latency": str(latency_us),
+        "transtype": "live",
+        "smoother": "live",
+        "tlpktdrop": drop_flag,
+        "sndbuf": "262144",
+        "rcvbuf": "262144"
+    }
+    if passphrase:
+        params["passphrase"] = passphrase
+    query = urllib.parse.urlencode(params)
+    return f"srt://{host}:{port}?{query}"
 
 class StreamProc:
     def __init__(self, device_path: str):
@@ -55,6 +102,14 @@ class StreamProc:
         self.using_fallback_cpu: bool = False
         self.is_connected: bool = True
         self.per_stream_encoder: Optional[str] = None
+        self.last_error_category: ErrorCategory = ErrorCategory.UNKNOWN
+        self.last_transition: Optional[datetime] = None
+
+    def transition_to(self, new_state: State) -> None:
+        """Formaliza la transición de estados de la máquina de estados del stream (P1-08)."""
+        logger.debug(f"[{self.device_path}] Transición de estado: {self.state} -> {new_state}")
+        self.state = new_state
+        self.last_transition = datetime.now()
 
     @property
     def permanent_failure(self) -> bool:
@@ -69,8 +124,9 @@ class StreamProc:
         self.manual_intervention_required = False
         self.error_count = 0
         self.next_retry_at = None
-        if self.state == State.ERROR:
-            self.state = State.STOPPED
+        self.last_error_category = ErrorCategory.UNKNOWN
+        if self.state in (State.ERROR, State.MANUAL_INTERVENTION_REQUIRED):
+            self.transition_to(State.STOPPED)
 
     def log(self, line: str) -> None:
         clean_line = sanitize_log_line(line)
@@ -185,60 +241,35 @@ class StreamManager:
 
         protocol = cfg.get("protocol", "srt")
         port = cfg.get("port", 9000)
+        passphrase = cfg.get("srt_passphrase", "")
+        latency_ms = int(cfg.get("srt_latency", 120))
 
-        if protocol == "srt":
-            latency_ms = int(cfg.get("srt_latency", 120))
-            latency_us = latency_ms * 1000
-            drop_flag = "1" if zerolatency else "0"
+        raw_url = build_stream_url(
+            protocol=protocol,
+            port=port,
+            passphrase=passphrase,
+            mode="listener",
+            latency_ms=latency_ms,
+            zerolatency=zerolatency
+        )
 
-            # Construcción segura de URL SRT con escape de caracteres especiales
-            passphrase = cfg.get("srt_passphrase", "")
-            query_params = {
-                "mode": "listener",
-                "latency": str(latency_us),
-                "transtype": "live",
-                "smoother": "live",
-                "tlpktdrop": drop_flag,
-                "sndbuf": "262144",
-                "rcvbuf": "262144"
-            }
-            if passphrase:
-                query_params["passphrase"] = passphrase
-
-            query_string = urllib.parse.urlencode(query_params)
-            url = f"srt://0.0.0.0:{port}?{query_string}"
-
-            if zerolatency:
-                cmd += [
-                    "-f", "mpegts",
-                    "-muxdelay", "0",
-                    "-muxpreload", "0",
-                    "-flush_packets", "1",
-                    url
-                ]
-            else:
-                cmd += [
-                    "-f", "mpegts",
-                    url
-                ]
+        if zerolatency:
+            cmd += [
+                "-f", "mpegts",
+                "-muxdelay", "0",
+                "-muxpreload", "0",
+                "-flush_packets", "1",
+                raw_url
+            ]
         else:
-            ip_last_octet = (port % 200) + 1
-            url = f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=65535"
-            if zerolatency:
-                cmd += [
-                    "-f", "mpegts",
-                    "-muxdelay", "0",
-                    "-muxpreload", "0",
-                    "-flush_packets", "1",
-                    url
-                ]
-            else:
-                cmd += [
-                    "-f", "mpegts",
-                    url
-                ]
+            cmd += [
+                "-f", "mpegts",
+                raw_url
+            ]
 
-        return cmd, url, encoder
+        # Seguridad crítica (P0-01): Nunca retornar URL con credenciales en claro para APIs ni configs
+        sanitized_url = sanitize_url(raw_url)
+        return cmd, sanitized_url, encoder
 
     async def start_stream(self, device_path: str, force_cpu: bool = False):
         """Inicia un flujo asegurando exclusión mutua para evitar ejecuciones concurrentes."""
@@ -328,7 +359,16 @@ class StreamManager:
 
     async def _stop_stream_locked(self, proc: StreamProc, timeout: float = 2.5):
         proc._stop_evt.set()
-        proc.state = State.STOPPING
+        proc.transition_to(State.STOPPING)
+
+        # Limpieza formal de recovery_task (P1-09)
+        if proc.recovery_task and not proc.recovery_task.done():
+            proc.recovery_task.cancel()
+            try:
+                await proc.recovery_task
+            except (asyncio.CancelledError, Exception):
+                pass
+        proc.recovery_task = None
 
         if proc.process and proc.process.returncode is None:
             # 1. Intento limpio: Enviar comando 'q' a stdin para cierre de socket SRT y MPEG-TS
@@ -359,11 +399,36 @@ class StreamManager:
         if proc._log_task and not proc._log_task.done():
             proc._log_task.cancel()
 
-        proc.state = State.STOPPED
+        proc.transition_to(State.STOPPED)
         proc.process = None
         proc.current_fps = 0.0
         proc.current_bitrate_kbps = 0.0
         proc.log("Stream detenido limpiamente.")
+
+    async def remove_stream(self, device_path: str) -> bool:
+        """Detiene la transmisión, libera el puerto y elimina la cámara de forma permanente (P1-06)."""
+        proc = self._procs.get(device_path)
+        if not proc:
+            # Buscar por camera_id
+            for dp, p in list(self._procs.items()):
+                if p.config.get("id") == device_path:
+                    proc = p
+                    device_path = dp
+                    break
+
+        if proc:
+            await self.stop_stream(device_path)
+            port = proc.config.get("port")
+            if port:
+                port_manager.release_port(int(port))
+            if proc._log_task and not proc._log_task.done():
+                proc._log_task.cancel()
+            if proc.recovery_task and not proc.recovery_task.done():
+                proc.recovery_task.cancel()
+            self._procs.pop(device_path, None)
+
+        from .config_mgr import remove_camera_config
+        return remove_camera_config(device_path)
 
     async def _fallback_to_cpu(self, device_path: str):
         """Maneja la transición explícita de fallo de GPU a CPU sin condiciones de carrera."""
@@ -401,24 +466,19 @@ class StreamManager:
                 now = datetime.now()
 
                 for dp, proc in list(self._procs.items()):
-                    if proc._stop_evt.is_set():
-                        continue
-
-                    # 1. Reseteo de errores si el flujo estuvo estable
-                    if proc.is_alive and proc.state == State.RUNNING:
-                        if proc.started_at:
-                            running_seconds = (now - proc.started_at).total_seconds()
-                            if running_seconds >= self.STABILITY_THRESHOLD_SECONDS and proc.error_count > 0:
-                                logger.info(f"Flujo {dp} estable ({int(running_seconds)}s). Reseteando error_count a 0.")
-                                proc.error_count = 0
-                                proc.permanent_failure = False
+                    # 1. Reseteo de errores tras período de estabilidad
+                    if proc.is_alive and proc.started_at:
+                        uptime = (now - proc.started_at).total_seconds()
+                        if uptime >= self.STABILITY_THRESHOLD_SECONDS and (proc.error_count > 0 or proc.permanent_failure):
+                            logger.info(f"Flujo {dp} estable por {int(uptime)}s. Reseteando contadores de error.")
+                            proc.clear_failure()
                         continue
 
                     # 2. Detección de caída de flujo
                     if not proc.is_alive and proc.state == State.RUNNING:
                         logger.warning(f"Flujo {dp} caído inesperadamente (error #{proc.error_count + 1}).")
                         proc.error_count += 1
-                        proc.state = State.ERROR
+                        proc.transition_to(State.ERROR)
                         backoff = min(5 * (2 ** max(0, proc.error_count - 1)), 60)
                         proc.next_retry_at = now + timedelta(seconds=backoff)
 
@@ -426,14 +486,14 @@ class StreamManager:
                     if proc.state == State.ERROR and not proc._stop_evt.is_set():
                         # Si el hardware fue desconectado físicamente, pausar reintentos
                         if not proc.is_connected:
-                            proc.state = State.DISCONNECTED
+                            proc.transition_to(State.DISCONNECTED)
                             logger.info(f"Cámara {dp} marcada como desconectada. Reintentos pausados.")
                             continue
 
                         if proc.error_count <= self.MAX_ERRORS:
                             if proc.next_retry_at and now >= proc.next_retry_at:
                                 logger.info(f"Watchdog recuperando {dp} (intento {proc.error_count}/{self.MAX_ERRORS})...")
-                                proc.state = State.RECOVERING
+                                proc.transition_to(State.RECOVERING)
                                 proc.next_retry_at = None
                                 force_cpu = proc.error_count >= 2
                                 if proc.recovery_task and not proc.recovery_task.done():
@@ -442,13 +502,27 @@ class StreamManager:
                         else:
                             if not proc.manual_intervention_required:
                                 proc.manual_intervention_required = True
-                                proc.state = State.ERROR
+                                proc.transition_to(State.MANUAL_INTERVENTION_REQUIRED)
                                 logger.error(f"Flujo {dp} superó el límite de {self.MAX_ERRORS} errores. Pausado esperando intervención manual.")
                                 proc.log(f"CRÍTICO: Superado límite de {self.MAX_ERRORS} errores consecutivos. Pausado esperando intervención manual.")
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Error en Watchdog: {e}")
+
+    async def reallocate_if_collided(self, proc: StreamProc) -> int:
+        """Reasigna un puerto libre ante colisión y actualiza la configuración (P1-05)."""
+        proc.last_error_category = ErrorCategory.PORT_COLLISION
+        cfg_port = proc.config.get("port", 9000)
+        new_port = port_manager.reallocate_if_collided(int(cfg_port))
+        proc.config["port"] = new_port
+        from .config_mgr import save_config, load_config
+        c_all = load_config()
+        dp = proc.device_path
+        if dp in c_all.get("cameras", {}):
+            c_all["cameras"][dp]["port"] = new_port
+            save_config(c_all)
+        return new_port
 
     async def _collect_logs(self, device_path: str, process: asyncio.subprocess.Process):
         proc = self._procs.get(device_path)
@@ -463,7 +537,9 @@ class StreamManager:
             "device not found",
             "could not find video device",
             "dshow: could not",
-            "error while opening encoder"
+            "error while opening encoder",
+            "bind failed",
+            "address already in use"
         ]
 
         stats_pattern = re.compile(r"fps=\s*([0-9.]+).*bitrate=\s*([0-9.]+)kbits/s.*speed=\s*([0-9.x]+)")
@@ -489,15 +565,31 @@ class StreamManager:
                 proc.log(clean_line)
 
                 line_lower = raw_line.lower()
+
+                # Detección de colisión de socket en runtime (P1-05)
+                if "bind failed" in line_lower or "address already in use" in line_lower:
+                    logger.warning(f"[{device_path}] Colisión de socket detectada en FFmpeg: {clean_line}. Reasignando puerto...")
+                    await self.reallocate_if_collided(proc)
+
                 if any(pat in line_lower for pat in FATAL_PATTERNS):
                     logger.warning(f"[{device_path}] Error en FFmpeg: {clean_line}")
+
+                    # Clasificación formal de categoría de error (P1-07)
+                    if "could not find video device" in line_lower or "device not found" in line_lower or "dshow: could not" in line_lower:
+                        proc.last_error_category = ErrorCategory.DEVICE
+                    elif "error while opening encoder" in line_lower:
+                        proc.last_error_category = ErrorCategory.ENCODER
+                    elif "connection refused" in line_lower or "bind failed" in line_lower:
+                        proc.last_error_category = ErrorCategory.NETWORK
+                    else:
+                        proc.last_error_category = ErrorCategory.PROCESS
 
                     if "error while opening encoder" in line_lower and not proc.using_fallback_cpu:
                         asyncio.create_task(self._fallback_to_cpu(device_path))
                         return
 
                     if proc.state == State.RUNNING:
-                        proc.state = State.ERROR
+                        proc.transition_to(State.ERROR)
                         proc.error_count += 1
                         backoff = min(5 * (2 ** max(0, proc.error_count - 1)), 60)
                         proc.next_retry_at = datetime.now() + timedelta(seconds=backoff)
@@ -531,7 +623,7 @@ class StreamManager:
             proc.is_connected = dp in detected_paths
             if was_connected and not proc.is_connected:
                 logger.warning(f"Cámara {dp} desapareció del sistema. Marcando como DISCONNECTED.")
-                proc.state = State.DISCONNECTED
+                proc.transition_to(State.DISCONNECTED)
                 if proc.is_alive:
                     asyncio.create_task(self.stop_stream(dp, timeout=1.0))
 
@@ -561,6 +653,8 @@ class StreamManager:
         statuses = []
         for dp, proc in self._procs.items():
             cfg = proc.config or {}
+            raw_pass = cfg.get("srt_passphrase", "")
+            raw_url = cfg.get("_url", "")
             statuses.append({
                 "id": cfg.get("id", ""),
                 "device_path": dp,
@@ -573,13 +667,16 @@ class StreamManager:
                 "encoder": cfg.get("encoder", "auto"),
                 "actual_encoder": cfg.get("_actual_encoder", proc.per_stream_encoder or "auto"),
                 "srt_latency": cfg.get("srt_latency", 120),
-                "srt_passphrase": cfg.get("srt_passphrase", ""),
-                "url": cfg.get("_url", ""),
+                "srt_passphrase": "••••••••" if raw_pass else "",
+                "has_passphrase": bool(raw_pass),
+                "decryption_failed": bool(cfg.get("decryption_failed", False)),
+                "url": sanitize_url(raw_url),
                 "auto_start": cfg.get("auto_start", True),
                 "zerolatency": cfg.get("zerolatency", True),
                 "is_virtual": cfg.get("is_virtual", False),
                 "is_connected": proc.is_connected,
                 "permanent_failure": proc.permanent_failure,
+                "last_error_category": proc.last_error_category.value,
                 "status": {
                     "state": proc.state.value if isinstance(proc.state, State) else str(proc.state),
                     "current_fps": proc.current_fps,

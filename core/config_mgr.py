@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.0 — Real-Time Multicam System
+# RTMS v2.2.2 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -86,25 +86,41 @@ def is_virtual_device(friendly_name: str) -> bool:
     name_lower = friendly_name.lower()
     return any(kw in name_lower for kw in VIRTUAL_DEVICE_KEYWORDS)
 
+class UnsupportedConfigSchemaError(ValueError):
+    """Excepción levantada cuando un archivo de configuración posee una versión de esquema posterior no soportada."""
+    pass
+
+class ConfigPersistenceError(RuntimeError):
+    """Excepción levantada cuando ocurre un error al persistir la configuración en disco."""
+    pass
+
 def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
-    """Genera un UUID v5 estable y determinista para la cámara basado en su identificador físico DirectShow."""
-    seed = device_path.lower()
-    # Priorizar VID/PID de PNP locator para que el ID sea resistente a cambios de puerto USB
-    m = re.search(r'(vid_[0-9a-f]+&pid_[0-9a-f]+(?:&mi_[0-9a-f]+)?)', seed)
-    if m:
-        seed = m.group(1)
-    elif "{" in seed and "}" in seed:
-        m_guid = re.search(r'\{[0-9a-f\-]+\}', seed)
-        if m_guid:
-            seed = m_guid.group(0)
+    """
+    Genera un identificador UUID v5 estable y determinista para la cámara.
+    Utiliza la ruta física DirectShow normalizada completa para asegurar que dos dispositivos
+    del mismo modelo (mismo VID/PID) en diferentes puertos USB obtengan IDs únicos y estables (P1-04).
+    """
+    seed = device_path.lower().strip()
+    if not seed and friendly_name:
+        seed = friendly_name.lower().strip()
+    match = re.search(r'vid_([0-9a-fA-F]{4})&pid_([0-9a-fA-F]{4})', seed)
+    if match:
+        vid, pid = match.groups()
+        return f"cam_{vid.lower()}_{pid.lower()}_{uuid.uuid5(uuid.NAMESPACE_DNS, seed).hex[:8]}"
     return f"cam_{uuid.uuid5(uuid.NAMESPACE_DNS, seed).hex[:12]}"
 
 def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Migra configuraciones heredadas hacia el esquema más reciente de forma incremental.
-    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (v2.0.4 / v2.1.0 / v2.2.0 con camera_id y passphrases seguras).
+    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (v2.0.4 / v2.1.0 / v2.2.0 / v2.2.1 / v2.2.2 con camera_id y passphrases seguras).
+    Rechaza esquemas futuros con UnsupportedConfigSchemaError (P1-03).
     """
     schema_ver = data.get("config_schema_version", 1)
+
+    if schema_ver > CURRENT_SCHEMA_VERSION:
+        raise UnsupportedConfigSchemaError(
+            f"Versión de esquema {schema_ver} no soportada por RTMS v{__version__} (máxima soportada: {CURRENT_SCHEMA_VERSION})."
+        )
 
     if schema_ver < 2:
         logger.info("Migrando configuración v1 -> v2...")
@@ -205,7 +221,13 @@ def _unprotect_config_cameras(config_data: Dict[str, Any]) -> Dict[str, Any]:
     for cam in cameras.values():
         raw_pass = cam.get("srt_passphrase", "")
         if raw_pass:
-            cam["srt_passphrase"] = unprotect_secret(raw_pass)
+            try:
+                cam["srt_passphrase"] = unprotect_secret(raw_pass, raise_on_error=True)
+                cam["decryption_failed"] = False
+            except Exception as e:
+                logger.warning(f"Error descifrando credencial de cámara {cam.get('friendly_name', '')}: {e}. Marcando como irrecuperable.")
+                cam["srt_passphrase"] = ""
+                cam["decryption_failed"] = True
     return config_data
 
 def _prepare_config_for_disk(config_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -217,6 +239,10 @@ def _prepare_config_for_disk(config_data: Dict[str, Any]) -> Dict[str, Any]:
         raw_pass = cam.get("srt_passphrase", "")
         if raw_pass:
             cam["srt_passphrase"] = protect_secret(raw_pass)
+        # Purgar campos efímeros de runtime para no persistir URLs derivadas ni flags temporales (P2-06 / P2-07)
+        cam.pop("_url", None)
+        cam.pop("_actual_encoder", None)
+        cam.pop("decryption_failed", None)
     return disk_copy
 
 def _atomic_save_unlocked(config_data: Dict[str, Any]):
@@ -255,20 +281,50 @@ def _atomic_save_unlocked(config_data: Dict[str, Any]):
     os.replace(CONFIG_TMP_FILE, CONFIG_FILE)
     _LAST_SAVED_CONFIG = current_serialized
 
-def save_config(config_data: Dict[str, Any]):
-    """Persiste la configuración de forma atómica y protegida por cerrojo."""
+def save_config(config_data: Dict[str, Any], raise_on_error: bool = False) -> bool:
+    """Persiste la configuración de forma atómica y protegida por cerrojo. Retorna True si tuvo éxito (P0-04)."""
     with _CONFIG_LOCK:
         try:
             _atomic_save_unlocked(config_data)
+            return True
         except Exception as e:
             logger.error(f"Error al guardar atómicamente la configuración: {e}")
+            if raise_on_error:
+                raise ConfigPersistenceError(f"Fallo de persistencia en disco: {e}") from e
+            return False
+
+def remove_camera_config(identifier: str) -> bool:
+    """
+    Elimina permanentemente la configuración de una cámara por su device_path o ID, liberando su puerto (P1-06).
+    """
+    config = load_config()
+    cameras = config.get("cameras", {})
+    target_key = None
+    if identifier in cameras:
+        target_key = identifier
+    else:
+        for key, cam in cameras.items():
+            if cam.get("id") == identifier or cam.get("device_path") == identifier:
+                target_key = key
+                break
+
+    if target_key:
+        removed_cam = cameras.pop(target_key)
+        port = removed_cam.get("port")
+        if port:
+            try:
+                port_manager.release_port(int(port))
+            except Exception:
+                pass
+        return save_config(config)
+    return False
 
 def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[str, Any]:
     """Retorna la configuración de una cámara, asignando ID estable, puerto libre verificado y passphrase segura."""
     config = load_config()
     cameras = config.get("cameras", {})
     virtual_flag = is_virtual_device(friendly_name)
-    cam_id = generate_stable_camera_id(device_path)
+    cam_id = generate_stable_camera_id(device_path, friendly_name)
 
     if device_path in cameras:
         cam = cameras[device_path]
@@ -289,15 +345,14 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         save_config(config)
         return cam
 
-    # Asignar nuevo puerto validado por PortManager
+    # Asignar nuevo puerto validado por PortManager (sin bypass ciego P1-05)
     preferred = config.get("next_port", 9000)
     try:
         port = port_manager.allocate_port(preferred)
         config["next_port"] = port + 1
     except Exception as exc:
-        logger.warning(f"Error asignando puerto mediante PortManager: {exc}. Usando fallback.")
-        port = preferred
-        config["next_port"] = preferred + 1
+        logger.error(f"Error asignando puerto mediante PortManager: {exc}. No se puede asignar a ciegas.")
+        raise RuntimeError(f"Agotamiento de puertos multimedia: {exc}") from exc
 
     default_passphrase = secrets.token_hex(6)
 
@@ -325,13 +380,13 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
     return new_cam_config
 
 def find_camera_by_id_or_path(identifier: str) -> Optional[Dict[str, Any]]:
-    """Busca una cámara por su camera_id (UUID) o por su device_path."""
+    """Busca una cámara por su camera_id (UUID), clave de diccionario o device_path."""
     config = load_config()
     cameras = config.get("cameras", {})
     if identifier in cameras:
         return cameras[identifier]
     for cam in cameras.values():
-        if cam.get("id") == identifier:
+        if cam.get("id") == identifier or cam.get("device_path") == identifier:
             return cam
     return None
 
@@ -355,14 +410,16 @@ def update_camera_config(device_path: str, resolution: str, fps: int, bitrate: i
         cam["auto_start"] = auto_start
         cam["zerolatency"] = zerolatency
         cam["is_virtual"] = is_virtual
-        save_config(config)
+        return save_config(config)
+    return False
 
-def set_camera_autostart(device_path: str, auto_start: bool):
+def set_camera_autostart(device_path: str, auto_start: bool) -> bool:
     config = load_config()
     cameras = config.get("cameras", {})
     if device_path in cameras:
         cameras[device_path]["auto_start"] = auto_start
-        save_config(config)
+        return save_config(config)
+    return False
 
 def apply_camera_preset(device_path: str, preset_key: str) -> Optional[Dict[str, Any]]:
     """Aplica un perfil predeterminado a una cámara existente."""
@@ -376,8 +433,9 @@ def apply_camera_preset(device_path: str, preset_key: str) -> Optional[Dict[str,
         for k, v in preset.items():
             if k != "name":
                 cam[k] = v
-        save_config(config)
-        return cam
+        if save_config(config):
+            return cam
+        return None
     return None
 
 def export_config(safe_mode: bool = True, include_secrets: bool = False) -> Dict[str, Any]:
