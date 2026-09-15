@@ -2,6 +2,7 @@
 # RTMS v2.2.0 — Git Ignore Policy
 # ==============================================================================
 
+# Production deployment and runtime ignore rules
 # Python cache & bytecode
 __pycache__/
 *.py[cod]
