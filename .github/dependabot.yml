@@ -1,3 +1,4 @@
+# RTMS v2.2.0 — GitHub Actions & Dependabot Configuration
 version: 2
 updates:
   - package-ecosystem: "pip"
