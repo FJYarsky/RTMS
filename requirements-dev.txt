@@ -5,6 +5,7 @@
 
 -r requirements.txt
 
+# Testing, linting and code quality assurance tooling
 # Testing & Calidad de Código
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
