@@ -3,5 +3,4 @@
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
-"""Paquete principal para análisis de hardware, gestión de ffmpeg y configuración del sistema."""
-
+"""RTMS core engine - multicam streaming, SRT pipeline, and telemetry."""
