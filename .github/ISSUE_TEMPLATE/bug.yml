@@ -10,7 +10,7 @@ body:
     id: version
     attributes:
       label: Versión de RTMS
-      description: ¿Qué versión de RTMS estás ejecutando? (ej. v2.0.4)
+      description: ¿Qué versión de RTMS estás ejecutando? (ej. v2.1.0)
     validations:
       required: true
   - type: input

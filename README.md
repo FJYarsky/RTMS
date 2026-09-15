@@ -86,11 +86,13 @@ RTMS/
 │   └── TROUBLESHOOTING.md # Guía paso a paso de resolución de problemas
 ├── scripts/               # Scripts de instalación y soporte
 │   └── setup_binaries.ps1 # Descarga segura de FFmpeg con verificación SHA256
-├── tests/                 # Suite de 25 pruebas automatizadas (pytest)
+├── tests/                 # Suite de 35 pruebas automatizadas (pytest)
 │   ├── test_sanitizer.py
 │   ├── test_command_builder.py
 │   ├── test_config_persistence.py
+│   ├── test_config_isolation.py
 │   ├── test_port_mgr.py
+│   ├── test_preview.py
 │   ├── test_stream_lifecycle.py
 │   ├── test_security.py
 │   ├── test_config_mgr.py
@@ -103,7 +105,9 @@ RTMS/
 ├── build_portable.bat     # Generador de ejecutable portable
 ├── CHANGELOG.md           # Historial cronológico de cambios
 ├── SECURITY.md            # Política de divulgación de vulnerabilidades
-└── CONTRIBUTING.md        # Guía para colaboradores
+├── CONTRIBUTING.md        # Guía para colaboradores
+├── THIRD_PARTY_NOTICES.md # Licencias de componentes de terceros (FFmpeg/GPL)
+└── conftest.py            # Fixtures de pytest y aislamiento de entorno
 ```
 
 ---

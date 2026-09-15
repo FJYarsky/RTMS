@@ -38,9 +38,10 @@ Este documento describe la matriz de compatibilidad validada de RTMS para captur
 - **Cámaras Integradas**: Laptops Dell, Lenovo, HP, Asus con sensores UVC DirectShow.
 
 ### Dispositivos Virtuales / Software
-RTMS detecta automáticamente cámaras virtuales y las clasifica para evitar que colisionen o consuman ancho de banda innecesario en el autoarranque:
+RTMS detecta automáticamente cámaras virtuales y las clasifica (`is_virtual: true`, `auto_start: false`) para evitar colisiones de recursos o consumo innecesario de Tensor Cores y GPU en reposo:
+- NVIDIA Broadcast (Cámara de IA con reducción de ruido y fondo virtual)
 - OBS Virtual Camera
 - Elgato Virtual Camera
 - vMix Video
 - Unity Video Capture
-- DroidCam / Iriun Webcam / ManyCam / NDI Video
+- DroidCam / Iriun Webcam / ManyCam / SplitCam / NDI Video

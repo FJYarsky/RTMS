@@ -61,3 +61,17 @@ En los logs figura el error `error while opening encoder` o `h264_nvenc: Driver 
 ### Comportamiento Automático
 - Si una cámara se desconecta durante una transmisión en vivo, RTMS marca el flujo como **DISCONNECTED** y suspende los reintentos inútiles.
 - Al volver a conectar el cable USB, el sincronizador de hardware detecta la reaparición del dispositivo y, si tiene habilitado el autoarranque, relanza el flujo automáticamente.
+
+---
+
+## 5. Elevado Consumo de GPU o Temperatura en Portátiles (e.g. RTX 4050)
+
+### Síntoma
+La GPU dedicada (NVIDIA GeForce RTX 4050 Laptop / 3060 / 4060) exhibe frecuencias elevadas, consumo eléctrico constante (~35W-50W) o aumento de temperatura en reposo.
+
+### Diagnóstico y Solución
+1. **Cámara Virtual NVIDIA Broadcast en Autoarranque**:
+   - Cuando una cámara virtual de IA (`Camera (NVIDIA Broadcast)`) está transmitiendo continuamente, el software de NVIDIA mantiene activos sus modelos de redes neuronales en los Tensor Cores y en el motor 3D, impidiendo que la GPU descienda a estados de ultra bajo consumo (*P-States P8 / D3cold*).
+   - **Solución en RTMS v2.1.0**: RTMS detecta automáticamente `NVIDIA Broadcast` como dispositivo virtual y establece `auto_start: false`. Inicia esta cámara únicamente cuando sea estrictamente necesario.
+2. **P-States de NVENC**:
+   - Al emitir con codificación por hardware (`h264_nvenc`), los controladores NVIDIA fijan la GPU en estado de rendimiento P0/P2 para garantizar la estabilidad de cuadros sin microcortes. En una laptop conectada a la corriente esto es normal y esperado. Si necesitas operar exclusivamente a batería, configura el codificador en `libx264` (CPU) desde los ajustes de la cámara.

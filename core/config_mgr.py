@@ -102,7 +102,7 @@ def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
 def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Migra configuraciones heredadas hacia el esquema más reciente de forma incremental.
-    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (2.0.4 con camera_id y passphrases seguras).
+    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (v2.0.4 / v2.1.0 con camera_id y passphrases seguras).
     """
     schema_ver = data.get("config_schema_version", 1)
 

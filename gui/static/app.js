@@ -1,5 +1,5 @@
 /* ==============================================================================
-   RTMS — Real-Time Multicam System v2.0.4
+   RTMS — Real-Time Multicam System v2.1.0
    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
    Controlador Frontend Asíncrono de SPA
 ============================================================================== */

@@ -12,10 +12,12 @@
 3. **Configura el Entorno Local**:
    ```bash
    pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
-4. **Ejecuta los Tests Automatizados**:
-   Asegúrate de que todas las pruebas pasen antes de enviar cambios:
+4. **Ejecuta los Tests Automatizados y Linter**:
+   Asegúrate de que el código cumpla con el estándar y todas las pruebas pasen antes de enviar cambios:
    ```bash
+   ruff check .
    pytest tests/ -v
    ```
 5. **Haz Commit de tus Cambios** siguiendo convenciones de [Conventional Commits](https://www.conventionalcommits.org/):
