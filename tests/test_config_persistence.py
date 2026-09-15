@@ -3,9 +3,10 @@
 # ==============================================================================
 
 import os
+import core.config_mgr
 from core.config_mgr import (
     migrate_config, save_config, load_config,
-    generate_stable_camera_id, CONFIG_FILE
+    generate_stable_camera_id
 )
 
 def test_generate_stable_camera_id_is_deterministic():
@@ -46,6 +47,13 @@ def test_config_atomic_save_and_backup_creation():
     test_data["test_marker"] = "rtms_persistence_test"
     save_config(test_data)
 
-    assert os.path.exists(CONFIG_FILE)
+    assert os.path.exists(core.config_mgr.CONFIG_FILE)
     loaded = load_config()
     assert loaded.get("test_marker") == "rtms_persistence_test"
+
+    # Segunda modificación para verificar la creación del archivo de respaldo .bak
+    loaded["test_marker"] = "rtms_persistence_test_updated"
+    save_config(loaded)
+    assert os.path.exists(core.config_mgr.CONFIG_BAK_FILE)
+    reloaded = load_config()
+    assert reloaded.get("test_marker") == "rtms_persistence_test_updated"
