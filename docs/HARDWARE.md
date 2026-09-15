@@ -45,3 +45,5 @@ RTMS detecta automáticamente cámaras virtuales y las clasifica (`is_virtual: t
 - vMix Video
 - Unity Video Capture
 - DroidCam / Iriun Webcam / ManyCam / SplitCam / NDI Video
+
+<!-- RTMS Hardware Compatibility Reference v2.2.0 -->
