@@ -1,5 +1,5 @@
 {
-    "_comment": "RTMS v2.2.0 — Plantilla limpia de configuracion para produccion",
+    "_comment": "RTMS v2.2.0 — Production configuration template with hardware acceleration",
     "version": "2.2.0",
     "config_schema_version": 3,
     "cameras": {},
