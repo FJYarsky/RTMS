@@ -33,3 +33,5 @@ RTMS (Real-Time Multicam System) v2.2.0 bundles and interacts with third-party s
 ## 3. Typography & Assets
 
 - **Inter Font Family**: SIL Open Font License, Version 1.1 (Copyright (c) Rasmus Andersson)
+
+<!-- RTMS Third-Party Notices v2.2.0 -->
