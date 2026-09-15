@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.1.0 — Git Ignore Policy
+# RTMS v2.2.0 — Git Ignore Policy
 # ==============================================================================
 
 # Python cache & bytecode
@@ -48,3 +48,9 @@ $RECYCLE.BIN/
 
 # Temporary scratch test files
 scratch/
+
+# Test, linter & coverage caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/

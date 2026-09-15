@@ -5,6 +5,7 @@
 ============================================================================== */
 
 :root {
+    color-scheme: dark;
     --bg-dark: #0b0f19;
     --panel-bg: #111827;
     --card-bg: #1f2937;
@@ -541,7 +542,7 @@ main {
 }
 
 .form-ctrl {
-    background-color: rgba(0, 0, 0, 0.25);
+    background-color: rgba(0, 0, 0, 0.35);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
@@ -549,11 +550,36 @@ main {
     font-size: 0.85rem;
     outline: none;
     transition: all 0.2s ease;
+    text-overflow: ellipsis;
 }
 
 .form-ctrl:focus {
     border-color: var(--teal);
     box-shadow: 0 0 8px rgba(20, 184, 166, 0.15);
+}
+
+/* Reglas de alto contraste para menús desplegables (<select> y <option>) en Chromium / WebView2 */
+select.form-ctrl,
+select {
+    color-scheme: dark;
+    background-color: #131d2e;
+    color: #f9fafb;
+    cursor: pointer;
+}
+
+select.form-ctrl option,
+select option {
+    background-color: #1a2234;
+    color: #f9fafb;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+}
+
+select.form-ctrl option:checked,
+select option:checked {
+    background-color: #0f766e;
+    color: #ffffff;
+    font-weight: 700;
 }
 
 /* ADVANCED CONFIG COLLAPSIBLE */
@@ -621,7 +647,7 @@ main {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     width: 100%;
-    max-width: 550px;
+    max-width: min(660px, 94vw);
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
     transform: translateY(15px);
     transition: transform 0.25s ease;

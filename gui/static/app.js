@@ -836,16 +836,46 @@ async function exportConfiguration() {
         const res = await apiFetch('/api/config/export');
         if (!res.ok) throw new Error("HTTP error " + res.status);
         const data = await res.json();
-        const blob = new Blob([JSON.stringify(data, null, 4)], { type: 'application/json' });
+        const jsonContent = JSON.stringify(data, null, 4);
+        const suggestedFilename = `rtms_config_backup_${new Date().toISOString().slice(0,10)}.json`;
+
+        // 1. Selector interactivo nativo (permite al usuario elegir carpeta y nombre de guardado)
+        if (typeof window.showSaveFilePicker === 'function') {
+            try {
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: suggestedFilename,
+                    types: [{
+                        description: 'Configuración RTMS (*.json)',
+                        accept: { 'application/json': ['.json'] }
+                    }]
+                });
+                const writable = await fileHandle.createWritable();
+                await writable.write(jsonContent);
+                await writable.close();
+                showToast("Configuración guardada exitosamente en la ubicación elegida", "success");
+                return;
+            } catch (pickerErr) {
+                // Si el usuario cancela deliberadamente el diálogo "Guardar como", no generar error
+                if (pickerErr.name === 'AbortError') {
+                    return;
+                }
+                console.warn("showSaveFilePicker no disponible o denegado, utilizando descarga estándar:", pickerErr);
+            }
+        }
+
+        // 2. Fallback estándar para navegadores o entornos donde File System Access esté restringido
+        const blob = new Blob([jsonContent], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `rtms_config_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.download = suggestedFilename;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast("Configuración exportada exitosamente", "success");
+        showToast("Configuración exportada a la carpeta de Descargas", "success");
     } catch (err) {
-        showToast("Error al exportar configuración", "error");
+        showToast("Error al exportar configuración: " + (err.message || err), "error");
     }
 }
 
