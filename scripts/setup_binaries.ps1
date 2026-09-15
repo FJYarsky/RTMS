@@ -2,6 +2,7 @@
 # RTMS v2.1.0 — Descargador y Verificador de Binarios FFmpeg
 # Descarga FFmpeg con soporte DirectShow, NVENC y SRT (Gyan.dev Release Essentials)
 # Con verificación estricta de integridad criptográfica SHA256
+# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
 $ErrorActionPreference = "Stop"

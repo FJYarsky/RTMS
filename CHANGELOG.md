@@ -1,4 +1,4 @@
-# Changelog — RTMS (Real-Time Multicam System)
+# Changelog — RTMS (Real-Time Multicam System) v2.1.0
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).

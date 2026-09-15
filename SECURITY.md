@@ -1,4 +1,4 @@
-# Política de Seguridad — RTMS
+# Política de Seguridad — RTMS v2.1.0
 
 ## Versiones Soportadas
 

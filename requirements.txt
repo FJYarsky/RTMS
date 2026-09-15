@@ -1,5 +1,6 @@
 # ==============================================================================
 # RTMS v2.1.0 — Dependencias de Producción
+# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
 # Framework Web y Servidor ASGI

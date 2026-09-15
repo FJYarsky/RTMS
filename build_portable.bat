@@ -2,7 +2,7 @@
 REM ==============================================================================
 REM RTMS v2.1.0 — Build Script para ejecutable nativo portable (pywebview)
 REM Genera rtms.exe en la carpeta dist/
-REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
+REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 REM ==============================================================================
 
 echo.

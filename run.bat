@@ -1,7 +1,7 @@
 @echo off
 REM ==============================================================================
 REM RTMS v2.1.0 — Lanzador Silencioso (Sin ventana de consola CMD)
-REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com
+REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 REM ==============================================================================
 
 cd /d "%~dp0"
