@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.1 — Dependencias de Producción
+# RTMS v2.2.2 — Dependencias de Producción
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -7,8 +7,8 @@
 # Framework Web y Servidor ASGI
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
-pydantic>=2.8.0
-starlette>=0.38.0
+pydantic>=2.8.2
+starlette>=0.38.2
 jinja2>=3.1.4
 
 # Interfaz Nativa de Escritorio y Bandeja del Sistema

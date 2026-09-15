@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.1 — Tests Unitarios de Sanitización de Secretos (core/sanitizer.py)
+# RTMS v2.2.2 — Tests Unitarios de Sanitización de Secretos (core/sanitizer.py)
 # ==============================================================================
 
 from core.sanitizer import sanitize_command_for_log, sanitize_log_line

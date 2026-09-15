@@ -1,7 +1,38 @@
-# Changelog — RTMS (Real-Time Multicam System) v2.2.1
+# Changelog — RTMS (Real-Time Multicam System)
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
+
+## [2.2.2] — 2026-09-15
+
+### Seguridad y Blindaje Criptográfico (DPAPI & Secretos)
+- **Corrección Crítica en Desencriptación DPAPI (P0-03)**: `unprotect_secret()` ahora retorna cadena vacía o genera `SecretDecryptionError` en lugar de retornar la cadena de error o el texto cifrado original en caso de fallo de `CryptUnprotectData`.
+- **Filtro Global de Secretos y Sanitización de URLs (P0-01, P0-02, P1-15)**: Implementado `SecretFilter` en todos los loggers y la función `sanitize_url()` para enmascarar automáticamente credenciales en URLs SRT en logs, APIs y memoria.
+- **Protección Estricta en Exportación de Configuración (P0-05)**: `GET /api/config/export` fuerza `safe_mode=True` de forma incondicional. Nuevo endpoint `POST /api/config/export/full` requiere confirmación explícita (`confirm_export_secrets: true`) para volcar contraseñas.
+- **Tickets Efímeros para Vista Previa MJPEG (P1-01)**: Creado `PreviewTicketManager` (TTL 60s) accesible en `POST /api/preview/ticket`, eliminando la exposición de tokens de sesión globales en tags `<img>` y URLs del historial de navegación.
+- **Headers de Seguridad HTTP (P2-10)**: Middleware global agregando `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` y `X-Frame-Options: SAMEORIGIN`.
+
+### Estabilidad del Motor Multimedia y Previsualización
+- **Control de Concurrencia en Vista Previa (N8, P1-10)**: Semáforo global (`asyncio.Semaphore(3)`) y asignación exclusiva de ranura por cámara, retornando HTTP 429 ante sobrecarga.
+- **Prevención de Desbordamiento de Memoria en MJPEG (N14)**: Safety cap de 4 MB en el buffer de delimitadores JPEG (`--frame`) para evitar fugas de memoria ante flujos corruptos.
+- **Liberación Inmediata de Dispositivos DirectShow (N4, N5, P1-12)**: Manejo de `asyncio.TimeoutError` con `kill()` forzado y espera de terminación en `get_snapshot_frame()` para evitar bloqueos del driver de cámara.
+- **Cierre Unificado de Servidor y Procesos (N7, P2-04)**: Invocación garantizada de `stream_manager.stop_all()`, `preview_manager.stop_all()` y `telemetry_service.shutdown()` tanto en el lifespan de FastAPI como en el handler `on_closed()`.
+- **Taxonomía de Estados y Categorización de Errores (P1-07, P1-08, P1-09)**: Estados explícitos de ciclo de vida (`STARTING`, `RUNNING`, `RECOVERING`, `STOPPING`, `DISCONNECTED`, `MANUAL_INTERVENTION_REQUIRED`), mapeo a `ErrorCategory` y limpieza garantizada de tareas asíncronas de recuperación.
+- **Detección Dinámica de Colisión de Puertos (P1-05)**: Detección en logs de FFmpeg de fallos de socket (`bind failed`, `address already in use`) con reasignación y reintento en caliente.
+- **Disambiguación de Cámaras Idénticas (P1-04)**: `generate_stable_camera_id` utiliza la ruta física normalizada completa de DirectShow para diferenciar dispositivos con idéntico identificador VID/PID.
+- **Eliminación Permanente de Cámaras (P1-06)**: Nuevo endpoint `DELETE /api/stream/{device_path:path}` con opción en la interfaz gráfica para descartar cámaras persistidas.
+
+### Telemetría de Hardware y Optimización
+- **Uso de Codificador NVENC (P2-01)**: Incorporada la métrica de utilización del motor de codificación de video mediante `nvmlDeviceGetEncoderUtilization`.
+- **Estructuras NVML a Nivel de Módulo (N10)**: Reubicadas estructuras `ctypes` fuera del método de recolección para evitar overhead en cada sondeo.
+- **Soporte Multi-GPU (P2-02)**: Parámetro configurable de índice de dispositivo gráfico para equipos con múltiples GPUs dedicadas.
+- **Diferenciación de Ancho de Banda (N13, P2-03)**: Separación explícita entre el tráfico de red total del sistema operativo y el bitrate emitido por los streams de RTMS.
+- **Degradación Suave y Apagado Limpio (N11, N12, N15, N16)**: Desactivación automática tras 5 fallos consecutivos de sondeo GPU, exclusión mutua mediante `threading.Lock()` y apagado limpio con `nvmlShutdown()`.
+
+### Interfaz de Usuario y Empaquetado
+- **Operatividad 100% Offline / Air-Gapped (P1 Claude, P2-11)**: Removida la dependencia externa de Google Fonts en `index.html`; tipografía nativa multiplataforma optimizada.
+- **Carga Perezosa de Módulos GUI (P4)**: Importaciones seguras de `webview` y `pystray` para compatibilidad en entornos headless y servidores.
+- **Verificación Estricta en Empaquetado y CI (P1-13, P1-14, P1-18, GITHUB-01, GITHUB-03)**: Validación obligatoria de `bin/ffmpeg.exe` y `bin/ffplay.exe` previa al empaquetado, suite de CI con cobertura y workflow de publicación automática de releases en GitHub.
 
 ## [2.2.1] — 2026-09-15
 
@@ -136,4 +167,4 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Soporte básico de UDP Multicast y SRT.
 - Optimizaciones de energía en Windows y reglas de firewall.
 
-<!-- RTMS v2.2.1 Changelog -->
+<!-- RTMS v2.2.2 Changelog -->

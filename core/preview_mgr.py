@@ -1,16 +1,12 @@
-# ==============================================================================
-# RTMS v2.2.1 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
-# ==============================================================================
-
 import os
 import sys
 import shutil
 import asyncio
 import logging
 import subprocess
-from typing import Optional, Dict, AsyncGenerator
+from typing import Optional, Dict, AsyncGenerator, Set
 
+from core.sanitizer import sanitize_url
 from .hardware import get_ffmpeg_bin, has_ffmpeg_binary, _WIN_FLAGS
 
 logger = logging.getLogger("rtms.preview")
@@ -29,12 +25,43 @@ def get_ffplay_bin() -> str:
 
 class PreviewManager:
     """
-    Gestor de Vista Previa de video On-Demand.
-    Garantiza 0% de uso de CPU y GPU cuando no esta activo.
-    Completamente aislado del proceso principal de transmision.
+    Gestor de Vista Previa de video On-Demand con control de concurrencia (N8, P1-10).
+    Garantiza 0% de uso de CPU y GPU cuando no está activo.
+    Completamente aislado del proceso principal de transmisión.
     """
+    MAX_CONCURRENT_PREVIEWS = 3
+    MAX_JPEG_BUFFER = 4 * 1024 * 1024  # 4 MB límite de seguridad (N14)
+
     def __init__(self):
         self._active_ffplay: Dict[str, subprocess.Popen] = {}
+        self._preview_semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_PREVIEWS)
+        self._active_camera_previews: Set[str] = set()
+        self._concurrency_lock = asyncio.Lock()
+
+    @staticmethod
+    def has_ffmpeg_binary() -> bool:
+        """Verifica si el binario de FFmpeg está disponible (N3)."""
+        return has_ffmpeg_binary()
+
+    async def acquire_slot(self, identifier: str) -> bool:
+        """Adquiere un slot de visualización concurrente (máx 3 globales, 1 por cámara) (P1-10)."""
+        async with self._concurrency_lock:
+            if identifier in self._active_camera_previews:
+                return False
+            try:
+                # Usar wait_for con timeout 0 para intento no bloqueante
+                await asyncio.wait_for(self._preview_semaphore.acquire(), timeout=0.01)
+                self._active_camera_previews.add(identifier)
+                return True
+            except asyncio.TimeoutError:
+                return False
+
+    async def release_slot(self, identifier: str):
+        """Libera el slot de visualización ocupado."""
+        async with self._concurrency_lock:
+            if identifier in self._active_camera_previews:
+                self._active_camera_previews.remove(identifier)
+                self._preview_semaphore.release()
 
     def _reap_dead_processes(self):
         """Limpia referencias a procesos FFplay que ya terminaron para evitar acumulación de handles muertos."""
@@ -55,6 +82,10 @@ class PreviewManager:
             if prev and prev.poll() is None:
                 try:
                     prev.terminate()
+                    try:
+                        prev.wait(timeout=1.0)
+                    except subprocess.TimeoutExpired:
+                        prev.kill()
                 except Exception:
                     pass
 
@@ -83,7 +114,8 @@ class PreviewManager:
                 url
             ]
 
-        logger.info(f"Lanzando ventana nativa de vista previa con FFplay: {url}")
+        safe_url_log = sanitize_url(url)
+        logger.info(f"Lanzando ventana nativa de vista previa con FFplay: {safe_url_log}")
         try:
             proc = subprocess.Popen(
                 cmd,
@@ -97,8 +129,8 @@ class PreviewManager:
             logger.error(f"Error al lanzar FFplay: {e}")
             return False
 
-    async def get_snapshot_frame(self, device_path: str) -> Optional[bytes]:
-        """Captura un unico cuadro JPEG directamente desde DirectShow para encuadre."""
+    async def get_snapshot_frame(self, device_path: str, timeout: float = 3.5) -> Optional[bytes]:
+        """Captura un único cuadro JPEG directamente desde DirectShow para encuadre."""
         if not has_ffmpeg_binary():
             return None
 
@@ -116,6 +148,7 @@ class PreviewManager:
             "-"
         ]
 
+        p = None
         try:
             p = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -123,17 +156,32 @@ class PreviewManager:
                 stderr=asyncio.subprocess.DEVNULL,
                 creationflags=_WIN_FLAGS
             )
-            stdout, _ = await asyncio.wait_for(p.communicate(), timeout=3.5)
+            stdout, _ = await asyncio.wait_for(p.communicate(), timeout=timeout)
             if p.returncode == 0 and stdout:
                 return stdout
+        except asyncio.TimeoutError:
+            # Eliminar FFmpeg huérfano para no bloquear la cámara DirectShow (N4)
+            logger.warning(f"Timeout al capturar snapshot de DirectShow para {device_path}. Terminando proceso forzosamente.")
+            if p:
+                try:
+                    p.kill()
+                    await asyncio.wait_for(p.wait(), timeout=1.0)
+                except Exception:
+                    pass
+            return None
         except Exception as e:
             logger.debug(f"No se pudo capturar snapshot de DirectShow para {device_path}: {e}")
         return None
 
-    async def generate_mjpeg_stream(self, input_source: str, is_dshow: bool = False) -> AsyncGenerator[bytes, None]:
+    async def generate_mjpeg_stream(
+        self,
+        input_source: str,
+        is_dshow: bool = False,
+        identifier: Optional[str] = None
+    ) -> AsyncGenerator[bytes, None]:
         """
-        Generador asincrono que canaliza un flujo continuo de frames JPEG por HTTP (MJPEG).
-        Al desconectarse el cliente, el bloque finally asegura la terminacion inmediata del proceso FFmpeg.
+        Generador asíncrono que canaliza un flujo continuo de frames JPEG por HTTP (MJPEG).
+        Al desconectarse el cliente, el bloque finally asegura la terminación inmediata del proceso FFmpeg.
         """
         if not has_ffmpeg_binary():
             return
@@ -167,6 +215,7 @@ class PreviewManager:
             ]
 
         proc = None
+        safe_source_log = sanitize_url(input_source)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -174,7 +223,7 @@ class PreviewManager:
                 stderr=asyncio.subprocess.DEVNULL,
                 creationflags=_WIN_FLAGS
             )
-            logger.info(f"Worker de vista previa iniciado para: {input_source}")
+            logger.info(f"Worker de vista previa iniciado para: {safe_source_log}")
 
             buffer = bytearray()
             while True:
@@ -182,6 +231,12 @@ class PreviewManager:
                 if not chunk:
                     break
                 buffer.extend(chunk)
+
+                # Control defensivo de desbordamiento de memoria (N14)
+                if len(buffer) > self.MAX_JPEG_BUFFER:
+                    logger.warning(f"Buffer MJPEG superó {self.MAX_JPEG_BUFFER} bytes sin frame válido. Reiniciando buffer.")
+                    buffer.clear()
+                    continue
 
                 while True:
                     start = buffer.find(b"\xff\xd8")
@@ -207,9 +262,9 @@ class PreviewManager:
                     yield frame_block
 
         except (asyncio.CancelledError, GeneratorExit):
-            logger.info(f"Cliente de vista previa desconectado ({input_source}). Liberando recursos.")
+            logger.info(f"Cliente de vista previa desconectado ({safe_source_log}). Liberando recursos.")
         except Exception as e:
-            logger.debug(f"Aviso en worker de vista previa ({input_source}): {e}")
+            logger.debug(f"Aviso en worker de vista previa ({safe_source_log}): {e}")
         finally:
             if proc:
                 try:
@@ -221,15 +276,27 @@ class PreviewManager:
                         await asyncio.wait_for(proc.wait(), timeout=1.0)
                     except Exception:
                         pass
-                logger.info(f"Worker de vista previa detenido ({input_source}). Consumo: 0.0%")
+                logger.info(f"Worker de vista previa detenido ({safe_source_log}). Consumo: 0.0%")
+            if identifier:
+                await self.release_slot(identifier)
 
-    def stop_all(self):
-        for proc in self._active_ffplay.values():
+    async def stop_all(self):
+        """Detiene todas las ventanas de FFplay y libera todos los slots de previsualización (N5, P1-12)."""
+        for proc in list(self._active_ffplay.values()):
             if proc.poll() is None:
                 try:
                     proc.terminate()
+                    try:
+                        proc.wait(timeout=1.0)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait(timeout=0.5)
                 except Exception:
                     pass
         self._active_ffplay.clear()
+
+        async with self._concurrency_lock:
+            self._active_camera_previews.clear()
+            self._preview_semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_PREVIEWS)
 
 preview_manager = PreviewManager()

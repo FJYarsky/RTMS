@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.1 — Tests Unitarios para Configuración (core/config_mgr.py)
+# RTMS v2.2.2 — Tests Unitarios para Configuración (core/config_mgr.py)
 # ==============================================================================
 
 from core.config_mgr import is_virtual_device, get_or_allocate_camera_config, import_config, load_config
@@ -36,7 +36,7 @@ def test_get_or_allocate_camera_config():
 def test_import_config_valid():
     """Valida la importación exitosa de un diccionario de configuración válido."""
     valid_payload = {
-        "version": "2.2.1",
+        "version": "2.2.2",
         "config_schema_version": 3,
         "cameras": {
             "@cam1": {
@@ -57,7 +57,7 @@ def test_import_config_invalid_payloads():
     assert import_config("cadena_invalida") is False
     assert import_config(None) is False
     assert import_config([1, 2, 3]) is False
-    assert import_config({"version": "2.2.1"}) is False
+    assert import_config({"version": "2.2.2"}) is False
     assert import_config({"cameras": "no_es_dict"}) is False
     assert import_config({"cameras": [1, 2, 3]}) is False
     assert import_config({"cameras": {"@cam1": "string_invalida"}}) is False

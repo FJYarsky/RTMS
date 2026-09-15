@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.1 — Real-Time Multicam System
+# RTMS v2.2.2 — Real-Time Multicam System
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 
@@ -76,11 +76,12 @@ def protect_secret(plaintext: str, require_secure: bool = True) -> str:
     # Entornos no Windows (CI / Testing multiplataforma)
     return plaintext
 
-def unprotect_secret(ciphertext: str) -> str:
+def unprotect_secret(ciphertext: str, raise_on_error: bool = False) -> str:
     """
     Descifra un secreto previamente protegido con Windows DPAPI.
     Si no está cifrado con DPAPI, lo devuelve tal cual para compatibilidad retroactiva.
-    Si falla el descifrado en Windows (ej. cambio de usuario), loguea una advertencia explícita.
+    Si falla el descifrado en Windows (ej. cambio de usuario o corrupción), NUNCA devuelve
+    el texto cifrado (P0-03 / Claude N1). Devuelve "" o levanta SecretDecryptionError.
     """
     if not ciphertext:
         return ""
@@ -99,13 +100,28 @@ def unprotect_secret(ciphertext: str) -> str:
                     res = ctypes.string_at(out_blob.pbData, out_blob.cbData)
                     ctypes.windll.kernel32.LocalFree(out_blob.pbData)
                     return res.decode('utf-8')
+
+                # CryptUnprotectData retornó 0 / FALSE
+                logger.warning(
+                    "CryptUnprotectData retornó FALSE: la credencial DPAPI no pudo descifrarse "
+                    "(pertenece a otra cuenta de Windows o el blob está corrupto)."
+                )
+                if raise_on_error:
+                    raise SecretDecryptionError("Fallo al descifrar secreto DPAPI: CryptUnprotectData retornó FALSE.")
+                return ""
+            except SecretDecryptionError:
+                raise
             except Exception as exc:
                 logger.warning(
                     f"Fallo al descifrar secreto DPAPI: la credencial fue cifrada con otra cuenta de usuario de Windows o está dañada: {exc}"
                 )
+                if raise_on_error:
+                    raise SecretDecryptionError(f"Fallo de descifrado DPAPI: {exc}") from exc
                 return ""
         else:
             logger.warning("No se puede descifrar secreto DPAPI en un entorno sin soporte DPAPI activo.")
+            if raise_on_error:
+                raise SecretDecryptionError("Entorno sin soporte DPAPI activo.")
             return ""
 
     return ciphertext

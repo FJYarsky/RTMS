@@ -1,0 +1,55 @@
+﻿name: RTMS Release Pipeline
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Download Multimedia Binaries
+        shell: powershell
+        run: |
+          powershell -ExecutionPolicy Bypass -File scripts/setup_binaries.ps1
+
+      - name: Build Portable Executable
+        shell: cmd
+        run: |
+          call build_portable.bat
+
+      - name: Create Release Archive
+        shell: powershell
+        run: |
+          $version = "${{ github.ref_name }}"
+          $zipName = "RTMS-${version}-Windows-x64.zip"
+          Compress-Archive -Path "dist\rtms\*" -DestinationPath $zipName -Force
+          Write-Host "Created archive: $zipName"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: RTMS-*-Windows-x64.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true

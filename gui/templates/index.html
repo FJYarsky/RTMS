@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- RTMS v2.2.1 Web UI Dashboard -->
+    <!-- RTMS v2.2.2 Web UI Dashboard -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="rtms-token" content="{{ api_token }}">
     <title>RTMS v{{ version }} — Real-Time Multicam System</title>
     <link rel="stylesheet" href="/static/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- ==============================================================================
@@ -450,6 +449,7 @@
                 </form>
             </div>
             <div class="modal-foot">
+                <button class="btn btn-danger btn-sm" type="button" style="margin-right: auto;" onclick="deleteCurrentCamera()">🗑️ Eliminar Cámara</button>
                 <button class="btn btn-ghost" onclick="closeConfigModal()">Cancelar</button>
                 <button class="btn btn-primary" onclick="document.getElementById('form-submit-hidden').click()">Guardar y Aplicar</button>
             </div>

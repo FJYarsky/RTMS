@@ -1,5 +1,5 @@
 /* ==============================================================================
-   RTMS — Real-Time Multicam System v2.2.1
+   RTMS — Real-Time Multicam System v2.2.2
    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
    Controlador Frontend Asíncrono de SPA
 ============================================================================== */
@@ -604,6 +604,29 @@ function closeConfigModal() {
     document.getElementById('config-modal-overlay').classList.remove('active');
 }
 
+async function deleteCurrentCamera() {
+    const dp = document.getElementById('config-device-path').value;
+    if (!dp) return;
+    if (!confirm("¿Estás seguro de que deseas eliminar permanentemente esta cámara de la configuración?")) {
+        return;
+    }
+    try {
+        const res = await apiFetch(`/api/stream/${encodeURIComponent(dp)}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || "Cámara eliminada", 'success');
+            closeConfigModal();
+            fetchStatus();
+        } else {
+            showToast(data.detail || 'Error al eliminar cámara', 'error');
+        }
+    } catch (e) {
+        showToast('Error de comunicación con el servidor', 'error');
+    }
+}
+
 function handleProtocolChange(protocol) {
     const advPanel = document.getElementById('config-advanced-panel');
     const advTrigger = document.querySelector('.advanced-trigger');
@@ -918,8 +941,8 @@ function triggerImportConfiguration() {
     input.click();
 }
 
-// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND
-function openPreviewModal(index) {
+// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND CON TICKETS EFÍMEROS (P1-01)
+async function openPreviewModal(index) {
     const stream = _streams[index];
     if (!stream) return;
 
@@ -933,7 +956,6 @@ function openPreviewModal(index) {
     if (!modal || !imgEl) return;
 
     titleEl.textContent = `Vista Previa — ${stream.friendly_name}`;
-    const token = getApiToken();
     const isRunning = stream.status.state === 'running';
 
     infoEl.innerHTML = isRunning 
@@ -942,9 +964,31 @@ function openPreviewModal(index) {
 
     loader.style.display = 'flex';
     imgEl.style.display = 'none';
+    modal.classList.add('active');
 
-    // Generar URL con token y cache-buster
-    const previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?token=${encodeURIComponent(token)}&t=${Date.now()}`;
+    let ticket = null;
+    try {
+        const ticketRes = await apiFetch('/api/preview/ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_path: stream.device_path, ttl_seconds: 60 })
+        });
+        if (ticketRes.ok) {
+            const ticketData = await ticketRes.json();
+            ticket = ticketData.ticket;
+        }
+    } catch (e) {
+        console.warn("No se pudo obtener ticket efímero de preview, recurriendo a fallback:", e);
+    }
+
+    // Generar URL con ticket efímero (o token fallback) y cache-buster
+    let previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?t=${Date.now()}`;
+    if (ticket) {
+        previewUrl += `&ticket=${encodeURIComponent(ticket)}`;
+    } else {
+        const token = getApiToken();
+        if (token) previewUrl += `&token=${encodeURIComponent(token)}`;
+    }
 
     imgEl.onload = () => {
         loader.style.display = 'none';
@@ -953,7 +997,7 @@ function openPreviewModal(index) {
 
     imgEl.onerror = () => {
         loader.style.display = 'none';
-        infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">(No disponible)</span>`;
+        infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">(No disponible o límite alcanzado)</span>`;
     };
 
     imgEl.src = previewUrl;
@@ -961,8 +1005,6 @@ function openPreviewModal(index) {
     if (ffplayBtn) {
         ffplayBtn.onclick = () => launchFFplayExternal(stream.device_path);
     }
-
-    modal.classList.add('active');
 }
 
 function closePreviewModal() {

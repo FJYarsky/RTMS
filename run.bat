@@ -1,7 +1,7 @@
 @echo off
-REM RTMS v2.2.1 Windows Quick-Start Launcher
+REM RTMS v2.2.2 Windows Quick-Start Launcher
 REM ==============================================================================
-REM RTMS v2.2.1 — Lanzador Silencioso (Sin ventana de consola CMD)
+REM RTMS v2.2.2 — Lanzador Silencioso (Sin ventana de consola CMD)
 REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 REM ==============================================================================
 

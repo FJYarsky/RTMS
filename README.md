@@ -1,4 +1,4 @@
-# RTMS — Real-Time Multicam System v2.2.1
+# RTMS — Real-Time Multicam System v2.2.2
 
 <div align="center">
 
@@ -6,7 +6,7 @@
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Seguridad-DPAPI%20%7C%20Token-10b981)](#-seguridad)
 [![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Pruebas-68%20Aprobadas-10b981)](tests/)
+[![Tests](https://img.shields.io/badge/Pruebas-80%20Aprobadas-10b981)](tests/)
 [![License](https://img.shields.io/badge/Licencia-MIT-gray.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Autor-Joaqu%C3%ADn%20Yarsky-f59e0b)](mailto:joaquinyarsky@gmail.com)
 
@@ -77,8 +77,10 @@ python main.py
 
 | Mecanismo | Descripción |
 | :--- | :--- |
-| **Sanitización de Logs** | Oculta automáticamente contraseñas SRT y tokens en consola, registros y memoria. |
-| **Cifrado DPAPI** | Contraseñas protegidas mediante las API criptográficas del usuario de Windows. |
+| **Sanitización de Logs y URLs** | Oculta automáticamente contraseñas SRT y tokens en consola, registros y memoria. |
+| **Cifrado DPAPI** | Contraseñas protegidas mediante las API criptográficas del usuario de Windows sin fuga en caso de fallo. |
+| **Tickets Efímeros (MJPEG)** | Tokens temporales criptográficos de un solo uso para previsualizaciones sin exponer credenciales globales. |
+| **Cabeceras HTTP y Air-Gapped** | UI 100% offline sin dependencias CDN y cabeceras estrictas (CSP, X-Frame-Options, nosniff). |
 | **Token de Sesión** | Endpoints de control y telemetría autenticados con cabecera `X-RTMS-Token`. |
 | **CORS Localhost** | Restricción estricta de origen a `127.0.0.1` para mitigar accesos indebidos desde la red. |
 
@@ -93,7 +95,7 @@ RTMS/
 ├── gui/                   # Panel de control web (SPA, plantillas y estilos)
 ├── docs/                  # Guías de compatibilidad de hardware y troubleshooting
 ├── scripts/               # Scripts de descarga y verificación de FFmpeg
-├── tests/                 # Suite de pruebas automatizadas (68 tests)
+├── tests/                 # Suite de pruebas automatizadas (80 tests)
 ├── config/                # Plantilla de configuración (config.example.json)
 ├── main.py                # Punto de entrada de la aplicación
 ├── run.bat                # Lanzador rápido para Windows
@@ -106,7 +108,7 @@ RTMS/
 ## 🧪 Pruebas Automatizadas
 
 ```bash
-# Ejecutar suite completa (68 tests):
+# Ejecutar suite completa (80 tests):
 pytest tests/ -v
 
 # Verificación de estilo con Ruff:

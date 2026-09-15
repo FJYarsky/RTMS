@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.1 — Tests Deterministas de Construcción de Comandos FFmpeg
+# RTMS v2.2.2 — Tests Deterministas de Construcción de Comandos FFmpeg
 # ==============================================================================
 
 import asyncio
@@ -75,10 +75,13 @@ def test_build_command_url_escapes_passphrase_special_characters():
         }
         cmd, url, enc = await mgr.build_command(cfg, force_cpu=True)
 
-        # En la URL cruda debe estar codificada (ej. %26 en vez de & sin escapar)
-        assert "mi_clave" in url
-        # Comprobar que no hay inyección de parámetros secundarios espurios
-        assert "foo=bar" not in url.split("passphrase=")[0]
+        # En la URL cruda del comando debe estar codificada (ej. %26 en vez de & sin escapar)
+        raw_url = cmd[-1]
+        assert "mi_clave" in raw_url
+        assert "foo=bar" not in raw_url.split("passphrase=")[0]
+        # La URL retornada para APIs y estado debe estar sanitizada (P0-01)
+        assert "mi_clave" not in url
+        assert "••••••••" in url or "********" in url
 
     asyncio.run(_run())
 

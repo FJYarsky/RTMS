@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.1 — Descargador y Verificador de Binarios FFmpeg
+# RTMS v2.2.2 — Descargador y Verificador de Binarios FFmpeg
 # Descarga FFmpeg con soporte DirectShow, NVENC y SRT (Gyan.dev Release Essentials)
 # Con verificación estricta de integridad criptográfica SHA256
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
@@ -14,18 +14,19 @@ $ErrorActionPreference = "Stop"
 $baseDir = Split-Path -Parent $PSScriptRoot
 $binDir = Join-Path $baseDir "bin"
 $ffmpegExe = Join-Path $binDir "ffmpeg.exe"
+$ffplayExe = Join-Path $binDir "ffplay.exe"
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " RTMS v2.2.1 — Verificador de Binarios FFmpeg" -ForegroundColor Cyan
+Write-Host " RTMS v2.2.2 — Verificador de Binarios FFmpeg y FFplay" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
-if (Test-Path $ffmpegExe) {
-    Write-Host "[OK] FFmpeg ya se encuentra instalado en: $ffmpegExe" -ForegroundColor Green
+if ((Test-Path $ffmpegExe) -and (Test-Path $ffplayExe)) {
+    Write-Host "[OK] FFmpeg y FFplay ya se encuentran instalados en: $binDir" -ForegroundColor Green
     & $ffmpegExe -version | Select-Object -First 1
     exit 0
 }
 
-Write-Host "[INFO] FFmpeg no encontrado en $binDir. Iniciando descarga segura..." -ForegroundColor Yellow
+Write-Host "[INFO] Binarios incompletos o ausentes en $binDir. Iniciando descarga segura..." -ForegroundColor Yellow
 
 if (-not (Test-Path $binDir)) {
     New-Item -ItemType Directory -Path $binDir -Force | Out-Null
@@ -79,5 +80,11 @@ if ($extractedPlay) {
 Remove-Item -Path $zipPath -Force
 Remove-Item -Path $extractDir -Recurse -Force
 
-Write-Host "[OK] FFmpeg instalado y verificado exitosamente en: $ffmpegExe" -ForegroundColor Green
+if (-not (Test-Path $ffmpegExe) -or -not (Test-Path $ffplayExe)) {
+    Write-Host "[ERROR] Uno o ambos binarios (ffmpeg.exe, ffplay.exe) no pudieron ser instalados." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "[OK] FFmpeg y FFplay instalados y verificados exitosamente en: $binDir" -ForegroundColor Green
 & $ffmpegExe -version | Select-Object -First 1
+& $ffplayExe -version | Select-Object -First 1

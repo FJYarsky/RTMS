@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.1 — Tests Unitarios de Ciclo de Vida de Streams (core/ffmpeg_mgr.py)
+# RTMS v2.2.2 — Tests Unitarios de Ciclo de Vida de Streams (core/ffmpeg_mgr.py)
 # Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
 # ==============================================================================
 

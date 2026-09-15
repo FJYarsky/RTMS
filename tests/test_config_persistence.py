@@ -1,5 +1,5 @@
 # ==============================================================================
-# RTMS v2.2.1 — Tests Unitarios de Persistencia y Migraciones (core/config_mgr.py)
+# RTMS v2.2.2 — Tests Unitarios de Persistencia y Migraciones (core/config_mgr.py)
 # ==============================================================================
 
 import os
