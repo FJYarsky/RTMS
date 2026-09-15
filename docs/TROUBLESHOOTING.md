@@ -1,4 +1,4 @@
-# Guía de Resolución de Problemas (Troubleshooting) — RTMS
+# Guía de Resolución de Problemas (Troubleshooting) — RTMS v2.2.2
 
 Esta guía ofrece soluciones prácticas e instrucciones paso a paso para los incidentes más frecuentes en transmisiones multicámara con RTMS.
 
@@ -72,6 +72,8 @@ La GPU dedicada (NVIDIA GeForce RTX 4050 Laptop / 3060 / 4060) exhibe frecuencia
 ### Diagnóstico y Solución
 1. **Cámara Virtual NVIDIA Broadcast en Autoarranque**:
    - Cuando una cámara virtual de IA (`Camera (NVIDIA Broadcast)`) está transmitiendo continuamente, el software de NVIDIA mantiene activos sus modelos de redes neuronales en los Tensor Cores y en el motor 3D, impidiendo que la GPU descienda a estados de ultra bajo consumo (*P-States P8 / D3cold*).
-   - **Solución en RTMS v2.2.0**: RTMS detecta automáticamente `NVIDIA Broadcast` como dispositivo virtual y establece `auto_start: false`. Inicia esta cámara únicamente cuando sea estrictamente necesario. Además, la telemetría en el HUD te permite supervisar el uso de GPU y VRAM en tiempo real.
+   - **Solución en RTMS v2.2.2**: RTMS detecta automáticamente `NVIDIA Broadcast` como dispositivo virtual y establece `auto_start: false`. Inicia esta cámara únicamente cuando sea estrictamente necesario. Además, la telemetría en el HUD te permite supervisar el uso de GPU y VRAM en tiempo real.
 2. **P-States de NVENC**:
    - Al emitir con codificación por hardware (`h264_nvenc`), los controladores NVIDIA fijan la GPU en estado de rendimiento P0/P2 para garantizar la estabilidad de cuadros sin microcortes. En una laptop conectada a la corriente esto es normal y esperado. Si necesitas operar exclusivamente a batería, configura el codificador en `libx264` (CPU) desde los ajustes de la cámara.
+
+<!-- RTMS Troubleshooting Guide v2.2.2 -->
