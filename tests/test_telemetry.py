@@ -1,3 +1,5 @@
+"""Unit and integration tests for GPU and network telemetry in RTMS v2.2.0."""
+
 # ==============================================================================
 # RTMS v2.2.0 — Tests de Telemetría (tests/test_telemetry.py)
 # ==============================================================================
