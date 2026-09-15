@@ -16,26 +16,28 @@ def test_preview_endpoint_requires_auth(client):
 
 def test_preview_endpoint_accepts_query_token(client):
     # With query param token -> should not be 403 (e.g. 200 or streaming)
-    with patch.object(preview_manager, "generate_mjpeg_stream") as mock_gen:
-        async def dummy_gen(*args, **kwargs):
-            yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\nfakejpg\r\n"
-        mock_gen.return_value = dummy_gen()
+    with patch.object(preview_manager, "has_ffmpeg_binary", return_value=True):
+        with patch.object(preview_manager, "generate_mjpeg_stream") as mock_gen:
+            async def dummy_gen(*args, **kwargs):
+                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\nfakejpg\r\n"
+            mock_gen.return_value = dummy_gen()
 
-        res = client.get("/api/stream/test_cam/preview?token=test_preview_secret_token_123")
-        assert res.status_code == 200
-        assert "multipart/x-mixed-replace" in res.headers["content-type"]
+            res = client.get("/api/stream/test_cam/preview?token=test_preview_secret_token_123")
+            assert res.status_code == 200
+            assert "multipart/x-mixed-replace" in res.headers["content-type"]
 
 def test_preview_endpoint_accepts_header_token(client):
-    with patch.object(preview_manager, "generate_mjpeg_stream") as mock_gen:
-        async def dummy_gen(*args, **kwargs):
-            yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\nfakejpg\r\n"
-        mock_gen.return_value = dummy_gen()
+    with patch.object(preview_manager, "has_ffmpeg_binary", return_value=True):
+        with patch.object(preview_manager, "generate_mjpeg_stream") as mock_gen:
+            async def dummy_gen(*args, **kwargs):
+                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\nfakejpg\r\n"
+            mock_gen.return_value = dummy_gen()
 
-        res = client.get(
-            "/api/stream/test_cam/preview",
-            headers={"X-RTMS-Token": "test_preview_secret_token_123"}
-        )
-        assert res.status_code == 200
+            res = client.get(
+                "/api/stream/test_cam/preview",
+                headers={"X-RTMS-Token": "test_preview_secret_token_123"}
+            )
+            assert res.status_code == 200
 
 def test_ffplay_launch_requires_auth(client):
     res = client.post("/api/stream/test_cam/ffplay")

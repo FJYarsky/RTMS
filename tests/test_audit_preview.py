@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # RTMS v2.2.2 — Preview Subsystem Audit Verification Tests
 # Tests TEST-05 to TEST-08 covering N8, P1-10, N14, N4, N5, P1-12
 # ==============================================================================
@@ -113,6 +113,8 @@ def test_snapshot_timeout_kills_process(monkeypatch):
             return StuckProc()
 
         monkeypatch.setattr("asyncio.create_subprocess_exec", fake_subp)
+        monkeypatch.setattr("core.preview_mgr.has_ffmpeg_binary", lambda: True)
+        monkeypatch.setattr("core.preview_mgr.get_ffmpeg_bin", lambda: "ffmpeg.exe")
 
         # Call with very short timeout
         frame = await pm.get_snapshot_frame("dummy_device", timeout=0.1)
