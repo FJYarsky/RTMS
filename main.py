@@ -242,6 +242,22 @@ def show_window_from_tray():
     except Exception as e:
         logger.error(f"Error abriendo navegador web: {e}")
 
+def show_about_from_tray():
+    """Restaura la ventana principal y abre el modal Acerca de, o muestra diálogo nativo si no hay GUI."""
+    global _main_window, _tray_mgr
+    opened_in_window = False
+    if _main_window is not None:
+        try:
+            _main_window.show()
+            _main_window.restore()
+            _main_window.evaluate_js("if (typeof openAboutModal === 'function') openAboutModal();")
+            opened_in_window = True
+        except Exception as e:
+            logger.debug(f"Aviso al mostrar modal Acerca de en ventana nativa: {e}")
+
+    if not opened_in_window and _tray_mgr is not None:
+        _tray_mgr._show_default_about()
+
 def on_closed():
     """Cierre unificado y ordenado de la aplicación."""
     logger.info("Cierre de aplicación solicitado. Ejecutando protocolo ordenado...")
@@ -328,7 +344,8 @@ if __name__ == "__main__":
         on_show_window=show_window_from_tray,
         on_stop_streams=_handle_tray_stop_streams,
         on_terminate_all=_handle_tray_terminate_all,
-        on_exit_app=on_closed
+        on_exit_app=on_closed,
+        on_about=show_about_from_tray
     )
     _tray_mgr.start()
 

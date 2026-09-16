@@ -8,6 +8,9 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - **Corrección Crítica de Ventana Nativa en Release Portable**:
   - En la distribución portable generada por PyInstaller, se empaquetan las dependencias nativas de `pythonnet` (`--hidden-import=pythonnet`, `--collect-all=pythonnet`) y se copian automáticamente todas las DLLs de WebView2 (`Microsoft.Web.WebView2.Core.dll`, `Microsoft.Web.WebView2.WinForms.dll` y la carpeta de arquitecturas `runtimes/`) junto a `icon.ico` hacia la raíz y `_internal` de `dist/rtms/`.
   - Se elimina el fallo silencioso que forzaba a la aplicación a abrirse en el navegador por defecto (Google Chrome) en lugar del entorno de escritorio nativo con aceleración Edge WebView2.
+- **Corrección de Diseño y Visualización de Métricas del HUD**:
+  - Corregida la alineación horizontal flexible (`display: flex; flex-direction: row;`) de los indicadores de telemetría (CPU, GPU, RAM, Red, Bitrate) en la barra superior (`header`), resolviendo el apilamiento vertical y desbordamiento tras la adición del botón de detención y salida.
+  - Incorporadas reglas de adaptabilidad responsiva con *media queries* para garantizar una visualización impecable en ventanas compactas.
 - **Eliminación de Ventanas Duplicadas y Pestañas Periódicas**:
   - `show_window_from_tray()` en `main.py` ahora valida la existencia de la ventana nativa (`_main_window`) e invoca exclusivamente `show()` y `restore()`. Se eliminó cualquier invocación accidental a `webbrowser.open()` cuando el motor nativo está activo.
   - Sincronización robustecida en `acquire_single_instance_lock()` para que segundas instancias pasen el foco a la ventana existente mediante señalización IPC en lugar de desplegar interfaces concurrentes.
@@ -29,6 +32,8 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
   - Sustituida la nomenclatura alarmista por `⏹️ Detener Todo` / `Detención Global` en la interfaz, adaptando el color del botón a tono ámbar sobrio.
 
 ### Integración y Rediseño del System Tray
+- **Opción "Acerca de RTMS" en la Bandeja del Sistema**:
+  - Incorporada la opción de menú `Acerca de RTMS` en `core/tray_icon.py`, permitiendo invocar el modal interactivo de información y créditos de autor en la ventana nativa o un cuadro de diálogo nativo Win32 en caso de ejecución en segundo plano.
 - **Icono Vectorial Moderno**: Rediseñado el icono por defecto en `core/tray_icon.py` con diseño de esquinas redondeadas en color grafito oscuro (`#1E293B`), lente concéntrico cian (`#06B6D4` / `#0891B2`) y punto indicador de captura.
 - **Menú Contextual Enriquecido**: Agregadas las acciones `Detener todas las transmisiones`, `Finalizar todos los procesos` y tooltip dinámico con versión del sistema.
 - **Restauración Fiable**: El botón `Mostrar RTMS` enfoca de forma consistente la ventana nativa de la aplicación.

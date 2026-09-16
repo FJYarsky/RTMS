@@ -15,11 +15,12 @@ from core.__version__ import __version__
 logger = logging.getLogger("rtms.tray")
 
 class SystemTrayManager:
-    def __init__(self, on_show_window=None, on_stop_streams=None, on_terminate_all=None, on_exit_app=None):
+    def __init__(self, on_show_window=None, on_stop_streams=None, on_terminate_all=None, on_exit_app=None, on_about=None):
         self.on_show_window = on_show_window
         self.on_stop_streams = on_stop_streams
         self.on_terminate_all = on_terminate_all
         self.on_exit_app = on_exit_app
+        self.on_about = on_about
         self.icon = None
         self._thread = None
 
@@ -106,6 +107,12 @@ class SystemTrayManager:
                 except Exception:
                     sys.exit(0)
 
+        def _about(icon, item):
+            if self.on_about:
+                self.on_about()
+            else:
+                self._show_default_about()
+
         def _exit(icon, item):
             icon.stop()
             if self.on_exit_app:
@@ -117,6 +124,8 @@ class SystemTrayManager:
             pystray.MenuItem("Detener todas las transmisiones", _stop_all),
             pystray.MenuItem("Finalizar todos los procesos", _terminate),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Acerca de RTMS", _about),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem("Salir de RTMS", _exit)
         )
 
@@ -125,6 +134,27 @@ class SystemTrayManager:
         self._thread = threading.Thread(target=self.icon.run, daemon=True)
         self._thread.start()
         logger.info("Icono de bandeja del sistema (System Tray) iniciado con opciones completas.")
+
+    def _show_default_about(self):
+        """Muestra un cuadro de diálogo nativo de Windows con la información oficial de RTMS."""
+        try:
+            import ctypes
+            title = "Acerca de RTMS"
+            msg = (
+                f"RTMS — Real-Time Multicam System v{__version__}\n\n"
+                "Servidor de video multicámara de baja latencia para Windows utilizando SRT y DirectShow.\n\n"
+                "Desarrollador: Joaquín Yarsky (joaquinyarsky@gmail.com)\n"
+                "Repositorio: https://github.com/FJYarsky/RTMS\n"
+                "Licencia: MIT"
+            )
+            # MB_OK (0x0) | MB_ICONINFORMATION (0x40) | MB_SETFOREGROUND (0x10000) | MB_TOPMOST (0x40000)
+            flags = 0x40 | 0x10000 | 0x40000
+            threading.Thread(
+                target=lambda: ctypes.windll.user32.MessageBoxW(0, msg, title, flags),
+                daemon=True
+            ).start()
+        except Exception as e:
+            logger.warning(f"No se pudo mostrar el diálogo Acerca de: {e}")
 
     def stop(self):
         if self.icon:

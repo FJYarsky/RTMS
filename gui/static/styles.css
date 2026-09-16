@@ -62,12 +62,14 @@ header {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    padding: 0 24px;
+    padding: 0 20px;
     justify-content: space-between;
+    gap: 12px;
     position: sticky;
     top: 0;
     z-index: 100;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    min-height: 60px;
 }
 
 .logo-section {
@@ -978,26 +980,34 @@ input[type="checkbox"]:checked + .switch-toggle::after {
 }
 
 /* Telemetry HUD in Header */
-.header-hud {
+.header-hud,
+.hud-telemetry {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 12px;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    padding: 5px 14px;
+    padding: 5px 12px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    user-select: none;
 }
 
 .hud-item {
-    display: flex;
+    display: inline-flex;
+    flex-direction: row;
     align-items: baseline;
-    gap: 5px;
-    font-family: monospace;
+    gap: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    white-space: nowrap;
 }
 
 .hud-label {
     font-size: 0.65rem;
     font-weight: 800;
+    letter-spacing: 0.5px;
     color: var(--text-muted);
 }
 
@@ -1013,13 +1023,14 @@ input[type="checkbox"]:checked + .switch-toggle::after {
     color: #ffffff;
     font-weight: 700;
     font-size: 0.75rem;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     border: 1px solid #f59e0b;
     box-shadow: 0 0 10px rgba(217, 119, 6, 0.3);
     padding: 6px 12px;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .btn-emergency:hover {
@@ -1034,19 +1045,70 @@ input[type="checkbox"]:checked + .switch-toggle::after {
     color: #ffffff;
     font-weight: 700;
     font-size: 0.75rem;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     border: 1px solid #f87171;
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
     padding: 6px 12px;
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .btn-kill-procs:hover {
     background: #dc2626;
     box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
     transform: translateY(-1px);
+}
+
+/* Reglas de Adaptabilidad Responsiva para el Header y HUD */
+@media (max-width: 1250px) {
+    .header-hud,
+    .hud-telemetry {
+        gap: 8px;
+        padding: 4px 10px;
+    }
+    .hud-item {
+        gap: 3px;
+    }
+    .hud-label {
+        font-size: 0.62rem;
+    }
+    .hud-val {
+        font-size: 0.76rem;
+    }
+    .header-status {
+        gap: 8px;
+    }
+    .status-pill,
+    .ip-pill {
+        padding: 3px 8px;
+        font-size: 0.72rem;
+    }
+    .btn-emergency,
+    .btn-kill-procs {
+        padding: 5px 9px;
+        font-size: 0.72rem;
+    }
+}
+
+@media (max-width: 1080px) {
+    #hud-gpu-item {
+        display: none;
+    }
+    .header-hud,
+    .hud-telemetry {
+        gap: 8px;
+    }
+}
+
+@media (max-width: 960px) {
+    .ip-pill {
+        display: none;
+    }
+    .status-pill {
+        display: none;
+    }
 }
 
 .btn-warning {
