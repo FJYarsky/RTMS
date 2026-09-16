@@ -693,3 +693,4 @@ async def launch_external_ffplay(device_path: str):
         raise HTTPException(status_code=500, detail="No se pudo iniciar FFplay. Verifique que bin/ffplay.exe esté disponible.")
 
     return {"status": "ok", "message": f"Monitor FFplay lanzado para {name}"}
+ 
