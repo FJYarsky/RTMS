@@ -163,3 +163,4 @@ class SystemTrayManager:
             except Exception:
                 pass
             self.icon = None
+ 
