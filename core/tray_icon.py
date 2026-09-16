@@ -82,41 +82,56 @@ class SystemTrayManager:
 
         image = self._get_icon_image()
 
+        def _dispatch_async(fn, *args, **kwargs):
+            """Despacha la acción en un hilo separado de forma inmediata para mantener la bomba de mensajes Win32 100% responsiva."""
+            if fn:
+                threading.Thread(target=fn, args=args, kwargs=kwargs, daemon=True).start()
+
         def _show(icon, item):
-            if self.on_show_window:
-                self.on_show_window()
+            _dispatch_async(self.on_show_window)
 
         def _stop_all(icon, item):
-            if self.on_stop_streams:
-                self.on_stop_streams()
-            else:
-                try:
-                    from core.ffmpeg_mgr import stream_manager
-                    import asyncio
-                    asyncio.create_task(stream_manager.stop_all())
-                except Exception as e:
-                    logger.debug(f"Aviso deteniendo streams desde tray: {e}")
+            def _do_stop():
+                if self.on_stop_streams:
+                    self.on_stop_streams()
+                else:
+                    try:
+                        from core.ffmpeg_mgr import stream_manager
+                        import asyncio
+                        asyncio.run(stream_manager.stop_all())
+                    except Exception as e:
+                        logger.debug(f"Aviso deteniendo streams desde tray: {e}")
+            _dispatch_async(_do_stop)
 
         def _terminate(icon, item):
-            if self.on_terminate_all:
-                self.on_terminate_all()
-            else:
-                try:
-                    from core.process_cleanup import terminate_all_processes
-                    terminate_all_processes(force=True)
-                except Exception:
-                    sys.exit(0)
+            def _do_terminate():
+                if self.on_terminate_all:
+                    self.on_terminate_all()
+                else:
+                    try:
+                        from core.process_cleanup import terminate_all_processes
+                        terminate_all_processes(force=True)
+                    except Exception:
+                        sys.exit(0)
+            _dispatch_async(_do_terminate)
 
         def _about(icon, item):
-            if self.on_about:
-                self.on_about()
-            else:
-                self._show_default_about()
+            def _do_about():
+                if self.on_about:
+                    self.on_about()
+                else:
+                    self._show_default_about()
+            _dispatch_async(_do_about)
 
         def _exit(icon, item):
-            icon.stop()
-            if self.on_exit_app:
-                self.on_exit_app()
+            def _do_exit():
+                try:
+                    icon.stop()
+                except Exception:
+                    pass
+                if self.on_exit_app:
+                    self.on_exit_app()
+            _dispatch_async(_do_exit)
 
         menu = pystray.Menu(
             pystray.MenuItem("Mostrar RTMS", _show, default=True),
