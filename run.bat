@@ -16,3 +16,4 @@ if exist "bin\python\pythonw.exe" (
 REM Fallback al pythonw del sistema
 start "" pythonw main.py
 exit /b 0
+ 
