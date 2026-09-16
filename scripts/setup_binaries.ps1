@@ -96,3 +96,4 @@ if (-not (Test-Path $ffmpegExe) -or -not (Test-Path $ffplayExe)) {
 Write-Host "[OK] FFmpeg y FFplay instalados y verificados exitosamente en: $binDir" -ForegroundColor Green
 & $ffmpegExe -version | Select-Object -First 1
 & $ffplayExe -version | Select-Object -First 1
+ 
