@@ -31,14 +31,14 @@ class PortManager:
         # Verificar UDP
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.bind(("0.0.0.0", port))
+                s.bind(("127.0.0.1", port))
         except OSError:
             return True
 
         # Verificar TCP (por si algún otro servicio local lo está usando)
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(("0.0.0.0", port))
+                s.bind(("127.0.0.1", port))
         except OSError:
             return True
 

@@ -278,7 +278,7 @@ def restore_original_power_settings() -> Dict[str, Any]:
         return {"status": "ok", "message": "Restauración completada con éxito"}
     except Exception as e:
         logger.error(f"Error durante la restauración energética: {e}")
-        return {"status": "error", "message": f"Error: {e}"}
+        return {"status": "error", "message": "Fallo interno durante la restauración energética"}
 
 def setup_windows_environment() -> Dict[str, Any]:
     """
@@ -314,7 +314,8 @@ def setup_windows_environment() -> Dict[str, Any]:
             else:
                 failed.append("Fallo al configurar suspensión selectiva USB")
         except Exception as e:
-            failed.append(f"Error en configuración USB: {e}")
+            logger.error(f"Error en configuración USB: {e}")
+            failed.append("Fallo al configurar suspensión selectiva USB")
     else:
         warnings.append("No se pudo detectar el GUID del plan de energía activo; omitiendo cambios dependientes de GUID")
 
@@ -337,7 +338,8 @@ def setup_windows_environment() -> Dict[str, Any]:
             else:
                 failed.append(f"Fallo en: {desc} (code {res.returncode})")
         except Exception as exc:
-            failed.append(f"Excepción en {desc}: {exc}")
+            logger.error(f"Excepción en {desc}: {exc}")
+            failed.append(f"Fallo al ejecutar: {desc}")
 
     # 3. Optimización de red
     if apply_network_power_settings():

@@ -6,6 +6,8 @@
 
 import os
 import sys
+import re
+import urllib.parse
 import shutil
 import asyncio
 import logging
@@ -82,6 +84,9 @@ class PreviewManager:
             logger.error(f"Binario FFplay no encontrado en {ffplay_bin}")
             return False
 
+        # Sanitizar título de ventana para prevenir inyección de caracteres o banderas
+        safe_title = re.sub(r'[^a-zA-Z0-9\s\-_\.\(\):áéíóúÁÉÍÓÚñÑ—]', '', str(title))[:120].strip() or "RTMS Preview"
+
         # Cerrar instancia previa para esta URL si ya existe
         if url in self._active_ffplay:
             prev = self._active_ffplay.pop(url, None)
@@ -96,10 +101,14 @@ class PreviewManager:
                     pass
 
         if is_dshow:
-            escaped = url.replace(":", "\\:")
+            clean_device = re.sub(r'[\r\n\t\0"]', '', str(url)).strip()
+            if not clean_device or clean_device.startswith("-"):
+                logger.warning(f"Dispositivo DirectShow no válido para FFplay: {url}")
+                return False
+            escaped = clean_device.replace(":", "\\:")
             cmd = [
                 ffplay_bin,
-                "-window_title", title,
+                "-window_title", safe_title,
                 "-f", "dshow",
                 "-fflags", "nobuffer",
                 "-flags", "low_delay",
@@ -109,15 +118,23 @@ class PreviewManager:
                 "-i", f"video={escaped}"
             ]
         else:
+            clean_url = str(url).strip()
+            if not clean_url or clean_url.startswith("-") or any(c in clean_url for c in "\r\n\t\0"):
+                logger.warning(f"URL no válida para FFplay: {url}")
+                return False
+            parsed = urllib.parse.urlparse(clean_url)
+            if parsed.scheme not in ("srt", "udp", "http", "https"):
+                logger.warning(f"Protocolo de URL no permitido para FFplay: {clean_url}")
+                return False
             cmd = [
                 ffplay_bin,
-                "-window_title", title,
+                "-window_title", safe_title,
                 "-fflags", "nobuffer",
                 "-flags", "low_delay",
                 "-framedrop",
                 "-x", "854",
                 "-y", "480",
-                url
+                "-i", clean_url
             ]
 
         safe_url_log = sanitize_url(url)
