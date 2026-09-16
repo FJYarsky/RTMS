@@ -95,3 +95,4 @@ def test_system_tray_about_fallback_dialog():
             args, _ = mock_msgbox.call_args
             assert "Acerca de RTMS" in args[2]
             assert "Joaquín Yarsky" in args[1]
+ 
