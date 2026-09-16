@@ -50,7 +50,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: RTMS ${{ github.ref_name }} — Ventana Nativa WebView2, System Tray Avanzado y Limpieza Total de Procesos
+          name: RTMS ${{ github.ref_name }} — Ventana Nativa WebView2, System Tray de Cero Latencia y Limpieza Total
           body_path: RELEASE_NOTES.md
           files: RTMS-*-Windows-x64.zip
           draft: false
