@@ -661,9 +661,12 @@ async def stream_preview_frame(device_path: str):
 async def launch_external_ffplay(device_path: str):
     """Lanza ventana nativa de ultra baja latencia con FFplay para monitorización dedicada."""
     cam = find_camera_by_id_or_path(device_path)
-    dp = cam["device_path"] if cam else device_path
+    if not cam:
+        raise HTTPException(status_code=404, detail="Dispositivo de cámara no encontrado")
+
+    dp = cam["device_path"]
     proc = stream_manager.get_proc(dp)
-    cfg = proc.config if (proc and proc.config) else (cam or {})
+    cfg = proc.config if (proc and proc.config) else cam
 
     name = cfg.get("friendly_name", dp)
     is_running = proc.is_alive if proc else False

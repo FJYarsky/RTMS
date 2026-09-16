@@ -65,11 +65,22 @@ def test_ffplay_launch_requires_auth(client):
     assert res.status_code == 403
 
 def test_ffplay_launch_success(client):
-    with patch.object(preview_manager, "launch_ffplay", return_value=True):
+    fake_cam = {"device_path": "test_cam", "friendly_name": "Test Camera", "port": 9000}
+    with patch("api.routes.find_camera_by_id_or_path", return_value=fake_cam):
+        with patch.object(preview_manager, "launch_ffplay", return_value=True):
+            res = client.post(
+                "/api/stream/test_cam/ffplay",
+                headers={"X-RTMS-Token": "test_preview_secret_token_123"}
+            )
+            assert res.status_code == 200
+            data = res.json()
+            assert data["status"] == "ok"
+
+
+def test_ffplay_launch_not_found(client):
+    with patch("api.routes.find_camera_by_id_or_path", return_value=None):
         res = client.post(
-            "/api/stream/test_cam/ffplay",
+            "/api/stream/unknown_cam/ffplay",
             headers={"X-RTMS-Token": "test_preview_secret_token_123"}
         )
-        assert res.status_code == 200
-        data = res.json()
-        assert data["status"] == "ok"
+        assert res.status_code == 404

@@ -7,6 +7,7 @@
 import os
 import sys
 import re
+import shlex
 import urllib.parse
 import shutil
 import asyncio
@@ -86,6 +87,7 @@ class PreviewManager:
 
         # Sanitizar título de ventana para prevenir inyección de caracteres o banderas
         safe_title = re.sub(r'[^a-zA-Z0-9\s\-_\.\(\):áéíóúÁÉÍÓÚñÑ—]', '', str(title))[:120].strip() or "RTMS Preview"
+        safe_title = shlex.quote(safe_title).strip("'\"")
 
         # Cerrar instancia previa para esta URL si ya existe
         if url in self._active_ffplay:
@@ -105,6 +107,7 @@ class PreviewManager:
             if not clean_device or clean_device.startswith("-"):
                 logger.warning(f"Dispositivo DirectShow no válido para FFplay: {url}")
                 return False
+            clean_device = shlex.quote(clean_device).strip("'\"")
             escaped = clean_device.replace(":", "\\:")
             cmd = [
                 ffplay_bin,
@@ -126,6 +129,7 @@ class PreviewManager:
             if parsed.scheme not in ("srt", "udp", "http", "https"):
                 logger.warning(f"Protocolo de URL no permitido para FFplay: {clean_url}")
                 return False
+            clean_url = shlex.quote(clean_url).strip("'\"")
             cmd = [
                 ffplay_bin,
                 "-window_title", safe_title,
