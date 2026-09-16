@@ -21,6 +21,50 @@ def get_base_dir() -> str:
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+def unblock_app_binaries() -> int:
+    """
+    Elimina los flujos de datos alternativos NTFS de Mark-of-the-Web (:Zone.Identifier)
+    de todos los archivos ejecutables, bibliotecas (.dll, .pyd) y configuraciones
+    en el directorio de la aplicación en Windows.
+
+    Previene bloqueos de seguridad de .NET Framework / CLR (como 'Failed to resolve Python.Runtime.Loader.Initialize')
+    al descomprimir el release zip descargado de la web. Retorna el número de archivos desbloqueados.
+    """
+    if sys.platform != "win32":
+        return 0
+
+    cleaned = 0
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        base_dirs = []
+        if getattr(sys, 'frozen', False):
+            exe_dir = os.path.dirname(sys.executable)
+            base_dirs.append(exe_dir)
+            base_dirs.append(os.path.join(exe_dir, "_internal"))
+            if hasattr(sys, '_MEIPASS'):
+                base_dirs.append(sys._MEIPASS)
+        else:
+            base_dirs.append(get_base_dir())
+
+        target_exts = ('.dll', '.exe', '.pyd', '.json', '.config', '.ico', '.py')
+        for bdir in set(base_dirs):
+            if not os.path.exists(bdir):
+                continue
+            for root, _, files in os.walk(bdir):
+                for f in files:
+                    if f.lower().endswith(target_exts):
+                        fpath = os.path.join(root, f)
+                        zone_path = fpath + ":Zone.Identifier"
+                        if kernel32.DeleteFileW(zone_path):
+                            cleaned += 1
+    except Exception as e:
+        logger.debug(f"Aviso al desbloquear binarios de la aplicación: {e}")
+
+    if cleaned > 0:
+        logger.info(f"Se desbloquearon {cleaned} archivos con marca de descarga web (Zone.Identifier).")
+    return cleaned
+
 BACKUP_FILE = os.path.join(get_base_dir(), "config", "power_backup.json")
 
 def get_net_adapters_pnp():
