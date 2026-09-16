@@ -61,6 +61,7 @@ from core.system_env import (
     acquire_stay_awake,
     release_stay_awake,
     get_platform_details,
+    unblock_app_binaries,
 )
 from core.ffmpeg_mgr import sync_streams_with_hardware, stream_manager
 from core.preview_mgr import preview_manager
@@ -94,6 +95,7 @@ logging.basicConfig(
 logger = logging.getLogger("rtms.main")
 
 _main_window = None
+_main_window_ready = False
 _tray_mgr = None
 _uvicorn_server = None
 _uvicorn_thread = None
@@ -226,16 +228,16 @@ def run_fastapi(port: int):
 _api_port = 8000
 
 def show_window_from_tray():
-    global _main_window, _api_port
-    if _main_window is not None:
+    global _main_window, _main_window_ready, _api_port
+    if _main_window is not None and _main_window_ready:
         try:
             _main_window.show()
             _main_window.restore()
+            return
         except Exception as e:
             logger.warning(f"No se pudo restaurar la ventana nativa: {e}")
-        return
 
-    # Si no hay ventana nativa (entorno sin GUI pywebview), abrir navegador como fallback
+    # Si no hay ventana nativa lista (entorno sin GUI pywebview o fallback), abrir navegador
     try:
         import webbrowser
         webbrowser.open(f"http://127.0.0.1:{_api_port}")
@@ -244,9 +246,9 @@ def show_window_from_tray():
 
 def show_about_from_tray():
     """Restaura la ventana principal y abre el modal Acerca de, o muestra diálogo nativo si no hay GUI."""
-    global _main_window, _tray_mgr
+    global _main_window, _main_window_ready, _tray_mgr
     opened_in_window = False
-    if _main_window is not None:
+    if _main_window is not None and _main_window_ready:
         try:
             _main_window.show()
             _main_window.restore()
@@ -283,6 +285,9 @@ def on_closed():
 if __name__ == "__main__":
     import multiprocessing
     multiprocessing.freeze_support()
+
+    # Desbloquear binarios y bibliotecas en Windows (Mark-of-the-Web / Zone.Identifier)
+    unblock_app_binaries()
 
     # 0. Verificación estricta de instancia única (Single Instance Lock)
     if not acquire_single_instance_lock():
@@ -328,7 +333,10 @@ if __name__ == "__main__":
         if loop and loop.is_running():
             asyncio.run_coroutine_threadsafe(stream_manager.stop_all(), loop)
         else:
-            asyncio.run(stream_manager.stop_all())
+            try:
+                asyncio.run(stream_manager.stop_all())
+            except Exception as e:
+                logger.debug(f"Aviso deteniendo streams desde tray: {e}")
 
     def _handle_tray_terminate_all():
         logger.info("Finalización total de procesos solicitada desde la bandeja del sistema.")
@@ -360,6 +368,11 @@ if __name__ == "__main__":
         return True
 
     # 5. Crear ventana nativa con pywebview (importación perezosa/segura P4)
+    def on_window_ready():
+        global _main_window_ready
+        _main_window_ready = True
+        logger.info("Ventana nativa WebView2 inicializada y lista.")
+
     try:
         import webview
         _main_window = webview.create_window(
@@ -371,8 +384,10 @@ if __name__ == "__main__":
             background_color="#0b0f19"
         )
         _main_window.events.closing += on_window_closing
-        webview.start()
+        webview.start(func=on_window_ready, gui="edgechromium")
     except Exception as e:
+        _main_window = None
+        _main_window_ready = False
         logger.warning(f"No se pudo iniciar pywebview nativo: {e}")
         logger.info(f"Iniciando RTMS en segundo plano con acceso vía navegador en: http://127.0.0.1:{_api_port}")
         import webbrowser
