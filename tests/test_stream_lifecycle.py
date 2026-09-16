@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests Unitarios de Ciclo de Vida de Streams (core/ffmpeg_mgr.py)
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Tests del ciclo de vida de subprocesos de streaming y máquinas de estados
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import asyncio

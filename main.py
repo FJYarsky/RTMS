@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Punto de entrada principal, ciclo de vida de escritorio y ejecutor CLI.
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 """RTMS application entrypoint, desktop lifecycle, and CLI runner."""
@@ -46,6 +47,8 @@ sys.path.insert(0, _BASE_DIR)
 
 from core.__version__ import __version__
 from core.single_instance import acquire_single_instance_lock, release_single_instance_lock
+from core.config_mgr import get_base_dir
+from core.process_cleanup import terminate_all_processes
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -53,7 +56,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.system_env import setup_firewall_rules, acquire_stay_awake, release_stay_awake
+from core.system_env import (
+    setup_firewall_rules,
+    acquire_stay_awake,
+    release_stay_awake,
+    get_platform_details,
+)
 from core.ffmpeg_mgr import sync_streams_with_hardware, stream_manager
 from core.preview_mgr import preview_manager
 from core.telemetry import telemetry_service
@@ -65,8 +73,9 @@ from api.routes import router as api_router, set_global_api_token
 API_TOKEN = secrets.token_urlsafe(32)
 set_global_api_token(API_TOKEN)
 
-# Configuración de Logging con Rotación y Filtro de Secretos (P0-02, P1-15)
-_LOG_FILE = os.path.join(_BASE_DIR, "rtms.log")
+# Configuración de Logging con Rotación y Filtro de Secretos
+_STORAGE_DIR = get_base_dir()
+_LOG_FILE = os.path.join(_STORAGE_DIR, "rtms.log")
 secret_filter = SecretFilter()
 file_handler = RotatingFileHandler(_LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding='utf-8')
 file_handler.addFilter(secret_filter)
@@ -162,10 +171,15 @@ def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
 
         @application.get("/")
         async def root(request: Request):
+            platform_info = get_platform_details()
             return tmpl.TemplateResponse(
                 request=request,
                 name="index.html",
-                context={"api_token": token, "version": __version__}
+                context={
+                    "api_token": token,
+                    "version": __version__,
+                    "platform_info": platform_info,
+                }
             )
 
     return application
@@ -213,18 +227,23 @@ _api_port = 8000
 
 def show_window_from_tray():
     global _main_window, _api_port
-    if _main_window:
+    if _main_window is not None:
         try:
             _main_window.show()
             _main_window.restore()
-            return
         except Exception as e:
-            logger.debug(f"Error restaurando ventana desde tray: {e}")
-    import webbrowser
-    webbrowser.open(f"http://127.0.0.1:{_api_port}")
+            logger.warning(f"No se pudo restaurar la ventana nativa: {e}")
+        return
+
+    # Si no hay ventana nativa (entorno sin GUI pywebview), abrir navegador como fallback
+    try:
+        import webbrowser
+        webbrowser.open(f"http://127.0.0.1:{_api_port}")
+    except Exception as e:
+        logger.error(f"Error abriendo navegador web: {e}")
 
 def on_closed():
-    """Cierre unificado y ordenado de la aplicación (sin os._exit abrupto)."""
+    """Cierre unificado y ordenado de la aplicación."""
     logger.info("Cierre de aplicación solicitado. Ejecutando protocolo ordenado...")
     global _tray_mgr, _uvicorn_server, _uvicorn_thread
 
@@ -235,41 +254,15 @@ def on_closed():
         except Exception as e:
             logger.debug(f"Error al detener system tray: {e}")
 
-    # 2. Notificar a Uvicorn para cierre ordenado (su lifespan ejecutará stream_manager y preview_manager stop_all)
+    # 2. Notificar a Uvicorn para cierre ordenado
     if _uvicorn_server:
         _uvicorn_server.should_exit = True
 
     if _uvicorn_thread and _uvicorn_thread.is_alive():
-        _uvicorn_thread.join(timeout=3.0)
+        _uvicorn_thread.join(timeout=2.0)
 
-    # 3. Fallback: Si Uvicorn no estaba activo o no corrió lifespan, asegurar detención
-    try:
-        loop = getattr(app.state, "loop", None)
-        if loop and loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(
-                asyncio.gather(stream_manager.stop_all(), preview_manager.stop_all(), return_exceptions=True),
-                loop
-            )
-            try:
-                future.result(timeout=4.0)
-            except Exception:
-                pass
-        else:
-            asyncio.run(asyncio.gather(stream_manager.stop_all(), preview_manager.stop_all(), return_exceptions=True))
-    except Exception as e:
-        logger.debug(f"Aviso en verificación de detención de streams: {e}")
-
-    try:
-        telemetry_service.shutdown()
-    except Exception:
-        pass
-
-    # 4. Liberar bloqueo de instancia única
-    release_single_instance_lock()
-
-    # 5. Salida estándar de Python
-    logger.info("RTMS cerrado exitosamente.")
-    sys.exit(0)
+    # 3. Limpieza profunda y terminación de subprocesos
+    terminate_all_processes(force=False)
 
 if __name__ == "__main__":
     import multiprocessing
@@ -313,9 +306,28 @@ if __name__ == "__main__":
 
     logger.info(f"FastAPI iniciado con éxito en puerto {_api_port}. Configurando interfaz nativa...")
 
+    def _handle_tray_stop_streams():
+        logger.info("Detención de transmisiones solicitada desde la bandeja del sistema.")
+        loop = getattr(app.state, "loop", None)
+        if loop and loop.is_running():
+            asyncio.run_coroutine_threadsafe(stream_manager.stop_all(), loop)
+        else:
+            asyncio.run(stream_manager.stop_all())
+
+    def _handle_tray_terminate_all():
+        logger.info("Finalización total de procesos solicitada desde la bandeja del sistema.")
+        if _tray_mgr:
+            try:
+                _tray_mgr.stop()
+            except Exception:
+                pass
+        terminate_all_processes(force=True)
+
     # 3. Inicializar icono en la bandeja del sistema (System Tray)
     _tray_mgr = SystemTrayManager(
         on_show_window=show_window_from_tray,
+        on_stop_streams=_handle_tray_stop_streams,
+        on_terminate_all=_handle_tray_terminate_all,
         on_exit_app=on_closed
     )
     _tray_mgr.start()

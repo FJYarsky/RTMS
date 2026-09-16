@@ -1,4 +1,4 @@
-# Guía de Contribución — RTMS v2.2.3
+# Guía de Contribución — RTMS
 
 ¡Gracias por tu interés en contribuir a **RTMS (Real-Time Multicam System)**!
 
@@ -32,5 +32,3 @@
 - Código Python conforme a directivas PEP 8.
 - Tipado estricto con anotaciones de tipo (`typing`).
 - Manejo explícito de excepciones evitando cláusulas `except Exception: pass` sin registro de logs.
-
-<!-- RTMS Contribution Guide v2.2.3 -->

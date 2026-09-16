@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests Unitarios para Configuración (core/config_mgr.py)
+# RTMS — Real-Time Multicam System
+# Tests de perfiles de cámara, asignación de puertos y validación de esquemas JSON
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from core.config_mgr import is_virtual_device, get_or_allocate_camera_config, import_config, load_config

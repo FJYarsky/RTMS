@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests Unitarios para Analizador de DirectShow (core/hardware.py)
+# RTMS — Real-Time Multicam System
+# Tests de enumeración y parseo de dispositivos de captura de video DirectShow
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from core.hardware import parse_dshow_output

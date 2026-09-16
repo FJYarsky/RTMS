@@ -1,8 +1,10 @@
 # ==============================================================================
-# RTMS v2.2.3 — Security Audit Verification Tests
-# Tests TEST-01 to TEST-04 covering P0 and P1 audit findings
+# RTMS — Real-Time Multicam System
+# Tests de seguridad, cifrado DPAPI, sanitización y ciclo de vida de tickets de previsualización
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+import sys
 import time
 import logging
 import pytest
@@ -13,6 +15,7 @@ from api.routes import preview_ticket_mgr
 from main import create_app
 from core.config_mgr import save_config
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Requiere DPAPI de Windows")
 def test_unprotect_secret_failure_never_leaks_ciphertext(monkeypatch):
     """TEST-01: unprotect_secret returns '' or raises SecretDecryptionError on failure, never ciphertext."""
     import base64

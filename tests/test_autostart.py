@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests de Autoarranque en Windows (core/autostart.py)
+# RTMS — Real-Time Multicam System
+# Tests de configuración y persistencia de autoarranque en el registro de Windows
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from core.autostart import (

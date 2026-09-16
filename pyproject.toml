@@ -1,7 +1,7 @@
-# RTMS v2.2.3 project metadata and build configuration
+# RTMS project metadata and build configuration
 [project]
 name = "rtms"
-version = "2.2.3"
+version = "2.2.4"
 description = "Servidor multicámara de baja latencia para Windows vía SRT y UDP"
 readme = "README.md"
 requires-python = ">=3.11"

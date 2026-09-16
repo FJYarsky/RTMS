@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Capa de API REST HTTP/JSON y endpoints asíncronos de control del servidor.
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 """RTMS FastAPI REST API routes, schemas, and live endpoints."""

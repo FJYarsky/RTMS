@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests de Herramienta de Diagnóstico CLI (core/doctor.py)
+# RTMS — Real-Time Multicam System
+# Tests de diagnósticos del sistema, verificación de binarios y estado de la red (RTMS Doctor)
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from core.doctor import (

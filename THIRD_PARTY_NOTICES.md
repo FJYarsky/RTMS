@@ -1,6 +1,6 @@
-# Third-Party Notices and Licenses — RTMS v2.2.3
+# Third-Party Notices and Licenses — RTMS
 
-RTMS (Real-Time Multicam System) v2.2.3 bundles and interacts with third-party software components. This document provides notice and licensing details for those components.
+RTMS (Real-Time Multicam System) bundles and interacts with third-party software components. This document provides notice and licensing details for those components.
 
 ---
 
@@ -33,5 +33,3 @@ RTMS (Real-Time Multicam System) v2.2.3 bundles and interacts with third-party s
 ## 3. Typography & Assets
 
 - **Inter Font Family**: SIL Open Font License, Version 1.1 (Copyright (c) Rasmus Andersson)
-
-<!-- RTMS Third-Party Notices v2.2.3 -->

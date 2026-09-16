@@ -1,3 +1,9 @@
+# ==============================================================================
+# RTMS — Real-Time Multicam System
+# Tests de aislamiento de entorno y configuración segura en fixtures temporales
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
+# ==============================================================================
+
 import os
 import asyncio
 import core.config_mgr

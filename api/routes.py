@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Rutas HTTP, endpoints RESTful de control de transmisiones, previsualizaciones y sistema
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import socket
@@ -8,6 +9,7 @@ import psutil
 import logging
 import secrets
 import time
+import threading
 from fastapi import APIRouter, HTTPException, Header, Depends, Request, Response
 from fastapi.responses import StreamingResponse
 from typing import Optional
@@ -16,7 +18,8 @@ from core.__version__ import __version__
 from .schemas import (
     CameraConfigUpdate, StreamAction, AutostartToggle,
     CameraAutostartToggle, ApplyPresetRequest, ImportConfigRequest,
-    FullExportRequest, PreviewTicketRequest
+    FullExportRequest, PreviewTicketRequest, FactoryResetRequest,
+    SystemShutdownRequest
 )
 from core.ffmpeg_mgr import (
     get_all_stream_statuses, stream_manager, sync_streams_with_hardware,
@@ -29,6 +32,8 @@ from core.config_mgr import (
 )
 from core.preview_mgr import preview_manager
 from core.telemetry import telemetry_service
+from core.process_cleanup import terminate_all_processes
+from core.system_env import get_platform_details
 
 logger = logging.getLogger("rtms.routes")
 router = APIRouter()
@@ -39,44 +44,92 @@ _LAST_IP_CACHE: dict = {"ip": "127.0.0.1", "timestamp": 0.0}
 class PreviewTicketManager:
     """
     Gestor en memoria de tickets efímeros para el streaming seguro de previsualizaciones MJPEG (P1-01).
-    Evita exponer tokens de sesión de larga duración en URLs de tags <img>.
+    Implementa consumo atómico de un solo uso (single-use), protección contra condiciones
+    de carrera mediante threading.Lock() y límite superior de tickets en memoria (Claude N7, N8 / ChatGPT P0-01, P1-02).
     """
+    MAX_TICKETS = 100
+
     def __init__(self, default_ttl: int = 60):
         self._tickets: dict[str, dict] = {}
         self.default_ttl = default_ttl
+        self._lock = threading.Lock()
 
     def create_ticket(self, device_path: str, ttl: Optional[int] = None) -> str:
-        self._cleanup()
-        token = secrets.token_urlsafe(32)
-        ttl_sec = ttl if (ttl is not None and ttl > 0) else self.default_ttl
-        self._tickets[token] = {
-            "device_path": device_path,
-            "expires_at": time.time() + ttl_sec
-        }
-        return token
+        with self._lock:
+            self._cleanup_locked()
+            if len(self._tickets) >= self.MAX_TICKETS:
+                oldest = min(self._tickets.keys(), key=lambda k: self._tickets[k]["expires_at"])
+                self._tickets.pop(oldest, None)
+
+            token = secrets.token_urlsafe(32)
+            ttl_sec = ttl if (ttl is not None and ttl > 0) else self.default_ttl
+            self._tickets[token] = {
+                "device_path": device_path,
+                "expires_at": time.time() + ttl_sec
+            }
+            return token
+
+    def consume_ticket(self, ticket: str, device_path: str) -> bool:
+        """
+        Valida y elimina atómicamente el ticket tras su primer uso exitoso (single-use).
+        Retorna True si era válido y correspondía a la cámara indicada; False en caso contrario.
+        """
+        with self._lock:
+            self._cleanup_locked()
+            info = self._tickets.pop(ticket, None)
+            if not info:
+                return False
+            if time.time() > info["expires_at"]:
+                return False
+
+            cam = find_camera_by_id_or_path(device_path)
+            target_dp = cam["device_path"] if cam else device_path
+            ticket_dp = info["device_path"]
+            ticket_cam = find_camera_by_id_or_path(ticket_dp)
+            resolved_ticket_dp = ticket_cam["device_path"] if ticket_cam else ticket_dp
+            return target_dp == resolved_ticket_dp
 
     def validate_ticket(self, ticket: str, device_path: str) -> bool:
-        self._cleanup()
-        info = self._tickets.get(ticket)
-        if not info:
-            return False
-        if time.time() > info["expires_at"]:
-            self._tickets.pop(ticket, None)
-            return False
+        """Valida si el ticket existe y está vigente sin consumirlo."""
+        with self._lock:
+            self._cleanup_locked()
+            info = self._tickets.get(ticket)
+            if not info:
+                return False
+            if time.time() > info["expires_at"]:
+                self._tickets.pop(ticket, None)
+                return False
 
-        # Comparar device_path normalizado o resuelto
-        cam = find_camera_by_id_or_path(device_path)
-        target_dp = cam["device_path"] if cam else device_path
-        ticket_dp = info["device_path"]
-        ticket_cam = find_camera_by_id_or_path(ticket_dp)
-        resolved_ticket_dp = ticket_cam["device_path"] if ticket_cam else ticket_dp
-        return target_dp == resolved_ticket_dp
+            cam = find_camera_by_id_or_path(device_path)
+            target_dp = cam["device_path"] if cam else device_path
+            ticket_dp = info["device_path"]
+            ticket_cam = find_camera_by_id_or_path(ticket_dp)
+            resolved_ticket_dp = ticket_cam["device_path"] if ticket_cam else ticket_dp
+            return target_dp == resolved_ticket_dp
 
-    def _cleanup(self) -> None:
+    def invalidate_for_device(self, device_path: str) -> None:
+        """Invalida de inmediato todos los tickets asociados a un dispositivo (ChatGPT P1-03)."""
+        with self._lock:
+            cam = find_camera_by_id_or_path(device_path)
+            target_dp = cam["device_path"] if cam else device_path
+            to_remove = []
+            for k, v in self._tickets.items():
+                t_cam = find_camera_by_id_or_path(v["device_path"])
+                res_dp = t_cam["device_path"] if t_cam else v["device_path"]
+                if res_dp == target_dp:
+                    to_remove.append(k)
+            for k in to_remove:
+                self._tickets.pop(k, None)
+
+    def _cleanup_locked(self) -> None:
         now = time.time()
         expired = [k for k, v in self._tickets.items() if v["expires_at"] < now]
         for k in expired:
             self._tickets.pop(k, None)
+
+    def _cleanup(self) -> None:
+        with self._lock:
+            self._cleanup_locked()
 
 preview_ticket_mgr = PreviewTicketManager()
 
@@ -149,6 +202,13 @@ async def healthz():
     """Endpoint público de verificación de salud para supervisores externos de procesos."""
     return {"status": "ok", "version": __version__}
 
+@router.get("/readyz")
+async def readyz():
+    """Readiness probe para verificar que el backend y binarios multimedia están listos (ChatGPT P2-15)."""
+    if not preview_manager.has_ffmpeg_binary():
+        raise HTTPException(status_code=503, detail="Binario FFmpeg no disponible en el sistema.")
+    return {"status": "ok", "ready": True, "ffmpeg": True}
+
 @router.get("/api/status", dependencies=[Depends(verify_api_token)])
 async def get_status():
     """Retorna el estado general del sistema, IP local y flujos con contraseñas enmascaradas."""
@@ -167,6 +227,7 @@ async def get_status():
     return {
         "version": __version__,
         "local_ip": get_local_ip(),
+        "platform_info": get_platform_details(),
         "autostart_enabled": is_autostart_enabled(),
         "streams": sanitized_streams,
         "presets": {k: v["name"] for k, v in CAMERA_PRESETS.items()}
@@ -185,10 +246,99 @@ async def get_system_metrics():
     )
 
 @router.post("/api/system/emergency_stop", dependencies=[Depends(verify_api_token)])
+@router.post("/api/system/global_stop", dependencies=[Depends(verify_api_token)])
 async def emergency_stop():
-    """Detiene inmediatamente todos los flujos de FFmpeg de forma segura (Protegido por Token)."""
+    """Detiene inmediatamente todos los flujos de FFmpeg de forma ordenada y segura (Protegido por Token)."""
     await stream_manager.emergency_stop_all()
-    return {"status": "ok", "message": "Todas las transmisiones fueron detenidas de emergencia."}
+    return {"status": "ok", "message": "Todas las transmisiones activas fueron detenidas correctamente."}
+
+@router.post("/api/system/shutdown", dependencies=[Depends(verify_api_token)])
+async def system_shutdown(payload: Optional[SystemShutdownRequest] = None):
+    """Finaliza totalmente la aplicación y todos sus subprocesos (FFmpeg, FFplay) (U-3)."""
+    force = payload.force if payload else True
+
+    def _delayed_exit():
+        time.sleep(0.5)
+        terminate_all_processes(force=force)
+
+    threading.Thread(target=_delayed_exit, daemon=True).start()
+    return {"status": "ok", "message": "RTMS finalizando todos los procesos y cerrando aplicación."}
+
+@router.post("/api/system/factory_reset", dependencies=[Depends(verify_api_token)])
+async def system_factory_reset(payload: FactoryResetRequest):
+    """
+    Restaura la configuración de fábrica, purga credenciales, logs, copias de seguridad
+    y finaliza la aplicación para que la próxima apertura sea como primera vez (U-5).
+    """
+    import os
+    import json
+    if not payload.confirm:
+        raise HTTPException(status_code=400, detail="Debe confirmar explícitamente el restablecimiento de fábrica.")
+
+    # 1. Detener todas las transmisiones activas
+    await stream_manager.stop_all()
+    await preview_manager.stop_all()
+
+    # 2. Eliminar autostart de Windows si estaba activo
+    try:
+        from core.autostart import enable_autostart
+        enable_autostart(False)
+    except Exception as e:
+        logger.debug(f"Aviso al deshabilitar autostart durante reset: {e}")
+
+    # 3. Restaurar configuraciones de energía si existen
+    try:
+        from core.system_env import restore_original_power_settings
+        restore_original_power_settings()
+    except Exception:
+        pass
+
+    # 4. Limpiar archivos de configuración y logs
+    from core.config_mgr import CONFIG_DIR, CONFIG_FILE, CONFIG_BAK_FILE, get_base_dir
+    base_dir = get_base_dir()
+
+    for fname in [CONFIG_FILE, CONFIG_BAK_FILE, os.path.join(CONFIG_DIR, "power_backup.json")]:
+        try:
+            if os.path.exists(fname):
+                os.remove(fname)
+        except Exception as e:
+            logger.debug(f"Aviso eliminando {fname}: {e}")
+
+    # Purgar logs en el directorio activo y en LOCALAPPDATA
+    log_candidates = [
+        os.path.join(base_dir, "rtms.log"),
+        os.path.join(base_dir, "rtms.log.1"),
+        os.path.join(base_dir, "rtms.log.2"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "RTMS", "rtms.log")
+    ]
+    for log_candidate in log_candidates:
+        try:
+            if log_candidate and os.path.exists(log_candidate):
+                os.remove(log_candidate)
+        except Exception:
+            pass
+
+    # Recrear config.json inicial limpio
+    try:
+        clean_config = {
+            "version": __version__,
+            "config_schema_version": 3,
+            "cameras": {},
+            "ignored_devices": [],
+            "next_port": 9000,
+            "unattended_autostart": True
+        }
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(clean_config, f, indent=4)
+    except Exception as e:
+        logger.error(f"Error reescribiendo configuración inicial limpia: {e}")
+
+    def _delayed_exit():
+        time.sleep(0.8)
+        terminate_all_processes(force=True)
+
+    threading.Thread(target=_delayed_exit, daemon=True).start()
+    return {"status": "ok", "message": "Datos eliminados y configuración restablecida. RTMS se cerrará ahora."}
 
 @router.post("/api/stream/action", dependencies=[Depends(verify_api_token)])
 async def handle_stream_action(action: StreamAction):
@@ -369,7 +519,7 @@ async def export_config_endpoint(safe_mode: bool = True):
     return export_config(safe_mode=True)
 
 @router.post("/api/config/export/full", dependencies=[Depends(verify_api_token)])
-async def export_full_config_endpoint(payload: FullExportRequest):
+async def export_full_config_endpoint(payload: FullExportRequest, response: Response):
     """
     Exporta la configuración completa incluyendo contraseñas sin enmascarar (P0-05).
     Requiere confirmación explícita mediante confirm_export_secrets=True en el cuerpo.
@@ -379,6 +529,8 @@ async def export_full_config_endpoint(payload: FullExportRequest):
             status_code=400,
             detail="Debe confirmar explícitamente la exportación de secretos con confirm_export_secrets=True."
         )
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
     return export_config(safe_mode=False)
 
 @router.post("/api/config/import", dependencies=[Depends(verify_api_token)])
@@ -394,11 +546,15 @@ async def import_config_endpoint(payload: ImportConfigRequest):
     return {"status": "ok", "message": "Configuración importada y aplicada exitosamente"}
 
 @router.post("/api/preview/ticket", dependencies=[Depends(verify_api_token)])
-async def create_preview_ticket(payload: PreviewTicketRequest):
+@router.post("/api/stream/{device_path:path}/preview_ticket", dependencies=[Depends(verify_api_token)])
+async def create_preview_ticket(payload: Optional[PreviewTicketRequest] = None, device_path: Optional[str] = None):
     """Genera un ticket efímero de corta duración para previsualizaciones MJPEG seguras (P1-01)."""
-    cam = find_camera_by_id_or_path(payload.device_path)
-    dp = cam["device_path"] if cam else payload.device_path
-    ttl = payload.ttl_seconds if payload.ttl_seconds is not None else 60
+    target_path = device_path or (payload.device_path if payload else None)
+    if not target_path:
+        raise HTTPException(status_code=400, detail="device_path es requerido.")
+    cam = find_camera_by_id_or_path(target_path)
+    dp = cam["device_path"] if cam else target_path
+    ttl = payload.ttl_seconds if (payload and payload.ttl_seconds is not None) else 60
     ticket = preview_ticket_mgr.create_ticket(dp, ttl=ttl)
     return {"ticket": ticket, "expires_in": ttl}
 
@@ -411,19 +567,24 @@ async def stream_preview(
 ):
     """
     Canaliza un stream MJPEG de baja latencia on-demand.
-    Soporta autenticación mediante ticket efímero (?ticket=...) o token (?token=... / header).
+    Soporta autenticación mediante ticket efímero de consumo único (?ticket=...) o cabecera X-RTMS-Token.
     Controla concurrencia con semáforo global y slots por cámara (N8, P1-10).
     Al desconectarse el cliente, el generador se detiene inmediatamente liberando recursos al 0%.
     """
     cam = find_camera_by_id_or_path(device_path)
     dp = cam["device_path"] if cam else device_path
 
-    # 1. Autenticación (P1-01)
+    # 1. Autenticación segura (P1-01 / P0-01 / P0-02)
     if ticket:
-        if not preview_ticket_mgr.validate_ticket(ticket, dp):
-            raise HTTPException(status_code=403, detail="Ticket de previsualización inválido o expirado.")
+        if not preview_ticket_mgr.consume_ticket(ticket, dp):
+            raise HTTPException(status_code=403, detail="Ticket de previsualización inválido, expirado o ya consumido.")
     else:
-        # Fallback a token de sesión
+        # En producción se rechaza el token global por query string
+        if request.query_params.get("token"):
+            raise HTTPException(
+                status_code=403,
+                detail="El uso de token global por query parameter está deshabilitado por seguridad. Utilice tickets efímeros o la cabecera X-RTMS-Token."
+            )
         await verify_api_token(request, token=token)
 
     # 2. Verificación de binario FFmpeg (N3)

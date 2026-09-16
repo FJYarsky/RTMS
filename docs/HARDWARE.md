@@ -1,4 +1,4 @@
-# Matriz de Compatibilidad de Hardware y Encoders — RTMS v2.2.3
+# Matriz de Compatibilidad de Hardware y Encoders — RTMS
 
 Este documento describe la matriz de compatibilidad validada de RTMS para captura de video DirectShow en Windows, codificación acelerada por hardware o CPU, y telemetría en tiempo real.
 
@@ -45,5 +45,3 @@ RTMS detecta automáticamente cámaras virtuales y las clasifica (`is_virtual: t
 - vMix Video
 - Unity Video Capture
 - DroidCam / Iriun Webcam / ManyCam / SplitCam / NDI Video
-
-<!-- RTMS Hardware Compatibility Reference v2.2.3 -->

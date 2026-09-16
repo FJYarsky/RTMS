@@ -1,20 +1,19 @@
 @echo off
-REM RTMS v2.2.3 Automated Portable Packager
 REM ==============================================================================
-REM RTMS v2.2.3 — Build Script para ejecutable nativo portable (pywebview)
-REM Genera rtms.exe en la carpeta dist/
-REM Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+REM RTMS — Real-Time Multicam System
+REM Script de empaquetado portable para ejecutable nativo (pywebview / PyInstaller)
+REM Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 REM ==============================================================================
 
 echo.
 echo ============================================================
-echo  RTMS v2.2.3 — Creando aplicacion nativa con PyInstaller
+echo  RTMS — Creando aplicacion nativa con PyInstaller
 echo ============================================================
 echo.
 
 cd /d "%~dp0"
 
-REM Validar presencia obligatoria de binarios multimedia (P1-13)
+REM Validar presencia obligatoria de binarios multimedia
 if not exist "bin\ffmpeg.exe" (
     echo [ERROR] bin\ffmpeg.exe no fue encontrado.
     echo Ejecute powershell -ExecutionPolicy Bypass -File scripts\setup_binaries.ps1 primero.
@@ -83,6 +82,7 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
   --hidden-import=winreg ^
   --hidden-import=webview ^
   --hidden-import=clr ^
+  --hidden-import=pythonnet ^
   --hidden-import=pystray ^
   --hidden-import=PIL ^
   --hidden-import=psutil ^
@@ -91,6 +91,7 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
   --collect-all=fastapi ^
   --collect-all=starlette ^
   --collect-all=webview ^
+  --collect-all=pythonnet ^
   --collect-all=pystray ^
   main.py
 
@@ -119,23 +120,31 @@ if exist "config\config.example.json" (
     copy /Y "config\config.example.json" "dist\rtms\config\" >nul
 )
 
-REM Copiar licencias de terceros a la raiz distribuible
+REM Copiar licencias y avisos de terceros
 if exist "THIRD_PARTY_NOTICES.md" (
     copy /Y "THIRD_PARTY_NOTICES.md" "dist\rtms\" >nul
 )
 
-REM Copiar WebView2Loader.dll a dist/rtms/ para soporte nativo de Edge Chromium
-set "WEBVIEW2_DLL=bin\python\Lib\site-packages\webview\lib\runtimes\win-x64\native\WebView2Loader.dll"
-if not exist "%WEBVIEW2_DLL%" (
-    REM Fallback: localizar dinámicamente usando el intérprete Python activo
-    for /f "usebackq delims=" %%D in (`%PYTHON_EXE% -c "import webview, os; print(os.path.join(os.path.dirname(webview.__file__), 'lib', 'runtimes', 'win-x64', 'native', 'WebView2Loader.dll'))" 2^>nul`) do (
-        set "WEBVIEW2_DLL=%%D"
-    )
+REM Copiar icono a las ubicaciones clave
+if exist "icon.ico" (
+    copy /Y "icon.ico" "dist\rtms\" >nul
+    copy /Y "icon.ico" "dist\rtms\_internal\" >nul
 )
-if exist "%WEBVIEW2_DLL%" (
-    echo [INFO] Copiando WebView2Loader.dll a dist\rtms...
-    copy /Y "%WEBVIEW2_DLL%" "dist\rtms\" >nul
-    copy /Y "%WEBVIEW2_DLL%" "dist\rtms\_internal\" >nul
+
+REM Localizar librerías y runtimes nativos de webview/WebView2
+set "WEBVIEW_LIB_DIR="
+for /f "usebackq delims=" %%D in (`%PYTHON_EXE% -c "import webview, os; print(os.path.join(os.path.dirname(webview.__file__), 'lib'))" 2^>nul`) do (
+    set "WEBVIEW_LIB_DIR=%%D"
+)
+
+if defined WEBVIEW_LIB_DIR (
+    if exist "%WEBVIEW_LIB_DIR%" (
+        echo [INFO] Copiando dependencias nativas de pywebview y WebView2...
+        xcopy /E /I /Y "%WEBVIEW_LIB_DIR%\*" "dist\rtms\" >nul
+        xcopy /E /I /Y "%WEBVIEW_LIB_DIR%\*" "dist\rtms\_internal\" >nul
+        if not exist "dist\rtms\_internal\webview\lib" mkdir "dist\rtms\_internal\webview\lib"
+        xcopy /E /I /Y "%WEBVIEW_LIB_DIR%\*" "dist\rtms\_internal\webview\lib\" >nul
+    )
 )
 
 echo.

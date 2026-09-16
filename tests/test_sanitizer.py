@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests Unitarios de Sanitización de Secretos (core/sanitizer.py)
+# RTMS — Real-Time Multicam System
+# Tests de sanitización de secretos en comandos, URLs y filtros de logs de ejecución
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from core.sanitizer import sanitize_command_for_log, sanitize_log_line

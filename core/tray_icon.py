@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Integración con System Tray de Windows, menú contextual y minimización a segundo plano
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import os
@@ -14,32 +15,61 @@ from core.__version__ import __version__
 logger = logging.getLogger("rtms.tray")
 
 class SystemTrayManager:
-    def __init__(self, on_show_window=None, on_exit_app=None):
+    def __init__(self, on_show_window=None, on_stop_streams=None, on_terminate_all=None, on_exit_app=None):
         self.on_show_window = on_show_window
+        self.on_stop_streams = on_stop_streams
+        self.on_terminate_all = on_terminate_all
         self.on_exit_app = on_exit_app
         self.icon = None
         self._thread = None
 
     def _create_fallback_image(self):
-        # Crear un icono 64x64 con un círculo Teal
+        """Genera un icono estético de 64x64 HD con diseño de cámara de estudio y acentos profesionales (U-7)."""
         img = Image.new('RGBA', (64, 64), color=(0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
-        # Círculo Teal
-        draw.ellipse([8, 8, 56, 56], fill=(20, 184, 166, 255), outline=(13, 148, 136, 255), width=2)
-        # Letra 'R'
-        draw.rectangle([26, 20, 38, 44], fill=(11, 15, 25, 255))
+
+        # Base con esquinas redondeadas en pizarra oscura (#0f172a) y contorno teal (#0d9488)
+        draw.rounded_rectangle([4, 4, 60, 60], radius=12, fill=(15, 23, 42, 255), outline=(13, 148, 136, 255), width=2)
+
+        # Cuerpo de cámara en blanco perla (#f1f5f9)
+        draw.rounded_rectangle([14, 22, 38, 42], radius=4, fill=(241, 245, 249, 255))
+
+        # Lente de cámara estilizada en teal brillante (#14b8a6)
+        draw.polygon([(40, 26), (50, 20), (50, 44), (40, 38)], fill=(20, 184, 166, 255))
+
+        # Indicador de grabación / streaming activo (#ef4444)
+        draw.ellipse([18, 26, 24, 32], fill=(239, 68, 68, 255))
+
         return img
 
     def _get_icon_image(self):
+        """Busca el icono oficial icon.ico en múltiples ubicaciones antes de recurrir al fallback generado."""
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        candidates = []
+
         if getattr(sys, 'frozen', False):
-            base_dir = os.path.dirname(sys.executable)
-        ico_path = os.path.join(base_dir, "icon.ico")
-        if os.path.exists(ico_path):
-            try:
-                return Image.open(ico_path)
-            except Exception as e:
-                logger.warning(f"No se pudo cargar icon.ico: {e}")
+            exe_dir = os.path.dirname(sys.executable)
+            candidates.extend([
+                os.path.join(exe_dir, "icon.ico"),
+                os.path.join(exe_dir, "_internal", "icon.ico"),
+                os.path.join(getattr(sys, '_MEIPASS', exe_dir), "icon.ico")
+            ])
+
+        candidates.extend([
+            os.path.join(base_dir, "icon.ico"),
+            os.path.join(base_dir, "_internal", "icon.ico"),
+            "icon.ico"
+        ])
+
+        for ico_path in candidates:
+            if os.path.exists(ico_path):
+                try:
+                    img = Image.open(ico_path)
+                    img.load()
+                    return img
+                except Exception as e:
+                    logger.debug(f"Aviso al cargar {ico_path}: {e}")
+
         return self._create_fallback_image()
 
     def start(self):
@@ -55,6 +85,27 @@ class SystemTrayManager:
             if self.on_show_window:
                 self.on_show_window()
 
+        def _stop_all(icon, item):
+            if self.on_stop_streams:
+                self.on_stop_streams()
+            else:
+                try:
+                    from core.ffmpeg_mgr import stream_manager
+                    import asyncio
+                    asyncio.create_task(stream_manager.stop_all())
+                except Exception as e:
+                    logger.debug(f"Aviso deteniendo streams desde tray: {e}")
+
+        def _terminate(icon, item):
+            if self.on_terminate_all:
+                self.on_terminate_all()
+            else:
+                try:
+                    from core.process_cleanup import terminate_all_processes
+                    terminate_all_processes(force=True)
+                except Exception:
+                    sys.exit(0)
+
         def _exit(icon, item):
             icon.stop()
             if self.on_exit_app:
@@ -63,15 +114,17 @@ class SystemTrayManager:
         menu = pystray.Menu(
             pystray.MenuItem("Mostrar RTMS", _show, default=True),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Detener todas las transmisiones", _stop_all),
+            pystray.MenuItem("Finalizar todos los procesos", _terminate),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem("Salir de RTMS", _exit)
         )
 
-        self.icon = pystray.Icon("RTMS", image, f"RTMS v{__version__}", menu)
+        self.icon = pystray.Icon("RTMS", image, f"RTMS v{__version__} — Real-Time Multicam System", menu)
 
-        # Iniciar en hilo independiente para no bloquear
         self._thread = threading.Thread(target=self.icon.run, daemon=True)
         self._thread.start()
-        logger.info("Icono de bandeja del sistema (System Tray) iniciado.")
+        logger.info("Icono de bandeja del sistema (System Tray) iniciado con opciones completas.")
 
     def stop(self):
         if self.icon:

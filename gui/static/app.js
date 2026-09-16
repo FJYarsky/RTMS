@@ -1,7 +1,7 @@
 /* ==============================================================================
-   RTMS — Real-Time Multicam System v2.2.3
-   Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
-   Controlador Frontend Asíncrono de SPA
+   RTMS — Real-Time Multicam System
+   Controlador frontend interactivo y cliente asíncrono para el dashboard de control.
+   Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 ============================================================================== */
 
 let _streams = [];
@@ -58,40 +58,23 @@ function navigateToPage(pageId) {
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
     
-    let icon = 'ℹ️';
-    if (type === 'success') icon = '✅';
-    if (type === 'error') icon = '❌';
-
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
     const spanWrapper = document.createElement('span');
-    spanWrapper.style.display = 'flex';
-    spanWrapper.style.alignItems = 'center';
-    spanWrapper.style.gap = '8px';
-
-    const iconSpan = document.createElement('span');
-    iconSpan.textContent = icon;
-
-    const msgSpan = document.createElement('span');
-    msgSpan.textContent = String(message);
-
-    spanWrapper.appendChild(iconSpan);
-    spanWrapper.appendChild(msgSpan);
-
+    spanWrapper.textContent = `${icon} ${message}`;
+    
     const closeBtn = document.createElement('button');
-    closeBtn.style.background = 'none';
-    closeBtn.style.border = 'none';
-    closeBtn.style.color = 'var(--text-secondary)';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.fontSize = '1.1rem';
-    closeBtn.innerHTML = '&times;';
+    closeBtn.className = 'toast-close';
+    closeBtn.textContent = '×';
     closeBtn.onclick = () => toast.remove();
 
     toast.appendChild(spanWrapper);
     toast.appendChild(closeBtn);
     container.appendChild(toast);
-    
+
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(10px)';
@@ -165,6 +148,23 @@ async function fetchStatus() {
         const autostartSwitch = document.getElementById('autostart-toggle-switch');
         if (autostartSwitch) {
             autostartSwitch.checked = data.autostart_enabled;
+        }
+
+        if (data.platform_info) {
+            const platformEl = document.getElementById('sys-platform');
+            if (platformEl && data.platform_info.summary) {
+                platformEl.textContent = data.platform_info.summary;
+            }
+            const buildEl = document.getElementById('sys-win-build');
+            if (buildEl && data.platform_info.build_number) {
+                const ubr = data.platform_info.ubr ? `.${data.platform_info.ubr}` : '';
+                const arch = data.platform_info.architecture ? ` (${data.platform_info.architecture})` : '';
+                buildEl.textContent = `${data.platform_info.build_number}${ubr}${arch}`;
+            }
+            const verEl = document.getElementById('sys-win-ver');
+            if (verEl && data.platform_info.display_version) {
+                verEl.textContent = data.platform_info.display_version;
+            }
         }
 
         const total = _streams.length;
@@ -554,7 +554,7 @@ async function toggleAutostartState(enable) {
     }
 }
 
-// DETENCIÓN DE EMERGENCIA CON TOKEN
+// DETENCIÓN GLOBAL DE TRANSMISIONES
 function confirmEmergencyStop() {
     document.getElementById('emergency-modal-overlay').classList.add('active');
 }
@@ -565,16 +565,68 @@ function closeEmergencyModal() {
 
 async function executeEmergencyStop() {
     closeEmergencyModal();
-    showToast("Ejecutando detención de emergencia...", "info");
+    showToast("Ejecutando detención global de transmisiones...", "info");
     try {
         const res = await apiFetch('/api/system/emergency_stop', { method: 'POST' });
         const data = await res.json();
         if (res.ok) {
-            showToast(data.message, "error");
+            showToast(data.message, "warning");
             fetchStatus();
         }
     } catch (e) {
-        showToast("Error al enviar comando de emergencia", "error");
+        showToast("Error al enviar comando de detención", "error");
+    }
+}
+
+// FINALIZACIÓN TOTAL DE PROCESOS
+function confirmTerminateAllProcesses() {
+    document.getElementById('terminate-modal-overlay').classList.add('active');
+}
+
+function closeTerminateModal() {
+    document.getElementById('terminate-modal-overlay').classList.remove('active');
+}
+
+async function executeTerminateAllProcesses() {
+    closeTerminateModal();
+    showToast("Finalizando todos los procesos y liberando recursos...", "warning");
+    try {
+        await apiFetch('/api/system/shutdown', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force: true })
+        });
+        setTimeout(() => {
+            window.close();
+        }, 800);
+    } catch (e) {
+        window.close();
+    }
+}
+
+// RESTABLECIMIENTO A VALORES DE FÁBRICA / LIMPIEZA DE DATOS
+function confirmFactoryReset() {
+    document.getElementById('reset-modal-overlay').classList.add('active');
+}
+
+function closeResetModal() {
+    document.getElementById('reset-modal-overlay').classList.remove('active');
+}
+
+async function executeFactoryReset() {
+    closeResetModal();
+    showToast("Restableciendo valores de fábrica y limpiando temporales...", "warning");
+    try {
+        await apiFetch('/api/system/factory_reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirm: true })
+        });
+        setTimeout(() => {
+            window.close();
+        }, 1200);
+    } catch (e) {
+        window.close();
     }
 }
 

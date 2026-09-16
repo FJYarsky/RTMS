@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Filtro global de secretos, enmascaramiento de credenciales y sanitización de URLs
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import re
@@ -97,24 +98,11 @@ class SecretFilter(logging.Filter):
     """
     def filter(self, record: logging.LogRecord) -> bool:
         try:
-            if isinstance(record.msg, str):
-                record.msg = sanitize_log_line(record.msg)
             if record.args:
-                if isinstance(record.args, dict):
-                    record.args = {
-                        k: (sanitize_log_line(v) if isinstance(v, str) else v)
-                        for k, v in record.args.items()
-                    }
-                elif isinstance(record.args, tuple):
-                    record.args = tuple(
-                        sanitize_log_line(a) if isinstance(a, str) else a
-                        for a in record.args
-                    )
-                elif isinstance(record.args, list):
-                    record.args = [
-                        sanitize_log_line(a) if isinstance(a, str) else a
-                        for a in record.args
-                    ]
+                record.msg = sanitize_log_line(record.getMessage())
+                record.args = ()
+            elif isinstance(record.msg, str):
+                record.msg = sanitize_log_line(record.msg)
         except Exception:
             pass
         return True

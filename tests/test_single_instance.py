@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests de Instancia Única Win32 Mutex (core/single_instance.py)
+# RTMS — Real-Time Multicam System
+# Tests de prevención de instancias múltiples y señalización mediante Mutex de Windows
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from core.single_instance import (

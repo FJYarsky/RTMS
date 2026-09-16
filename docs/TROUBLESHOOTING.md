@@ -1,4 +1,4 @@
-# Guía de Resolución de Problemas (Troubleshooting) — RTMS v2.2.3
+# Guía de Resolución de Problemas (Troubleshooting) — RTMS
 
 Esta guía ofrece soluciones prácticas e instrucciones paso a paso para los incidentes más frecuentes en transmisiones multicámara con RTMS.
 
@@ -72,8 +72,24 @@ La GPU dedicada (NVIDIA GeForce RTX 4050 Laptop / 3060 / 4060) exhibe frecuencia
 ### Diagnóstico y Solución
 1. **Cámara Virtual NVIDIA Broadcast en Autoarranque**:
    - Cuando una cámara virtual de IA (`Camera (NVIDIA Broadcast)`) está transmitiendo continuamente, el software de NVIDIA mantiene activos sus modelos de redes neuronales en los Tensor Cores y en el motor 3D, impidiendo que la GPU descienda a estados de ultra bajo consumo (*P-States P8 / D3cold*).
-   - **Solución en RTMS v2.2.3**: RTMS detecta automáticamente `NVIDIA Broadcast` como dispositivo virtual y establece `auto_start: false`. Inicia esta cámara únicamente cuando sea estrictamente necesario. Además, la telemetría en el HUD te permite supervisar el uso de GPU y VRAM en tiempo real.
+   - **Solución en RTMS**: RTMS detecta automáticamente `NVIDIA Broadcast` como dispositivo virtual y establece `auto_start: false`. Inicia esta cámara únicamente cuando sea estrictamente necesario. Además, la telemetría en el HUD te permite supervisar el uso de GPU y VRAM en tiempo real.
 2. **P-States de NVENC**:
    - Al emitir con codificación por hardware (`h264_nvenc`), los controladores NVIDIA fijan la GPU en estado de rendimiento P0/P2 para garantizar la estabilidad de cuadros sin microcortes. En una laptop conectada a la corriente esto es normal y esperado. Si necesitas operar exclusivamente a batería, configura el codificador en `libx264` (CPU) desde los ajustes de la cámara.
 
-<!-- RTMS Troubleshooting Guide v2.2.3 -->
+---
+
+## 6. Múltiples Receptores Simultáneos y Contención de Socket SRT (Listener Mode)
+
+### Arquitectura de SRT
+A diferencia de protocolos de difusión masiva (como UDP Multicast o RTSP streaming servers), una transmisión SRT en modo **Listener punto a punto** (`mode=listener`) está diseñada para aceptar **una sola conexión activa por puerto**.
+
+### Síntoma
+- El primer receptor (por ejemplo, OBS Studio en una máquina de producción) se conecta y recibe el video con fluidez.
+- Un segundo receptor (por ejemplo, un operador en otra PC abriendo VLC, o una segunda ventana de OBS) intenta conectarse al mismo puerto y recibe `Connection rejected`, `Socket busy` o pantalla en negro.
+
+### Soluciones Recomendadas
+1. **Configurar Protocolo UDP Multicast en RTMS**:
+   - Si requieres que múltiples estaciones de monitoreo y computadoras en la misma red local reciban el flujo de la misma cámara de forma concurrente, ingresa a la configuración de la cámara en RTMS y cambia el protocolo de `SRT` a `UDP Multicast` (e.g. `udp://239.255.0.1:9000`). Esto permite receptores ilimitados en la red sin sobrecargar el procesador emisor.
+2. **Servidor de Retransmisión Intermedio (Relay / Gateway)**:
+   - Para distribuir SRT a múltiples destinos a través de Internet o redes WAN, utiliza un servidor puente de retransmisión (como MediaMTX, SRT Relay o SRT LA), enviando el flujo desde RTMS hacia el relé y conectando los múltiples clientes al servidor puente.
+

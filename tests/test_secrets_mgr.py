@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests de Gestión de Secretos y Cifrado DPAPI (core/secrets_mgr.py)
+# RTMS — Real-Time Multicam System
+# Tests de protección y desprotección criptográfica de credenciales mediante Windows DPAPI
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import sys

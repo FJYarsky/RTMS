@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Dependencias de Producción
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Dependencias de producción y librerías base del sistema.
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 # Core ASGI framework and live hardware monitoring libraries

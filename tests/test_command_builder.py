@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests Deterministas de Construcción de Comandos FFmpeg
+# RTMS — Real-Time Multicam System
+# Tests de generación determinista de comandos FFmpeg, codificadores y argumentos SRT
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import asyncio

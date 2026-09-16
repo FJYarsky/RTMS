@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests de Validación de Esquemas Pydantic (api/schemas.py)
+# RTMS — Real-Time Multicam System
+# Tests de validación de modelos Pydantic, restricciones de bitrate, FPS y resolución
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import pytest

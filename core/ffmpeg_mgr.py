@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Gestión de transmisiones, supervisión de procesos FFmpeg y sincronización de hardware DirectShow
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import asyncio
@@ -297,6 +298,14 @@ class StreamManager:
         proc._stop_evt.clear()
         proc.using_fallback_cpu = force_cpu
 
+        # Bloqueo por fallo de credencial (ChatGPT P0-04)
+        if proc.config.get("decryption_failed"):
+            logger.error(f"[{proc.device_path}] Imposible iniciar transmisión: Falló el descifrado seguro DPAPI.")
+            proc.transition_to(State.MANUAL_INTERVENTION_REQUIRED)
+            proc.last_error_category = ErrorCategory.AUTHENTICATION
+            proc.log("ERROR CRÍTICO: Falló el descifrado de la credencial SRT. Intervención manual requerida.")
+            return
+
         # Revalidación de puerto previo al vuelo para prevenir condiciones TOCTOU (P1-01)
         cfg_port = proc.config.get("port")
         if cfg_port and not port_manager.revalidate_port(int(cfg_port)):
@@ -427,6 +436,13 @@ class StreamManager:
                 proc.recovery_task.cancel()
             self._procs.pop(device_path, None)
 
+        # Invalidar tickets de preview asociados a esta cámara (ChatGPT P1-03)
+        try:
+            from api.routes import preview_ticket_mgr
+            preview_ticket_mgr.invalidate_for_device(device_path)
+        except Exception:
+            pass
+
         from .config_mgr import remove_camera_config
         return remove_camera_config(device_path)
 
@@ -451,9 +467,13 @@ class StreamManager:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     async def emergency_stop_all(self):
-        """Detención de emergencia invocada por el usuario."""
-        logger.warning("DETENCIÓN DE EMERGENCIA SOLICITADA.")
+        """Detención global de todas las transmisiones solicitada por el usuario."""
+        logger.warning("DETENCIÓN GLOBAL DE TRANSMISIONES SOLICITADA.")
         await self.stop_all()
+
+    async def stop_all_streams(self):
+        """Alias formal para detención global de todas las transmisiones."""
+        await self.emergency_stop_all()
 
     async def watchdog(self):
         """
@@ -627,9 +647,15 @@ class StreamManager:
                 if proc.is_alive:
                     asyncio.create_task(self.stop_stream(dp, timeout=1.0))
 
-        # 2. Registrar y actualizar dispositivos presentes
+        # 2. Registrar y actualizar dispositivos presentes (omitiendo ignored_devices Claude N1)
+        from .config_mgr import load_config
+        active_cfg = load_config()
+        ignored_devs = set(active_cfg.get("ignored_devices", []))
+
         for d in devices:
             dp = d["device_path"]
+            if dp in ignored_devs:
+                continue
             proc = self.get_proc(dp)
             was_disconnected = not proc.is_connected
             proc.config = get_or_allocate_camera_config(dp, d["friendly_name"])

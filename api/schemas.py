@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Modelos de datos y esquemas de validación de peticiones/respuestas API (Pydantic)
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from pydantic import BaseModel, Field, field_validator
@@ -46,7 +47,14 @@ class FullExportRequest(BaseModel):
     confirm_export_secrets: bool
 
 class PreviewTicketRequest(BaseModel):
-    device_path: str
+    device_path: Optional[str] = None
+    ttl_seconds: Optional[int] = Field(default=60, ge=5, le=120)
+
+class FactoryResetRequest(BaseModel):
+    confirm: bool
+
+class SystemShutdownRequest(BaseModel):
+    force: bool = True
 
 class CameraPersistedConfig(BaseModel):
     id: Optional[str] = ""

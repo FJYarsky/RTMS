@@ -1,5 +1,6 @@
 # ==============================================================================
-# RTMS v2.2.3 — Git Ignore Policy
+# RTMS — Reglas de exclusión de Git para entorno Windows y Python
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 # Production deployment and runtime ignore rules

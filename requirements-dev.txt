@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Dependencias de Desarrollo y Pruebas
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Dependencias de desarrollo, testing y herramientas de calidad de código.
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 -r requirements.txt

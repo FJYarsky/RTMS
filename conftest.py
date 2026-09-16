@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Configuración de pytest y aislamiento de entorno
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Configuración global de pytest, aislamiento de entorno y fixtures de prueba.
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 """Pytest configuration, async cleanup, and test isolation fixtures."""

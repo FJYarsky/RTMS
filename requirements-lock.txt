@@ -1,6 +1,6 @@
 # ==============================================================================
-# RTMS v2.2.3 — Pinned Production & Dev Dependencies Lockfile
-# Reproducible build and deployment artifact
+# RTMS — Real-Time Multicam System
+# Archivo de bloqueo (lockfile) de dependencias exactas para despliegues reproducibles.
 # ==============================================================================
 
 fastapi==0.141.1

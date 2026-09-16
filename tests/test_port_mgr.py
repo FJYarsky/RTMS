@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests Unitarios para PortManager (core/port_mgr.py)
+# RTMS — Real-Time Multicam System
+# Tests del gestor de asignación, verificación y reciclaje de puertos de red SRT
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import socket

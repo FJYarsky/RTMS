@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Tests de Seguridad e Integración de API (api/routes.py & main.py)
+# RTMS — Real-Time Multicam System
+# Tests de autenticación por token, endpoints protegidos y aislamiento de seguridad API
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from fastapi.testclient import TestClient

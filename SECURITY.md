@@ -1,13 +1,13 @@
-# Política de Seguridad — RTMS v2.2.3
+# Política de Seguridad — RTMS
 
 ## Versiones Soportadas
 
-Actualmente, solo la versión más reciente recibe actualizaciones activas y parches de seguridad:
+Actualmente, la versión principal del proyecto recibe actualizaciones activas y parches de seguridad continuos:
 
 | Versión | Soportada |
 | ------- | --------- |
-| 2.2.3   | :white_check_mark: |
-| < 2.2.3 | :x: |
+| >= 2.2.0 | :white_check_mark: |
+| < 2.2.0 | :x: |
 
 ---
 
@@ -24,5 +24,3 @@ Por favor incluye:
 3. Impacto potencial en sistemas de producción.
 
 Todas las comunicaciones se tratarán de forma confidencial y se emitirá una respuesta en un plazo máximo de 48 horas con el plan de mitigación correspondiente.
-
-<!-- RTMS Security Policy v2.2.3 -->

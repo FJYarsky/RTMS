@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Gestión de configuración, persistencia atómica, cifrado DPAPI y presets de cámara
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import json
@@ -23,10 +24,26 @@ _CONFIG_LOCK = threading.Lock()
 _LAST_SAVED_CONFIG: Optional[str] = None
 
 def get_base_dir() -> str:
-    """Retorna el directorio base persistente, evitando carpetas temporales de PyInstaller."""
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    r"""
+    Retorna el directorio base persistente, evitando carpetas temporales de PyInstaller.
+    Verifica que el directorio sea escribible; si no lo es (ej. C:\Program Files\),
+    cae a %LOCALAPPDATA%\RTMS\ (Claude N5).
+    """
+    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    test_file = os.path.join(base, ".rtms_perm_check")
+    try:
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("1")
+        os.remove(test_file)
+        return base
+    except Exception:
+        local_app = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+        fallback = os.path.join(local_app, "RTMS")
+        try:
+            os.makedirs(fallback, exist_ok=True)
+        except Exception:
+            pass
+        return fallback
 
 CONFIG_DIR = os.path.join(get_base_dir(), "config")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
@@ -112,7 +129,7 @@ def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
 def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Migra configuraciones heredadas hacia el esquema más reciente de forma incremental.
-    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (v2.0.4 / v2.1.0 / v2.2.0 / v2.2.1 / v2.2.3 con camera_id y passphrases seguras).
+    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (v2.0.4 / v2.1.0 / v2.2.0 / v2.2.1 / v2.2.3 / v2.2.4 con camera_id y passphrases seguras).
     Rechaza esquemas futuros con UnsupportedConfigSchemaError (P1-03).
     """
     schema_ver = data.get("config_schema_version", 1)
@@ -148,6 +165,7 @@ def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
                     pass
         data["config_schema_version"] = 3
 
+    data.setdefault("ignored_devices", [])
     data["version"] = __version__
     return data
 
@@ -167,6 +185,7 @@ def load_config() -> Dict[str, Any]:
             "version": __version__,
             "config_schema_version": CURRENT_SCHEMA_VERSION,
             "cameras": {},
+            "ignored_devices": [],
             "next_port": 9000,
             "unattended_autostart": True
         }
@@ -228,6 +247,7 @@ def _unprotect_config_cameras(config_data: Dict[str, Any]) -> Dict[str, Any]:
                 logger.warning(f"Error descifrando credencial de cámara {cam.get('friendly_name', '')}: {e}. Marcando como irrecuperable.")
                 cam["srt_passphrase"] = ""
                 cam["decryption_failed"] = True
+                cam["credential_unavailable"] = True
     return config_data
 
 def _prepare_config_for_disk(config_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -293,32 +313,6 @@ def save_config(config_data: Dict[str, Any], raise_on_error: bool = False) -> bo
                 raise ConfigPersistenceError(f"Fallo de persistencia en disco: {e}") from e
             return False
 
-def remove_camera_config(identifier: str) -> bool:
-    """
-    Elimina permanentemente la configuración de una cámara por su device_path o ID, liberando su puerto (P1-06).
-    """
-    config = load_config()
-    cameras = config.get("cameras", {})
-    target_key = None
-    if identifier in cameras:
-        target_key = identifier
-    else:
-        for key, cam in cameras.items():
-            if cam.get("id") == identifier or cam.get("device_path") == identifier:
-                target_key = key
-                break
-
-    if target_key:
-        removed_cam = cameras.pop(target_key)
-        port = removed_cam.get("port")
-        if port:
-            try:
-                port_manager.release_port(int(port))
-            except Exception:
-                pass
-        return save_config(config)
-    return False
-
 def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[str, Any]:
     """Retorna la configuración de una cámara, asignando ID estable, puerto libre verificado y passphrase segura."""
     config = load_config()
@@ -334,7 +328,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         cam.setdefault("zerolatency", True)
         cam.setdefault("is_virtual", virtual_flag)
         cam.setdefault("protocol", "srt")
-        if not cam.get("srt_passphrase"):
+        if not cam.get("srt_passphrase") and not cam.get("decryption_failed"):
             cam["srt_passphrase"] = secrets.token_hex(6)
 
         # Verificar que el puerto esté registrado
@@ -459,7 +453,7 @@ def export_config(safe_mode: bool = True, include_secrets: bool = False) -> Dict
     return export_data
 
 def import_config(new_config: Dict[str, Any]) -> bool:
-    """Importa y valida una configuración externa, aplicando migraciones necesarias."""
+    """Importa y valida una configuración externa, aplicando migraciones necesarias (ChatGPT P0-05)."""
     if not isinstance(new_config, dict):
         return False
     cameras = new_config.get("cameras")
@@ -470,8 +464,54 @@ def import_config(new_config: Dict[str, Any]) -> bool:
             return False
     try:
         migrated = migrate_config(new_config)
-        save_config(migrated)
-        return True
+        return save_config(migrated)
     except Exception as e:
         logger.error(f"Fallo durante la importación y migración de configuración: {e}")
         return False
+
+def remove_camera_config(identifier: str) -> bool:
+    """
+    Elimina permanentemente la configuración de una cámara por su device_path o ID,
+    liberando su puerto y agregándola a ignored_devices para prevenir auto-detección (Claude N1).
+    """
+    config = load_config()
+    cameras = config.get("cameras", {})
+    target_key = None
+    if identifier in cameras:
+        target_key = identifier
+    else:
+        for key, cam in cameras.items():
+            if cam.get("id") == identifier or cam.get("device_path") == identifier:
+                target_key = key
+                break
+
+    if target_key:
+        removed_cam = cameras.pop(target_key)
+        dp = removed_cam.get("device_path", target_key)
+        ignored = config.setdefault("ignored_devices", [])
+        if dp not in ignored:
+            ignored.append(dp)
+        port = removed_cam.get("port")
+        if port:
+            try:
+                port_manager.release_port(int(port))
+            except Exception:
+                pass
+        return save_config(config)
+    return False
+
+def unignore_device(device_path: str) -> bool:
+    """Permite readmitir un dispositivo DirectShow previamente descartado o ignorado."""
+    config = load_config()
+    ignored = config.get("ignored_devices", [])
+    if device_path in ignored:
+        ignored.remove(device_path)
+        return save_config(config)
+    return False
+
+def is_device_ignored(device_path: str) -> bool:
+    """Verifica si un dispositivo se encuentra en la lista de ignorados."""
+    config = load_config()
+    return device_path in config.get("ignored_devices", [])
+
+

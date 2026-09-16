@@ -1,5 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Test de Arranque Headless / Sin Consola (main.py)
+# RTMS — Real-Time Multicam System
+# Tests de ejecución en segundo plano (headless), ciclo de vida FastAPI y asignación de puertos
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import sys

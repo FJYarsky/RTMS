@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- RTMS v2.2.3 Web UI Dashboard -->
+    <!-- RTMS Web UI Dashboard -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="rtms-token" content="{{ api_token }}">
@@ -11,11 +11,12 @@
 <body>
     <!-- ==============================================================================
     RTMS — Real-Time Multicam System
-    Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+    Panel de control web y visualización de transmisiones de video en tiempo real.
+    Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
     ============================================================================== -->
     
     <div class="app">
-        <!-- HEADER CON HUD DE TELEMETRÍA Y BOTÓN DE EMERGENCIA -->
+        <!-- HEADER CON HUD DE TELEMETRÍA Y CONTROLES GLOBALES -->
         <header>
             <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor">
                 <div class="logo-icon"></div>
@@ -23,8 +24,8 @@
             </div>
 
             <!-- HUD de Telemetría en Tiempo Real -->
-            <div class="header-hud">
-                <div class="hud-item" title="Uso actual de procesador">
+            <div class="hud-telemetry" id="hud-telemetry">
+                <div class="hud-item" title="Uso actual del procesador (CPU)">
                     <span class="hud-label">CPU</span>
                     <span class="hud-val" id="hud-cpu-val">0%</span>
                 </div>
@@ -51,9 +52,13 @@
                     <span id="active-streams-num">0</span> activos / <span id="total-streams-num">0</span> total
                 </div>
                 <div class="ip-pill" id="header-ip-addr">–.–.–.–</div>
-                <!-- Botón de Detención de Emergencia -->
-                <button class="btn btn-emergency" onclick="confirmEmergencyStop()" title="Detener inmediatamente todas las transmisiones">
-                    🛑 PARADA DE EMERGENCIA
+                <!-- Botón de Detención Global -->
+                <button class="btn btn-emergency" onclick="confirmEmergencyStop()" title="Detener inmediatamente todas las transmisiones activas">
+                    ⏹️ Detener Todo
+                </button>
+                <!-- Botón de Finalizar Procesos -->
+                <button class="btn btn-kill-procs" onclick="confirmTerminateAllProcesses()" title="Finalizar totalmente todos los procesos de RTMS y streaming">
+                    ⚡ Salir / Finalizar
                 </button>
             </div>
         </header>
@@ -305,7 +310,7 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header">Información del Servidor</div>
+                    <div class="card-header">Información del Servidor y Entorno</div>
                     <div class="card-body">
                         <table class="system-table">
                             <tr>
@@ -313,8 +318,16 @@
                                 <td>v{{ version }} (Compilación Oficial)</td>
                             </tr>
                             <tr>
-                                <td>Plataforma</td>
-                                <td id="sys-platform">Windows</td>
+                                <td>Sistema Operativo</td>
+                                <td id="sys-platform">{% if platform_info %}{{ platform_info.summary }}{% else %}Windows{% endif %}</td>
+                            </tr>
+                            <tr>
+                                <td>Compilación Windows</td>
+                                <td id="sys-win-build">{% if platform_info and platform_info.build_number %}{{ platform_info.build_number }}{% if platform_info.ubr %}.{{ platform_info.ubr }}{% endif %} ({{ platform_info.architecture }}){% else %}—{% endif %}</td>
+                            </tr>
+                            <tr>
+                                <td>Versión de Lanzamiento</td>
+                                <td id="sys-win-ver">{% if platform_info and platform_info.display_version %}{{ platform_info.display_version }}{% else %}—{% endif %}</td>
                             </tr>
                             <tr>
                                 <td>IP del Servidor</td>
@@ -337,6 +350,23 @@
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                             <button class="btn btn-ghost" onclick="exportConfiguration()">📥 Exportar Configuración (JSON)</button>
                             <button class="btn btn-ghost" onclick="triggerImportConfiguration()">📤 Importar Configuración</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px; border: 1px solid rgba(239, 68, 68, 0.35);">
+                    <div class="card-header" style="color: var(--status-red, #ef4444);">Zona de Mantenimiento y Control de Procesos</div>
+                    <div class="card-body">
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+                            Herramientas de emergencia y saneamiento del entorno. Finaliza de raíz cualquier proceso remanente en memoria o restaura el software a su estado virgen de fábrica.
+                        </p>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <button class="btn btn-kill-procs" onclick="confirmTerminateAllProcesses()" title="Finalizar inmediatamente todos los procesos de RTMS, FFmpeg y FFplay">
+                                ⚡ Finalizar Todos los Procesos
+                            </button>
+                            <button class="btn btn-danger" onclick="confirmFactoryReset()" title="Restablecer configuración de fábrica y limpiar datos temporales">
+                                🗑️ Restablecer a Valores de Fábrica
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -504,9 +534,6 @@
                         <a href="mailto:joaquinyarsky@gmail.com" class="btn btn-ghost btn-sm" style="text-decoration:none;">
                             ✉️ joaquinyarsky@gmail.com
                         </a>
-                        <a href="https://wa.me/5492625437980" target="_blank" class="btn btn-whatsapp btn-sm" style="text-decoration:none;">
-                            💬 WhatsApp: +54 2625-437980
-                        </a>
                     </div>
                 </div>
 
@@ -557,24 +584,71 @@
         </div>
     </div>
 
-    <!-- MODAL: CONFIRMACIÓN DE PARADA DE EMERGENCIA -->
+    <!-- MODAL: CONFIRMACIÓN DE DETENCIÓN GLOBAL -->
     <div class="modal-overlay" id="emergency-modal-overlay">
         <div class="modal-card">
-            <div class="modal-hdr" style="color: var(--status-red);">
-                <span>⚠️ Confirmar Detención de Emergencia</span>
+            <div class="modal-hdr" style="color: #f59e0b;">
+                <span>⏹️ Confirmar Detención Global</span>
                 <button class="modal-close" onclick="closeEmergencyModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 0.95rem; margin-bottom: 12px;">
-                    ¿Estás seguro de que deseas ejecutar la <strong>Parada de Emergencia</strong>?
+                    ¿Estás seguro de que deseas ejecutar la <strong>Detención Global</strong>?
                 </p>
                 <p style="font-size: 0.85rem; color: var(--text-secondary);">
-                    Esto detendrá de forma inmediata todos los procesos de transmisión FFmpeg activos y cortará las emisiones hacia OBS/VLC.
+                    Esto detendrá de forma ordenada todas las transmisiones activas y liberará los recursos de red y captura.
                 </p>
             </div>
             <div class="modal-foot">
                 <button class="btn btn-ghost" onclick="closeEmergencyModal()">Cancelar</button>
-                <button class="btn btn-danger" onclick="executeEmergencyStop()">Detener Todo Ahora</button>
+                <button class="btn btn-warning" onclick="executeEmergencyStop()">Detener Todas las Transmisiones</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMACIÓN DE FINALIZACIÓN TOTAL DE PROCESOS -->
+    <div class="modal-overlay" id="terminate-modal-overlay">
+        <div class="modal-card">
+            <div class="modal-hdr" style="color: var(--status-red);">
+                <span>⚡ Finalización Total de Procesos</span>
+                <button class="modal-close" onclick="closeTerminateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.95rem; margin-bottom: 12px;">
+                    ¿Deseas <strong>cerrar RTMS y forzar la finalización de todos los procesos</strong>?
+                </p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                    Esto cerrará el programa de inmediato y garantizará la eliminación de cualquier proceso hijo en ejecución (como FFmpeg o FFplay), liberando por completo los recursos de hardware y la memoria RAM.
+                </p>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" onclick="closeTerminateModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="executeTerminateAllProcesses()">Finalizar Todo Ahora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMACIÓN DE RESTABLECIMIENTO A VALORES DE FÁBRICA -->
+    <div class="modal-overlay" id="reset-modal-overlay">
+        <div class="modal-card">
+            <div class="modal-hdr" style="color: var(--status-red);">
+                <span>🗑️ Restablecer a Valores de Fábrica</span>
+                <button class="modal-close" onclick="closeResetModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.95rem; margin-bottom: 12px;">
+                    ¿Confirmas que deseas <strong>limpiar todos los datos y restaurar la configuración original</strong>?
+                </p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+                    Se eliminará permanentemente la configuración personalizada (<code>config.json</code>), respaldos automáticos, archivos de registro (<code>rtms.log</code>) y archivos temporales.
+                </p>
+                <div class="alert-box alert-warning" style="margin-bottom: 0;">
+                    ⚠️ El programa se cerrará automáticamente al finalizar la limpieza. La próxima vez que lo inicies, arrancará como si fuera su primera ejecución.
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" onclick="closeResetModal()">Cancelar</button>
+                <button class="btn btn-danger" onclick="executeFactoryReset()">Borrar Datos y Salir</button>
             </div>
         </div>
     </div>

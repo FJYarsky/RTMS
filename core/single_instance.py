@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Control de instancia única mediante Win32 Mutex con fallback local y multi-sesión
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import sys
@@ -10,13 +11,15 @@ import logging
 
 logger = logging.getLogger("rtms.single_instance")
 
-_MUTEX_NAME = "Global\\RTMS_Multicam_v2_SingleInstance_Mutex"
+_GLOBAL_MUTEX = "Global\\RTMS_Multicam_v2_SingleInstance_Mutex"
+_LOCAL_MUTEX = "Local\\RTMS_Multicam_v2_SingleInstance_Mutex"
 _mutex_handle = None
 
 def acquire_single_instance_lock() -> bool:
     """
-    Intenta adquirir un Mutex global en Windows para asegurar que solo
-    una instancia de RTMS esté en ejecución a la vez.
+    Intenta adquirir un Mutex en Windows para asegurar que solo una instancia
+    de RTMS esté en ejecución a la vez. Intenta primero en el espacio Global
+    y cae a Local si no cuenta con privilegios administrativos.
     Retorna True si esta es la única instancia, False si ya hay otra activa.
     """
     global _mutex_handle
@@ -24,20 +27,38 @@ def acquire_single_instance_lock() -> bool:
         return True
 
     ERROR_ALREADY_EXISTS = 183
-    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
-    kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
-    kernel32.CreateMutexW.restype = wintypes.HANDLE
+    ERROR_ACCESS_DENIED = 5
 
-    # Intentamos crear el mutex
-    _mutex_handle = kernel32.CreateMutexW(None, False, _MUTEX_NAME)
-    last_error = ctypes.get_last_error()
+    try:
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
+        kernel32.CreateMutexW.restype = wintypes.HANDLE
 
-    if last_error == ERROR_ALREADY_EXISTS:
-        logger.warning("Otra instancia de RTMS ya está en ejecución.")
-        return False
+        # 1. Intentar Mutex Global
+        _mutex_handle = kernel32.CreateMutexW(None, False, _GLOBAL_MUTEX)
+        last_error = ctypes.get_last_error()
 
-    logger.info("Mutex de instancia única adquirido exitosamente.")
-    return True
+        # Si da error de permisos en Global, caer al espacio Local
+        if (not _mutex_handle or last_error == ERROR_ACCESS_DENIED) and last_error != ERROR_ALREADY_EXISTS:
+            logger.debug("No se pudo crear mutex Global (permisos). Intentando mutex Local...")
+            _mutex_handle = kernel32.CreateMutexW(None, False, _LOCAL_MUTEX)
+            last_error = ctypes.get_last_error()
+
+        if not _mutex_handle or last_error == ERROR_ALREADY_EXISTS:
+            logger.warning("Otra instancia de RTMS ya está en ejecución.")
+            if _mutex_handle:
+                try:
+                    kernel32.CloseHandle(_mutex_handle)
+                except Exception:
+                    pass
+                _mutex_handle = None
+            return False
+
+        logger.info("Mutex de instancia única adquirido exitosamente.")
+        return True
+    except Exception as e:
+        logger.warning(f"Error comprobando instancia única: {e}")
+        return True
 
 def release_single_instance_lock():
     """Libera el handle del Mutex al cerrar la aplicación."""
@@ -48,8 +69,9 @@ def release_single_instance_lock():
             kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
             kernel32.CloseHandle.restype = wintypes.BOOL
             kernel32.CloseHandle(_mutex_handle)
-            _mutex_handle = None
             logger.info("Mutex de instancia única liberado.")
         except Exception as e:
             logger.warning(f"Error liberando mutex: {e}")
+        finally:
+            _mutex_handle = None
 

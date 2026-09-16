@@ -1,6 +1,7 @@
 # ==============================================================================
-# RTMS v2.2.3 — Real-Time Multicam System
-# Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+# RTMS — Real-Time Multicam System
+# Entorno de sistema Windows, planes de energía, firewall y detección de plataforma
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import subprocess
@@ -159,10 +160,14 @@ def backup_current_power_settings():
         }
 
         os.makedirs(os.path.dirname(BACKUP_FILE), exist_ok=True)
-        with open(BACKUP_FILE, "w", encoding="utf-8") as f:
+        tmp_backup = BACKUP_FILE + ".tmp"
+        with open(tmp_backup, "w", encoding="utf-8") as f:
             json.dump(backup_data, f, indent=4)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_backup, BACKUP_FILE)
 
-        logger.info(f"Respaldo de energía guardado exitosamente en {BACKUP_FILE}")
+        logger.info(f"Respaldo de energía guardado atómicamente en {BACKUP_FILE}")
     except Exception as e:
         logger.error(f"Error al realizar respaldo de energía: {e}")
 
@@ -431,4 +436,55 @@ def release_stay_awake() -> bool:
     except Exception as e:
         logger.debug(f"No se pudo restaurar SetThreadExecutionState: {e}")
         return False
+
+def get_platform_details() -> Dict[str, Any]:
+    """
+    Identifica de forma exhaustiva la versión de Windows, edición comercial,
+    número de compilación, UBR y arquitectura de hardware (U-9).
+    """
+    import platform
+    machine = platform.machine()
+    arch = "64-bit (x64)" if machine in ("AMD64", "x86_64") else ("ARM64" if "arm" in machine.lower() else "32-bit (x86)")
+    info = {
+        "os": "Windows" if sys.platform == "win32" else sys.platform.capitalize(),
+        "edition": "Windows",
+        "version": platform.version(),
+        "display_version": "",
+        "build": "",
+        "build_number": "",
+        "ubr": "",
+        "arch": arch,
+        "architecture": arch,
+        "machine": machine,
+        "summary": "Windows"
+    }
+
+    if sys.platform != "win32":
+        info["summary"] = f"{platform.system()} {platform.release()} ({arch})"
+        return info
+
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion") as k:
+            info["edition"] = winreg.QueryValueEx(k, "ProductName")[0]
+            try:
+                info["display_version"] = winreg.QueryValueEx(k, "DisplayVersion")[0]
+            except FileNotFoundError:
+                pass
+            try:
+                info["build"] = str(winreg.QueryValueEx(k, "CurrentBuildNumber")[0])
+                info["build_number"] = info["build"]
+            except FileNotFoundError:
+                pass
+            try:
+                info["ubr"] = str(winreg.QueryValueEx(k, "UBR")[0])
+            except FileNotFoundError:
+                pass
+    except Exception as e:
+        logger.debug(f"Aviso consultando registro de versión de Windows: {e}")
+
+    ver_tag = f" ({info['display_version']})" if info["display_version"] else ""
+    build_tag = f" — Compilación {info['build']}.{info['ubr']}" if (info["build"] and info["ubr"]) else (f" — Compilación {info['build']}" if info["build"] else "")
+    info["summary"] = f"{info['edition']}{ver_tag}{build_tag} [{info['arch']}]"
+    return info
 

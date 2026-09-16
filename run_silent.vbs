@@ -1,7 +1,7 @@
-' RTMS v2.2.3 Silent Background Launcher
 ' ==============================================================================
-' RTMS v2.2.3 — Lanzador 100% Silencioso en Windows (VBScript)
-' Desarrollado y soporte: Joaquín Yarsky - joaquinyarsky@gmail.com - +54 2625-437980
+' RTMS — Real-Time Multicam System
+' Lanzador en segundo plano 100% silencioso para Windows (VBScript)
+' Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 ' ==============================================================================
 
 Set WshShell = CreateObject("WScript.Shell")

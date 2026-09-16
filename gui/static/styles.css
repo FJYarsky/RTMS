@@ -1,7 +1,7 @@
 /* ==============================================================================
    RTMS — Real-Time Multicam System
-   Desarrollado y soporte: Junio 2026 - Joaquín Yarsky - joaquinyarsky@gmail.com
-   Diseño Premium: Tema Oscuro con Acentos Teal y Animaciones Suaves
+   Estilos visuales y diseño de interfaz de usuario de escritorio y web.
+   Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 ============================================================================== */
 
 :root {
@@ -961,7 +961,7 @@ input[type="checkbox"]:checked + .switch-toggle::after {
 }
 
 /* ==============================================================================
-   RTMS v2.2.3 EXTENSIONS (HUD, EMERGENCY, ABOUT, VIRTUAL CAMERAS)
+   RTMS EXTENSIONS (HUD, GLOBAL STOP, ABOUT, VIRTUAL CAMERAS)
    ============================================================================== */
 
 /* Version tag in Header */
@@ -1007,29 +1007,56 @@ input[type="checkbox"]:checked + .switch-toggle::after {
     color: var(--teal);
 }
 
-/* Emergency Stop Button */
+/* Detención Global Button */
 .btn-emergency {
-    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    background: linear-gradient(135deg, #d97706, #b45309);
     color: #ffffff;
-    font-weight: 800;
+    font-weight: 700;
     font-size: 0.75rem;
     letter-spacing: 0.5px;
-    border: 1px solid #f87171;
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
-    animation: pulse-red 2s infinite;
+    border: 1px solid #f59e0b;
+    box-shadow: 0 0 10px rgba(217, 119, 6, 0.3);
     padding: 6px 12px;
     border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .btn-emergency:hover {
-    background: #dc2626;
-    box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
+    background: #b45309;
+    box-shadow: 0 0 14px rgba(217, 119, 6, 0.5);
     transform: translateY(-1px);
 }
 
-@keyframes pulse-red {
-    0%, 100% { box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
-    50% { box-shadow: 0 0 18px rgba(239, 68, 68, 0.8); }
+/* Kill Processes Button */
+.btn-kill-procs {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    border: 1px solid #f87171;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-kill-procs:hover {
+    background: #dc2626;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
+    transform: translateY(-1px);
+}
+
+.btn-warning {
+    background-color: #d97706;
+    color: #fff;
+}
+
+.btn-warning:hover:not(:disabled) {
+    background-color: #b45309;
+    transform: translateY(-1px);
 }
 
 /* Author Box in Sidebar */

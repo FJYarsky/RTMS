@@ -1,3 +1,9 @@
+# ==============================================================================
+# RTMS — Real-Time Multicam System
+# Tests de autenticación en endpoints de previsualización MJPEG y visor nativo FFplay
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
+# ==============================================================================
+
 import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
@@ -14,15 +20,30 @@ def test_preview_endpoint_requires_auth(client):
     res = client.get("/api/stream/test_cam/preview")
     assert res.status_code == 403
 
-def test_preview_endpoint_accepts_query_token(client):
-    # With query param token -> should not be 403 (e.g. 200 or streaming)
+def test_preview_endpoint_rejects_global_token_in_query(client):
+    # Global API token in query parameter must be strictly rejected (P0-02)
+    res = client.get("/api/stream/test_cam/preview?token=test_preview_secret_token_123")
+    assert res.status_code == 403
+
+def test_preview_endpoint_accepts_ephemeral_ticket(client):
+    # Ephemeral preview ticket flow
     with patch.object(preview_manager, "has_ffmpeg_binary", return_value=True):
         with patch.object(preview_manager, "generate_mjpeg_stream") as mock_gen:
             async def dummy_gen(*args, **kwargs):
                 yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\nfakejpg\r\n"
             mock_gen.return_value = dummy_gen()
 
-            res = client.get("/api/stream/test_cam/preview?token=test_preview_secret_token_123")
+            # 1. Request ticket with auth header
+            t_res = client.post(
+                "/api/stream/test_cam/preview_ticket",
+                headers={"X-RTMS-Token": "test_preview_secret_token_123"},
+                json={"ttl_seconds": 30}
+            )
+            assert t_res.status_code == 200
+            ticket = t_res.json()["ticket"]
+
+            # 2. Access preview with ephemeral ticket
+            res = client.get(f"/api/stream/test_cam/preview?ticket={ticket}")
             assert res.status_code == 200
             assert "multipart/x-mixed-replace" in res.headers["content-type"]
 

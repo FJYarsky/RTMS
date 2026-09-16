@@ -1,7 +1,7 @@
-"""Unit and integration tests for GPU and network telemetry in RTMS v2.2.3."""
-
 # ==============================================================================
-# RTMS v2.2.3 — Tests de Telemetría (tests/test_telemetry.py)
+# RTMS — Real-Time Multicam System
+# Tests de telemetría de rendimiento del sistema, métricas de GPU NVML y estadísticas de red
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 from unittest.mock import MagicMock, patch
