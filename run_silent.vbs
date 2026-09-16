@@ -18,3 +18,4 @@ Else
     WshShell.CurrentDirectory = strPath
     WshShell.Run "pythonw """ & strMain & """", 0, False
 End If
+ 
