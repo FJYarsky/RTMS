@@ -4,6 +4,8 @@
 - **Corrección Crítica de Ventana Nativa en Release Portable**:
   - En la distribución portable generada por PyInstaller, se empaquetan las dependencias nativas de `pythonnet` (`--hidden-import=pythonnet`, `--collect-all=pythonnet`) y se copian automáticamente todas las DLLs de WebView2 (`Microsoft.Web.WebView2.Core.dll`, `Microsoft.Web.WebView2.WinForms.dll` y la carpeta de arquitecturas `runtimes/`) junto a `icon.ico` hacia la raíz y `_internal` de `dist/rtms/`.
   - Se elimina definitivamente el fallo silencioso que forzaba a la aplicación a abrirse en el navegador por defecto (Google Chrome) en lugar del entorno de escritorio nativo con aceleración Edge WebView2.
+- **Corrección de Diseño y Disposición Horizontal del HUD**:
+  - Solucionada la alineación flexible de los indicadores de telemetría (CPU, GPU, RAM, Red, Bitrate) en el encabezado, eliminando el desbordamiento vertical y recorte que ocurría tras la integración del nuevo botón de detención y salida. Incorporadas reglas responsivas para anchos compactos.
 - **Eliminación de Ventanas Duplicadas y Pestañas Periódicas**:
   - `show_window_from_tray()` en `main.py` valida la existencia de la ventana nativa (`_main_window`) e invoca exclusivamente `show()` y `restore()`. Se eliminó cualquier invocación accidental a `webbrowser.open()` cuando el motor nativo está activo.
   - Sincronización robustecida en `acquire_single_instance_lock()` para que segundas instancias pasen el foco a la ventana existente mediante señalización IPC en lugar de desplegar interfaces concurrentes.
@@ -25,9 +27,17 @@
   - Sustituida la nomenclatura alarmista por `⏹️ Detener Todo` / `Detención Global` en la interfaz, adaptando el color del botón a tono ámbar sobrio.
 
 ### 🎛️ Integración y Rediseño del System Tray
+- **Opción "Acerca de RTMS" en el Menú Contextual**:
+  - Añadida la opción directa en el menú del System Tray para acceder a la información oficial, versión y créditos de autor, abriendo el modal en la ventana nativa o un diálogo Win32 nativo en segundo plano.
 - **Icono Vectorial Moderno**: Rediseñado el icono por defecto en `core/tray_icon.py` con diseño de esquinas redondeadas en color grafito oscuro (`#1E293B`), lente concéntrico cian (`#06B6D4` / `#0891B2`) y punto indicador de captura.
 - **Menú Contextual Enriquecido**: Agregadas las acciones `Detener todas las transmisiones`, `Finalizar todos los procesos` y tooltip dinámico con versión del sistema (`RTMS v2.2.4 — Real-Time Multicam System`).
 - **Restauración Fiable**: El botón `Mostrar RTMS` enfoca de forma consistente la ventana nativa de la aplicación sin abrir navegadores externos.
+
+### 🛡️ Remediación de Seguridad CodeQL (8 de 8 Alertas Cerradas)
+- **Mitigación de Línea de Comandos No Controlada (#6 - Critical)**: En `core/preview_mgr.py` y `api/routes.py`, validación exhaustiva de parámetros hacia FFplay contra lista blanca de cámaras configuradas, restricción de esquemas de red (`srt`, `udp`, `http`, `https`), sanitización con expresiones regulares y aplicación de `shlex.quote`.
+- **Prevención de Exposición de Información por Excepciones (#7 y #8 - Medium)**: En `core/system_env.py`, supresión del flujo de excepciones hacia respuestas HTTP en endpoints `/api/power/*`, preservando la topología interna del sistema.
+- **Enlace Seguro de Sockets en Loopback (#3, #4 y #5 - Medium)**: En `core/port_mgr.py` y fixtures de prueba, enlace de sockets de sondeo exclusivamente a `127.0.0.1` en vez de `0.0.0.0`.
+- **Restricción de Permisos en Flujo de CI (#1 y #2 - Medium)**: En `.github/workflows/ci.yml`, bloque explícito `permissions: contents: read` para limitar los privilegios del `GITHUB_TOKEN` al mínimo necesario.
 
 ### 📊 Monitoreo de Plataforma Windows y Auditoría Integral
 - **Detalles Completos de Entorno Windows**:
@@ -41,5 +51,4 @@
   - Incorporación de `CODE_OF_CONDUCT.md` bajo el estándar Contributor Covenant v2.1.
   - Eliminación absoluta de datos personales de contacto no profesionales en el 100% de los archivos.
   - Estandarización permanente de encabezados y descripciones funcionales en todos los módulos.
-  - 93 pruebas unitarias y de integración pasando al 100% y 0 errores de linter.
- 
+  - 98 pruebas unitarias y de integración pasando al 100% y 0 errores de linter.
