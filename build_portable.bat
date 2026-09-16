@@ -82,6 +82,9 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
   --hidden-import=winreg ^
   --hidden-import=webview ^
   --hidden-import=clr ^
+  --hidden-import=clr_loader ^
+  --hidden-import=clr_loader.ffi ^
+  --hidden-import=clr_loader.ffi.netfx ^
   --hidden-import=pythonnet ^
   --hidden-import=pystray ^
   --hidden-import=PIL ^
@@ -91,6 +94,7 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
   --collect-all=fastapi ^
   --collect-all=starlette ^
   --collect-all=webview ^
+  --collect-all=clr_loader ^
   --collect-all=pythonnet ^
   --collect-all=pystray ^
   main.py
@@ -127,8 +131,16 @@ if exist "THIRD_PARTY_NOTICES.md" (
 
 REM Copiar icono a las ubicaciones clave
 if exist "icon.ico" (
+    echo [INFO] Copiando icono a dist\rtms...
     copy /Y "icon.ico" "dist\rtms\" >nul
     copy /Y "icon.ico" "dist\rtms\_internal\" >nul
+)
+
+REM Copiar configuración CLR de .NET Framework para soportar descargas y evitar restricciones CAS
+if exist "rtms.exe.config" (
+    echo [INFO] Copiando rtms.exe.config a dist\rtms...
+    copy /Y "rtms.exe.config" "dist\rtms\" >nul
+    copy /Y "rtms.exe.config" "dist\rtms\_internal\" >nul
 )
 
 REM Localizar librerías y runtimes nativos de webview/WebView2
