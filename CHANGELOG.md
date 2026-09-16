@@ -236,3 +236,4 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Optimizaciones de energía en Windows y reglas de firewall.
 
 <!-- RTMS v2.2.2 Changelog -->
+ 
