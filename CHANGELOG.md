@@ -2,6 +2,26 @@
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
+## [2.2.5] — 2026-09-16
+
+### Desbloqueo Automático Mark-of-the-Web (Zone.Identifier) y Runtime .NET
+- **Desmarque Automático de Binarios (`unblock_app_binaries`)**:
+  - Implementada la función nativa Win32 `unblock_app_binaries()` en `core/system_env.py` que recorre el directorio base de la aplicación al arrancar y elimina los flujos alternativos NTFS `:Zone.Identifier` (`ZoneId=3`) que Windows añade al descargar el archivo `.zip` de releases desde navegadores como Chrome o Edge.
+  - Resuelve de raíz el bloqueo de seguridad de .NET Framework (CAS) que impedía a `clr_loader` y `pythonnet` resolver `Python.Runtime.Loader.Initialize`, eliminando por completo la apertura involuntaria en el navegador web.
+- **Configuración de Runtime CLR (`rtms.exe.config`)**:
+  - Incorporado el archivo de configuración `rtms.exe.config` con la directiva `<loadFromRemoteSources enabled="true"/>` y activación de runtime v4.0 (SKU .NETFramework 4.6.2), autorizando explícitamente la carga de ensamblados .NET descargados.
+- **Empaquetado Completo de `clr_loader`**:
+  - Actualizado `build_portable.bat` para incluir `--hidden-import=clr_loader`, `--hidden-import=clr_loader.ffi`, `--hidden-import=clr_loader.ffi.netfx` y `--collect-all=clr_loader`, garantizando que `ClrLoader.dll` y todos los componentes nativos se empaqueten dentro de la distribución portable.
+
+### Responsividad Instantánea y Desacoplamiento Asíncrono del System Tray
+- **Despacho Asíncrono Estricto (`_dispatch_async`)**:
+  - Rediseñados todos los callbacks del menú contextual en `core/tray_icon.py` (`_show`, `_stop_all`, `_terminate`, `_about`, `_exit`) para despacharse inmediatamente en hilos de trabajo independientes (`daemon=True`).
+  - La bomba de mensajes Win32 de `pystray` (`GetMessage` / `DispatchMessage`) nunca se bloquea, asegurando que el menú contextual se despliegue al instante (<1 ms) con las coordenadas de pantalla exactas bajo el cursor del ratón.
+- **Control de Estado de Ventana Nativa (`_main_window_ready`)**:
+  - Incorporada la bandera de estado `_main_window_ready` en `main.py` para sincronizar la inicialización efectiva del motor WebView2 (`webview.start(func=on_window_ready, gui="edgechromium")`).
+  - Eliminado el bloqueo y timeout síncrono de 10 a 20 segundos (`events.shown.wait(10)`) que ocurría cuando `show_window_from_tray()` o `show_about_from_tray()` intentaban interactuar con ventanas inactivas o en error.
+  - En caso de fallo de pywebview, la referencia `_main_window` se restablece a `None` y el acceso se redirige limpiamente al navegador sin retardos ni cuelgues.
+
 ## [2.2.4] — 2026-09-16
 
 ### Interfaz de Escritorio Nativa y Empaquetado Portable (WebView2)
