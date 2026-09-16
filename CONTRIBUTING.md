@@ -32,3 +32,4 @@
 - Código Python conforme a directivas PEP 8.
 - Tipado estricto con anotaciones de tipo (`typing`).
 - Manejo explícito de excepciones evitando cláusulas `except Exception: pass` sin registro de logs.
+ 
