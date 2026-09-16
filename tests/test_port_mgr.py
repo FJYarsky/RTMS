@@ -34,7 +34,7 @@ def test_detect_port_in_use():
     mgr = PortManager()
     # Abrir un socket local temporal
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.bind(("0.0.0.0", 9199))
+        s.bind(("127.0.0.1", 9199))
         assert mgr.is_port_in_use(9199) is True
 
     # Tras cerrar, el puerto debe figurar como libre
