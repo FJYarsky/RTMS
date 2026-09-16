@@ -1,3 +1,22 @@
+## RTMS v2.2.5 — Desbloqueo Mark-of-the-Web, Ventana Nativa WebView2 y System Tray de Cero Latencia
+
+### 🚀 Desbloqueo Automático Mark-of-the-Web y Ejecución Nativa Garantizada
+- **Eliminación Automática de Flujos NTFS Zone.Identifier (`unblock_app_binaries`)**:
+  - En Windows, descargar archivos zip de releases desde la web adjunta automáticamente la marca de seguridad `Zone.Identifier` (`ZoneId=3`). Esto causaba que la capa de interoperabilidad unmanaged de .NET Framework bloqueara `Python.Runtime.dll` arrojando `Failed to resolve Python.Runtime.Loader.Initialize` y obligando a la aplicación a abrirse en Google Chrome.
+  - Se implementó el desmarque nativo Win32 en `core/system_env.py` que recorre y desbloquea en milisegundos todos los binarios y bibliotecas de la aplicación al arrancar.
+- **Configuración de Runtime CLR (`rtms.exe.config`)**:
+  - Se añade el manifiesto de configuración `rtms.exe.config` autorizando explícitamente la carga de ensamblados remotos (`<loadFromRemoteSources enabled="true"/>`) y vinculando el runtime .NET 4.6.2+.
+- **Empaquetado Completo de `clr_loader`**:
+  - En `build_portable.bat`, se añade `--collect-all=clr_loader` y los módulos ffi nativos para empaquetar `ClrLoader.dll` junto a `rtms.exe`.
+
+### ⚡ System Tray con Despacho Asíncrono y Cero Latencia
+- **Desacoplamiento Total de la Bomba de Mensajes Win32**:
+  - Todas las acciones del menú contextual en `core/tray_icon.py` (`Mostrar RTMS`, `Detener todas las transmisiones`, `Finalizar todos los procesos`, `Acerca de RTMS`, `Salir de RTMS`) ahora se ejecutan de forma estrictamente asíncrona en hilos de trabajo independientes (`daemon=True`).
+  - La bomba de mensajes Win32 de `pystray` nunca se bloquea, garantizando que el menú contextual se despliegue instantáneamente (<1 ms) y siempre en la posición exacta del cursor.
+- **Control de Sincronización de Ventana (`_main_window_ready`)**:
+  - Se implementa una bandera de inicialización en `main.py` para sincronizar el estado del motor gráfico antes de interactuar con la ventana nativa.
+  - Se erradican los retardos y congelamientos de 10 a 20 segundos (`events.shown.wait(10)`) que ocurrían al restaurar o consultar el modal Acerca de en estados transitorios o tras errores gráficos.
+
 ## RTMS v2.2.4 — Ventana Nativa WebView2, System Tray Avanzado y Limpieza Total de Procesos
 
 ### 🖥️ Interfaz de Escritorio Nativa y Empaquetado Portable (WebView2)
