@@ -1,7 +1,7 @@
 @echo off
 REM ==============================================================================
 REM RTMS — Real-Time Multicam System
-REM Lanzador de inicio silencioso en Windows (sin ventana de consola CMD)
+REM Lanzador de inicio en segundo plano de la aplicación.
 REM Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 REM ==============================================================================
 

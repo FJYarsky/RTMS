@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Gestión de autoarranque en Windows para tolerancia a fallos y reinicios.
+# Gestión del inicio automático de la aplicación en Windows.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

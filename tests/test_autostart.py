@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de configuración y persistencia de autoarranque en el registro de Windows
+# Pruebas de configuración del inicio automático en Windows.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

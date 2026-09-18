@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Detección y enumeración de hardware DirectShow y cámaras en Windows.
+# Detección y sondeo de dispositivos de captura de video.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

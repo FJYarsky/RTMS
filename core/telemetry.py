@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Recolección asíncrona de telemetría del sistema (CPU, RAM, GPU vía NVML y red).
+# Recolección y monitorización de métricas de rendimiento del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

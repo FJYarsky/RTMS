@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de diagnósticos del sistema, verificación de binarios y estado de la red (RTMS Doctor)
+# Pruebas del diagnóstico de entorno y dependencias del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Terminación y limpieza total de procesos, streams y subprocesos hijos (FFmpeg/FFplay)
+# Terminación y limpieza de procesos del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

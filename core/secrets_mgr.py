@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Gestión criptográfica de credenciales y frases de paso SRT mediante Windows DPAPI.
+# Cifrado y protección de credenciales mediante Windows DPAPI.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

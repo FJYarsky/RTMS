@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Entorno de sistema Windows, planes de energía, firewall y detección de plataforma
+# Configuración y utilidades del entorno del sistema Windows.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

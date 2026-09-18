@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de telemetría de rendimiento del sistema, métricas de GPU NVML y estadísticas de red
+# Pruebas de recolección de telemetría y métricas del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

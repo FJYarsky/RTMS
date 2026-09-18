@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Control de instancia única mediante Win32 Mutex con fallback local y multi-sesión
+# Control de instancia única de la aplicación en el sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

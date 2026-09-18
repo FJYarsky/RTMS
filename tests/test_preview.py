@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de autenticación en endpoints de previsualización MJPEG y visor nativo FFplay
+# Pruebas del servicio y control de acceso a previsualizaciones.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

@@ -1,9 +1,9 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Fuente centralizada y única de verdad para el versionado de RTMS.
+# Definición centralizada de la versión del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Fuente centralizada y única de verdad para el versionado de RTMS."""
+"""Definición centralizada de la versión del sistema."""
 
 __version__ = "2.2.6"

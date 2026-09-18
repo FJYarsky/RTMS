@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de persistencia atómica en disco, migraciones de esquema y respaldos de configuración
+# Pruebas de persistencia en disco y migraciones de configuración.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

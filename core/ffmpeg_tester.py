@@ -1,18 +1,15 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Motor de Pruebas Profundas, Simulación de Cámaras Virtuales y Digestión de Video
+# Diagnóstico y pruebas de rendimiento para flujos FFmpeg.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
 import asyncio
-import os
 import re
-import sys
 import time
-import socket
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 
 from core.hardware import get_ffmpeg_bin, has_ffmpeg_binary, _WIN_FLAGS
 

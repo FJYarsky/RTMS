@@ -1,9 +1,16 @@
+# Notas Oficiales de Lanzamiento — RTMS (Real-Time Multicam System)
+
+Historial completo y notas oficiales de lanzamiento organizadas cronológicamente para cada versión de RTMS.
+
+---
+
 ## RTMS v2.2.6 — Corrección Crítica de Conexión SRT, Optimización UDP 1080p60 y Suite de Diagnóstico FFmpeg
+*(2026-09-17)*
 
 ### 🛠️ Corrección Crítica de Entablado de Conexión SRT y Copia de URL
 - **Resolución de Rechazo por Contraseña Faltante (`ERROR:UNSECURE`)**:
   - RTMS genera passphrases criptográficas seguras al registrar cámaras, pero la interfaz web copiaba la URL `srt://IP:port?mode=caller...` omitiendo el parámetro `&passphrase=...`. Sockets externos como OBS Studio o vMix eran rechazados inmediatamente con `ERROR:UNSECURE (Password required or unexpected)`.
-  - Se implementó el endpoint protegido `GET /api/stream/{device_path}/connect_url` en `api/routes.py` que calcula y devuelve la URL completa y funcional con su passphrase configurada.
+  - Se implementó el endpoint protegido `GET /api/stream/{device_path}/connect_url` en `api/routes.py` que calcula y devuelve la URL completa y funcional con su passphrase configurada y codificación URL segura.
   - Se actualizó `gui/static/app.js` (`copyUrlByIndex`) para consultar este endpoint al pulsar "Copiar URL", copiando al portapapeles la dirección exacta y garantizando la conexión al 100%.
 - **Resiliencia del Listener SRT ante Desconexiones de Clientes**:
   - En `core/ffmpeg_mgr.py`, el Watchdog detecta cuando FFmpeg finaliza tras la desconexión normal de un cliente receptor (`-5 I/O error`) y reinicia el proceso listener de inmediato con penalización cero y sin retardos de *backoff*, dejando el socket disponible para reconexión instantánea.
@@ -26,7 +33,10 @@
 - **Tests Automatizados de Integración (`tests/test_ffmpeg_live.py`)**:
   - 5 tests de integración en vivo añadidos a la suite oficial de Pytest, elevando la cobertura a 107 tests unitarios y de integración pasando al 100%.
 
+---
+
 ## RTMS v2.2.5 — Desbloqueo Mark-of-the-Web, Ventana Nativa WebView2 y System Tray de Cero Latencia
+*(2026-09-16)*
 
 ### 🚀 Desbloqueo Automático Mark-of-the-Web y Ejecución Nativa Garantizada
 - **Eliminación Automática de Flujos NTFS Zone.Identifier (`unblock_app_binaries`)**:
@@ -45,57 +55,128 @@
   - Se implementa una bandera de inicialización en `main.py` para sincronizar el estado del motor gráfico antes de interactuar con la ventana nativa.
   - Se erradican los retardos y congelamientos de 10 a 20 segundos (`events.shown.wait(10)`) que ocurrían al restaurar o consultar el modal Acerca de en estados transitorios o tras errores gráficos.
 
+---
+
 ## RTMS v2.2.4 — Ventana Nativa WebView2, System Tray Avanzado y Limpieza Total de Procesos
+*(2026-09-16)*
 
 ### 🖥️ Interfaz de Escritorio Nativa y Empaquetado Portable (WebView2)
 - **Corrección Crítica de Ventana Nativa en Release Portable**:
-  - En la distribución portable generada por PyInstaller, se empaquetan las dependencias nativas de `pythonnet` (`--hidden-import=pythonnet`, `--collect-all=pythonnet`) y se copian automáticamente todas las DLLs de WebView2 (`Microsoft.Web.WebView2.Core.dll`, `Microsoft.Web.WebView2.WinForms.dll` y la carpeta de arquitecturas `runtimes/`) junto a `icon.ico` hacia la raíz y `_internal` de `dist/rtms/`.
+  - En la distribución portable generada por PyInstaller, se empaquetan las dependencias nativas de `pythonnet` y se copian automáticamente todas las DLLs de WebView2 (`Microsoft.Web.WebView2.Core.dll`, `Microsoft.Web.WebView2.WinForms.dll` y la carpeta de arquitecturas `runtimes/`) junto a `icon.ico` hacia la raíz y `_internal` de `dist/rtms/`.
   - Se elimina definitivamente el fallo silencioso que forzaba a la aplicación a abrirse en el navegador por defecto (Google Chrome) en lugar del entorno de escritorio nativo con aceleración Edge WebView2.
 - **Corrección de Diseño y Disposición Horizontal del HUD**:
-  - Solucionada la alineación flexible de los indicadores de telemetría (CPU, GPU, RAM, Red, Bitrate) en el encabezado, eliminando el desbordamiento vertical y recorte que ocurría tras la integración del nuevo botón de detención y salida. Incorporadas reglas responsivas para anchos compactos.
+  - Solucionada la alineación flexible de los indicadores de telemetría (CPU, GPU, RAM, Red, Bitrate) en el encabezado, eliminando el desbordamiento vertical tras la integración del nuevo botón de detención y salida.
 - **Eliminación de Ventanas Duplicadas y Pestañas Periódicas**:
-  - `show_window_from_tray()` en `main.py` valida la existencia de la ventana nativa (`_main_window`) e invoca exclusivamente `show()` y `restore()`. Se eliminó cualquier invocación accidental a `webbrowser.open()` cuando el motor nativo está activo.
-  - Sincronización robustecida en `acquire_single_instance_lock()` para que segundas instancias pasen el foco a la ventana existente mediante señalización IPC en lugar de desplegar interfaces concurrentes.
+  - `show_window_from_tray()` en `main.py` valida la existencia de la ventana nativa (`_main_window`) e invoca exclusivamente `show()` y `restore()`.
 
 ### ⚡ Gestión Avanzada del Ciclo de Vida y Limpieza de Procesos
 - **Terminación Total de Procesos (In-App y System Tray)**:
   - Nuevo módulo `core/process_cleanup.py` que implementa `terminate_all_processes(force=True)`.
   - Detiene ordenadamente hilos de captura, transmisiones activas y previsualizaciones, y elimina árboles de procesos huérfanos de FFmpeg y FFplay (`taskkill /F /T` y `psutil`).
   - Libera el mutex de instancia única (`single_instance_lock`), finaliza el System Tray y llama a `os._exit(0)`.
-  - Botón `⚡ Salir / Finalizar` en la barra superior y en la pestaña de Sistema con diálogo modal de confirmación.
-  - Opción de menú contextual `Finalizar todos los procesos` en la bandeja del sistema.
-  - Nuevo endpoint protegido `POST /api/system/shutdown`.
 - **Restablecimiento a Valores de Fábrica ("Factory Reset")**:
-  - Nuevo endpoint protegido `POST /api/system/factory_reset` que requiere confirmación explícita (`confirm: true`).
-  - Elimina de forma segura la configuración (`rtms_config.json*`), copias de respaldo, archivos de registro (`rtms.log*`) y directorios de almacenamiento en `%LOCALAPPDATA%\RTMS\`.
-  - Ejecuta la terminación total de procesos para garantizar que el siguiente arranque sea 100% limpio como una primera instalación.
-  - Botón `🗑️ Restablecer a Valores de Fábrica` en la sección de Sistema con modal de confirmación y advertencia.
-- **Renombramiento de "Parada de Emergencia" a "Detención Global"**:
-  - Sustituida la nomenclatura alarmista por `⏹️ Detener Todo` / `Detención Global` en la interfaz, adaptando el color del botón a tono ámbar sobrio.
+  - Nuevo endpoint protegido `POST /api/system/factory_reset` con confirmación explícita.
+  - Elimina de forma segura la configuración, respaldos, archivos de registro y directorios de almacenamiento en `%LOCALAPPDATA%\RTMS\`.
+- **Renombramiento a "Detención Global"**:
+  - Sustituida la nomenclatura alarmista por `⏹️ Detener Todo` / `Detención Global` en la interfaz.
 
-### 🎛️ Integración y Rediseño del System Tray
-- **Opción "Acerca de RTMS" en el Menú Contextual**:
-  - Añadida la opción directa en el menú del System Tray para acceder a la información oficial, versión y créditos de autor, abriendo el modal en la ventana nativa o un diálogo Win32 nativo en segundo plano.
-- **Icono Vectorial Moderno**: Rediseñado el icono por defecto en `core/tray_icon.py` con diseño de esquinas redondeadas en color grafito oscuro (`#1E293B`), lente concéntrico cian (`#06B6D4` / `#0891B2`) y punto indicador de captura.
-- **Menú Contextual Enriquecido**: Agregadas las acciones `Detener todas las transmisiones`, `Finalizar todos los procesos` y tooltip dinámico con versión del sistema (`RTMS v2.2.4 — Real-Time Multicam System`).
-- **Restauración Fiable**: El botón `Mostrar RTMS` enfoca de forma consistente la ventana nativa de la aplicación sin abrir navegadores externos.
+---
 
-### 🛡️ Remediación de Seguridad CodeQL (8 de 8 Alertas Cerradas)
-- **Mitigación de Línea de Comandos No Controlada (#6 - Critical)**: En `core/preview_mgr.py` y `api/routes.py`, validación exhaustiva de parámetros hacia FFplay contra lista blanca de cámaras configuradas, restricción de esquemas de red (`srt`, `udp`, `http`, `https`), sanitización con expresiones regulares y aplicación de `shlex.quote`.
-- **Prevención de Exposición de Información por Excepciones (#7 y #8 - Medium)**: En `core/system_env.py`, supresión del flujo de excepciones hacia respuestas HTTP en endpoints `/api/power/*`, preservando la topología interna del sistema.
-- **Enlace Seguro de Sockets en Loopback (#3, #4 y #5 - Medium)**: En `core/port_mgr.py` y fixtures de prueba, enlace de sockets de sondeo exclusivamente a `127.0.0.1` en vez de `0.0.0.0`.
-- **Restricción de Permisos en Flujo de CI (#1 y #2 - Medium)**: En `.github/workflows/ci.yml`, bloque explícito `permissions: contents: read` para limitar los privilegios del `GITHUB_TOKEN` al mínimo necesario.
+## RTMS v2.2.3 — Seguridad y Mitigación de Vulnerabilidades (Dependabot)
+*(2026-09-15)*
 
-### 📊 Monitoreo de Plataforma Windows y Auditoría Integral
-- **Detalles Completos de Entorno Windows**:
-  - Detección de edición de Windows, Build Number, UBR (Update Build Revision) y arquitectura (64-bit / ARM64) mediante consulta directa al Registro de Windows (`SOFTWARE\Microsoft\Windows NT\CurrentVersion`).
-  - Exposición en `/api/system/status`, integración en el HUD superior y tabla de diagnóstico del sistema.
-- **Resolución de Auditorías Técnicas (Claude N1-N9 & ChatGPT P0-P2)**:
-  - Persistencia de `ignored_devices` en `core/config_mgr.py` para evitar que el hotplug de DirectShow reactive cámaras eliminadas.
-  - Corrección de `SecretFilter` para soportar argumentos `%s` sin generar excepciones `TypeError`.
-  - Tickets efímeros de preview de uso único (single-use) e invalidación por dispositivo con límite de capacidad estricto (cap a 100).
-  - Documentación detallada en `docs/TROUBLESHOOTING.md` sobre contención de sockets en modo SRT Listener.
-  - Incorporación de `CODE_OF_CONDUCT.md` bajo el estándar Contributor Covenant v2.1.
-  - Eliminación absoluta de datos personales de contacto no profesionales en el 100% de los archivos.
-  - Estandarización permanente de encabezados y descripciones funcionales en todos los módulos.
-  - 98 pruebas unitarias y de integración pasando al 100% y 0 errores de linter.
+### 🛡️ Seguridad y Remediación de Vulnerabilidades
+- **Mitigación Integral de 28 Alertas de Dependabot**:
+  - **Pillow (`>=12.3.0`)**: Mitigadas 18 vulnerabilidades, incluyendo inyección de comandos en `WindowsViewer` sobre Windows y corrupción de memoria en filtros de imagen.
+  - **Starlette (`>=1.3.1` / `1.6.0`)**: Mitigadas 6 vulnerabilidades, destacando protección contra SSRF y fugas de NetNTLM vía rutas UNC en `StaticFiles`.
+  - **Jinja2 (`>=3.1.6`)**: Mitigadas 3 vulnerabilidades de escape de sandbox en plantillas.
+  - **Pytest (`>=9.0.3`)**: Mitigada vulnerabilidad en gestión de carpetas temporales compartidas.
+- **Actualización y Sincronización del Ecosistema**:
+  - FastAPI (`0.141.1`), Uvicorn (`0.53.0`), Pydantic (`2.13.5`), Psutil (`7.2.2`), Ruff (`0.16.7`) y PyInstaller (`6.22.3`).
+
+### 💻 Interfaz de Usuario y Dashboard
+- **Layout de Codificador de Video**: Reestructurado el selector de codificador de hardware (`#config-encoder`) en una fila de ancho completo (`100%`) para evitar recortes de nombres de GPU (NVENC, QSV, AMF).
+- **Copiado Rápido de `mpegts`**: Chip interactivo `.btn-copy-chip` para copiar el valor `mpegts` con un solo clic.
+
+---
+
+## RTMS v2.2.2 — Blindaje de Seguridad, Estabilidad en Streaming y Auditoría Integral
+*(2026-09-15)*
+
+### 🔒 Criptografía y Protección de Datos
+- **Corrección Crítica en Desencriptación DPAPI**: `unprotect_secret()` retorna cadena vacía o genera `SecretDecryptionError` protegiendo contra fugas de texto cifrado.
+- **Filtro Global de Secretos y Sanitización**: `SecretFilter` y `sanitize_url()` integrados en todos los loggers y respuestas API.
+- **Tickets Efímeros para Previsualización MJPEG**: `PreviewTicketManager` (TTL 60s) con consumo único estricto para proteger tags `<img>`.
+- **Headers de Seguridad HTTP**: Middleware agregando `X-Content-Type-Options`, `Referrer-Policy` y `X-Frame-Options`.
+
+### 📹 Estabilidad Multimedia y Hardware
+- **Control de Concurrencia**: Semáforo global (`asyncio.Semaphore(3)`) en previsualizaciones de video.
+- **Detección Dinámica de Colisión de Puertos**: Manejo y reasignación en caliente ante puertos ocupados.
+- **Telemetría de GPU NVENC**: Integración de métricas directas con `nvml.dll`.
+
+---
+
+## RTMS v2.2.1 — Auditoría Exhaustiva y Hardening de Completitud
+*(2026-09-15)*
+
+### 🔧 Correcciones Críticas de Estabilidad
+- **Aislamiento en Pruebas**: Parcheo localizado con `monkeypatch` evitando mutaciones globales en `os.path`.
+- **Tolerancia a Puertos Corruptos**: Manejo seguro en deserialización de configuración.
+- **Timeouts en Comandos de Sistema**: Protección con `timeout=15` en invocaciones nativas a `powercfg`, `powershell` y `netsh`.
+- **Validación de Passphrases SRT**: Regla estricta entre 10 y 79 caracteres conforme al estándar SRT.
+
+---
+
+## RTMS v2.2.0 — Telemetría en Vivo de GPU y Red (Producción)
+*(2026-09-14)*
+
+### 📊 Monitorización en Tiempo Real
+- **Métricas de GPU con NVML Directo**: Detección nativa de GPU NVIDIA, uso de cómputo (0-100%) y VRAM usada/total con latencia <1ms.
+- **Métricas de Red por Segundo**: Cálculo de ancho de banda entrante/saliente (`sent_kbps`, `recv_kbps`) con protección de rollover.
+- **HUD Integrado**: Despliegue en vivo en la barra superior con tooltips detallados.
+
+---
+
+## RTMS v2.1.0 — Vista Previa de Video On-Demand y Optimizaciones
+*(2026-09-14)*
+
+### 🎥 Vista Previa y Detección PnP
+- **Streaming MJPEG On-Demand**: Previsualizaciones en tiempo real sin multiplexor `-tee` bloqueante y consumo 0% en reposo.
+- **Modo Encuadre**: Captura de cuadros individuales para calibrar cámaras detenidas.
+- **Detección de Cámaras Virtuales de IA**: Detección inteligente de cámaras virtuales (NVIDIA Broadcast) para evitar consumo espurio de GPU.
+
+---
+
+## RTMS v2.0.4 — Seguridad y Hardening Criptográfico
+*(2026-09-14)*
+
+- **Cifrado Windows DPAPI**: Cifrado transparente de claves en disco en `config.json`.
+- **Sanitización de URLs y Comandos**: Enmascaramiento automático de credenciales.
+- **Verificación Criptográfica SHA-256**: Descarga y validación automática de sumas oficiales de FFmpeg.
+
+---
+
+## RTMS v2.0.3 — Seguridad, Watchdog Resiliente y Calidad de Código
+*(2026-09-14)*
+
+- **CORS Estricto y Token Local**: Blindaje contra ataques CSRF localhost vía cabecera obligatoria `X-RTMS-Token`.
+- **Watchdog con Backoff Progresivo**: Reintentos inteligentes con reseteo tras 60 segundos de transmisión estable.
+- **Rotación Automática de Logs**: `RotatingFileHandler` de 5 MB para operaciones continuas 24/7.
+
+---
+
+## RTMS v2.0.2 — Protocolo SRT por Defecto, Ultra Baja Latencia y System Tray
+*(2026-09-14)*
+
+- **SRT Listener Nativo**: Configuración de ultra baja latencia (`zerolatency`).
+- **Mutex de Instancia Única**: Prevención de múltiples procesos concurrentes mediante Win32 Mutex.
+- **System Tray de Windows**: Minimización a segundo plano con menú interactivo vía `pystray`.
+
+---
+
+## RTMS v2.0.0 — Versión Inicial
+*(2026-07-03)*
+
+- Arquitectura desacoplada: backend FastAPI + ventana de escritorio WebView2 + motor FFmpeg DirectShow.
+- Transmisión en protocolos SRT y UDP Multicast.
+- Optimización de planes de energía de Windows y reglas de Windows Firewall.

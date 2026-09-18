@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de aislamiento de entorno y configuración segura en fixtures temporales
+# Pruebas de aislamiento y entorno seguro para configuraciones.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de perfiles de cámara, asignación de puertos y validación de esquemas JSON
+# Pruebas de gestión y validación de configuraciones.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

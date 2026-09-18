@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Punto de entrada principal, ciclo de vida de escritorio y ejecutor CLI.
+# Punto de entrada principal y ciclo de vida de la aplicación RTMS.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

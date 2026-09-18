@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de sanitización de secretos en comandos, URLs y filtros de logs de ejecución
+# Pruebas de sanitización de credenciales y registros del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

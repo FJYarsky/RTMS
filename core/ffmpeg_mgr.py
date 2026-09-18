@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Gestión de transmisiones, supervisión de procesos FFmpeg y sincronización de hardware DirectShow
+# Gestión y supervisión de procesos de transmisión FFmpeg.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

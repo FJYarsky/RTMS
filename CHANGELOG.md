@@ -282,6 +282,4 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - Arquitectura desacoplada FastAPI + `pywebview` + FFmpeg DirectShow.
 - Soporte básico de UDP Multicast y SRT.
 - Optimizaciones de energía en Windows y reglas de firewall.
-
-<!-- RTMS v2.2.2 Changelog -->
  

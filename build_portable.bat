@@ -1,7 +1,7 @@
 @echo off
 REM ==============================================================================
 REM RTMS — Real-Time Multicam System
-REM Script de empaquetado portable para ejecutable nativo (pywebview / PyInstaller)
+REM Script de compilación y empaquetado portable de la aplicación.
 REM Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 REM ==============================================================================
 

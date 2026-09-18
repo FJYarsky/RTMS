@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Script CLI de Pruebas Profundas, Diagnóstico y Validación Integral de FFmpeg
+# Herramienta de línea de comandos para diagnóstico y pruebas de FFmpeg.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
@@ -20,9 +20,7 @@ from core.__version__ import __version__
 from core.hardware import get_directshow_devices
 from core.ffmpeg_tester import (
     FFmpegDiagnosticSuite,
-    VirtualCameraSource,
-    VideoReceiverDigest,
-    StreamDigestResult
+    VirtualCameraSource
 )
 
 if sys.platform == "win32":
@@ -272,12 +270,12 @@ async def run_udp_tests(suite: FFmpegDiagnosticSuite, base_port: int = 9980):
 
     # Prueba 5.2: UDP 1080p@60fps con buffer pequeño (64 KB) vs buffer optimizado (4 MB)
     port += 1
-    info_mark(f"Prueba 5.2: UDP a 1080p @ 60 FPS con BUFFER PEQUEÑO (65535 bytes = 64KB)...")
+    info_mark("Prueba 5.2: UDP a 1080p @ 60 FPS con BUFFER PEQUEÑO (65535 bytes = 64KB)...")
     d_small = await suite.test_udp_connection(port=port, multicast=False, resolution="1080p", fps=60, buffer_size=65535, repeat_headers=False, duration_seconds=3.0)
     info_mark(f"Resultado con 64KB: {d_small.frames_decoded} cuadros, FPS real: {d_small.real_fps:.2f}, Errores: {len(d_small.errors)}")
 
     port += 1
-    info_mark(f"Prueba 5.3: UDP a 1080p @ 60 FPS con BUFFER OPTIMIZADO (4194304 bytes = 4MB) y repeat-headers...")
+    info_mark("Prueba 5.3: UDP a 1080p @ 60 FPS con BUFFER OPTIMIZADO (4194304 bytes = 4MB) y repeat-headers...")
     d_opt = await suite.test_udp_connection(port=port, multicast=False, resolution="1080p", fps=60, buffer_size=4194304, repeat_headers=True, duration_seconds=3.0)
     if d_opt.is_success and d_opt.real_fps >= 55.0:
         ok_mark(
@@ -333,7 +331,7 @@ async def run_virtual_camera_server(args):
         fail_mark("No se pudo iniciar la cámara virtual.")
         return
 
-    ok_mark(f"Cámara virtual transmitiendo en vivo. Presiona Ctrl+C para detener.")
+    ok_mark("Cámara virtual transmitiendo en vivo. Presiona Ctrl+C para detener.")
     try:
         while True:
             await asyncio.sleep(1.0)

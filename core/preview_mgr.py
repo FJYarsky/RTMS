@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Gestor de previsualización de video en vivo (snapshots MJPEG y visor FFplay).
+# Generación y visualización de previsualizaciones de video en vivo.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

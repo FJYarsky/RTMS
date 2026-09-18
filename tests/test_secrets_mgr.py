@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de protección y desprotección criptográfica de credenciales mediante Windows DPAPI
+# Pruebas de cifrado y protección de credenciales con DPAPI.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

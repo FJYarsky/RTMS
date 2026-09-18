@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Modelos de datos y esquemas de validación de peticiones/respuestas API (Pydantic)
+# Modelos de datos y esquemas de validación para la API.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

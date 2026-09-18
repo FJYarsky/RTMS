@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests del gestor de asignación, verificación y reciclaje de puertos de red SRT
+# Pruebas de asignación y gestión de puertos de red.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

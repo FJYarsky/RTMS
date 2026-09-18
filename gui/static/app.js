@@ -1,6 +1,6 @@
 /* ==============================================================================
    RTMS — Real-Time Multicam System
-   Controlador frontend interactivo y cliente asíncrono para el dashboard de control.
+   Controlador del frontend y la interfaz de usuario web.
    Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 ============================================================================== */
 

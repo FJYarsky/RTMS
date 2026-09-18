@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de enumeración y parseo de dispositivos de captura de video DirectShow
+# Pruebas de detección y parseo de dispositivos de captura.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

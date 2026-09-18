@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests del ciclo de vida de transmisiones, resolución de puertos y desambiguación de cámaras
+# Pruebas del ciclo de vida de transmisiones y cámaras.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

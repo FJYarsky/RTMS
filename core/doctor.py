@@ -1,10 +1,10 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Herramienta de diagnóstico integral del entorno y subsistemas (RTMS Doctor).
+# Diagnóstico del entorno de ejecución y dependencias del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Herramienta de diagnóstico integral CLI (RTMS Doctor)."""
+"""Diagnóstico del entorno de ejecución y dependencias del sistema."""
 
 import os
 import sys

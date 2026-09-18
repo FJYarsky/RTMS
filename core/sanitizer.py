@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Filtro global de secretos, enmascaramiento de credenciales y sanitización de URLs
+# Sanitización y protección de datos confidenciales en registros y comandos.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

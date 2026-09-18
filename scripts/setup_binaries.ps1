@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Descargador y verificador de integridad criptográfica SHA-256 de FFmpeg y FFplay.
+# Descarga y verificación de integridad de binarios multimedia.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
@@ -40,7 +40,7 @@ $shaPath = Join-Path $binDir "ffmpeg_temp.zip.sha256"
 # 1. Descargar paquete ZIP y suma de verificacion oficial
 Write-Host "[INFO] Descargando checksum SHA256 oficial desde: $shaUrl" -ForegroundColor Cyan
 if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-    curl.exe -f -sSL -A "RTMS-Installer/2.2.4" -o $shaPath $shaUrl
+    curl.exe -f -sSL -A "RTMS-Installer/2.2.6" -o $shaPath $shaUrl
 } else {
     Invoke-WebRequest -Uri $shaUrl -OutFile $shaPath -UseBasicParsing
 }
@@ -50,7 +50,7 @@ Write-Host "[INFO] Hash esperado: $expectedSha" -ForegroundColor Gray
 
 Write-Host "[INFO] Descargando FFmpeg oficial desde: $downloadUrl" -ForegroundColor Cyan
 if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-    curl.exe -f -L -A "RTMS-Installer/2.2.4" -o $zipPath $downloadUrl
+    curl.exe -f -L -A "RTMS-Installer/2.2.6" -o $zipPath $downloadUrl
 } else {
     Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing
 }

@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de validación de modelos Pydantic, restricciones de bitrate, FPS y resolución
+# Pruebas de validación de modelos y esquemas de datos.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de filtrado de secretos, tickets efímeros, apagado del sistema y factory reset
+# Pruebas de funciones de seguridad, tickets y control.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
@@ -143,3 +143,53 @@ def test_process_cleanup_terminate_all():
                     terminate_all_processes(force=False)
                     assert mock_release.called
                     assert mock_exit.called
+
+def test_connect_url_endpoint_requires_auth(client):
+    """Valida que el endpoint connect_url exija autenticación por token."""
+    res = client.get("/api/stream/@nonexistent_device/connect_url")
+    assert res.status_code == 403
+
+def test_connect_url_endpoint_not_found(client):
+    """Valida que el endpoint retorne 404 para dispositivos no registrados."""
+    res = client.get(
+        "/api/stream/@nonexistent_device/connect_url",
+        headers={"X-RTMS-Token": "test_audit_secret_token_123"}
+    )
+    assert res.status_code == 404
+
+def test_connect_url_endpoint_srt_and_udp(client):
+    """Valida generación de URL de conexión para OBS/vMix en protocolos SRT y UDP."""
+    # 1. Cámara SRT con passphrase
+    srt_cam = get_or_allocate_camera_config("@device_srt_connect_test", "SRT Connect Test")
+    srt_dp = srt_cam["device_path"]
+    from core.config_mgr import update_camera_config
+    update_camera_config(srt_dp, "720p", 30, 3000, protocol="srt", srt_passphrase="MySecretPassphrase123")
+
+    res = client.get(
+        f"/api/stream/{srt_dp}/connect_url",
+        headers={"X-RTMS-Token": "test_audit_secret_token_123"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "ok"
+    assert data["protocol"] == "srt"
+    assert data["has_passphrase"] is True
+    assert "srt://" in data["connect_url"]
+    assert "mode=caller" in data["connect_url"]
+    assert "passphrase=MySecretPassphrase123" in data["connect_url"]
+
+    # 2. Cámara UDP
+    udp_cam = get_or_allocate_camera_config("@device_udp_connect_test", "UDP Connect Test")
+    udp_dp = udp_cam["device_path"]
+    update_camera_config(udp_dp, "720p", 30, 3000, protocol="udp")
+
+    res_udp = client.get(
+        f"/api/stream/{udp_dp}/connect_url",
+        headers={"X-RTMS-Token": "test_audit_secret_token_123"}
+    )
+    assert res_udp.status_code == 200
+    data_udp = res_udp.json()
+    assert data_udp["status"] == "ok"
+    assert data_udp["protocol"] == "udp"
+    assert "udp://239.255.0." in data_udp["connect_url"]
+

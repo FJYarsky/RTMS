@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de autenticación por token, endpoints protegidos y aislamiento de seguridad API
+# Pruebas de autenticación y seguridad en endpoints de la API.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

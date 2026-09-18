@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Paquete principal del motor de streaming, captura DirectShow y orquestación.
+# Paquete principal del motor de streaming RTMS.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de concurrencia, límites de memoria y timeouts en subsistema de previsualización
+# Pruebas de límites y concurrencia del servicio de previsualización.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

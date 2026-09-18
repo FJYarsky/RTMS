@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Gestor de asignación y reciclaje seguro de puertos de red SRT y UDP.
+# Asignación y administración de puertos de red para transmisiones.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

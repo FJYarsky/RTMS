@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de generación determinista de comandos FFmpeg, codificadores y argumentos SRT
+# Pruebas del generador de comandos de transmisión FFmpeg.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

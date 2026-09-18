@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Configuración global de pytest, aislamiento de entorno y fixtures de prueba.
+# Configuración y fixtures compartidos para pruebas automatizadas.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

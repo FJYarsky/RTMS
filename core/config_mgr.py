@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Gestión de configuración, persistencia atómica, cifrado DPAPI y presets de cámara
+# Gestión y persistencia de la configuración del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

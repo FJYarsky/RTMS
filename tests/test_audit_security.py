@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de seguridad, cifrado DPAPI, sanitización y ciclo de vida de tickets de previsualización
+# Pruebas de seguridad, cifrado DPAPI y protección de datos.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

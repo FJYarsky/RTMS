@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de prevención de instancias múltiples y señalización mediante Mutex de Windows
+# Pruebas de prevención de instancias múltiples de la aplicación.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

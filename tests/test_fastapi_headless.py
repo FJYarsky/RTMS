@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests de ejecución en segundo plano (headless), ciclo de vida FastAPI y asignación de puertos
+# Pruebas del servidor API en modo sin interfaz gráfica.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

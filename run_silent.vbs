@@ -1,6 +1,6 @@
 ' ==============================================================================
 ' RTMS — Real-Time Multicam System
-' Lanzador en segundo plano 100% silencioso para Windows (VBScript)
+' Script de inicio silencioso sin ventana de consola.
 ' Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 ' ==============================================================================
 

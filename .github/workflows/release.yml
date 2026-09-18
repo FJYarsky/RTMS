@@ -46,12 +46,30 @@ jobs:
           Compress-Archive -Path "dist\rtms\*" -DestinationPath $zipName -Force
           Write-Host "Created archive: $zipName"
 
+      - name: Extract Release Notes for Tag
+        shell: powershell
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $content = Get-Content RELEASE_NOTES.md -Raw -Encoding utf8
+          $escapedTag = [regex]::Escape($tag)
+          $pattern = "(?s)## RTMS ${escapedTag}\b.*?(?=\r?\n## RTMS v|\Z)"
+          if ($content -match $pattern) {
+              $matches[0].Trim() | Set-Content -Path current_release_notes.md -Encoding utf8
+              Write-Host "Extracted release notes for $tag"
+          } elseif (Test-Path LATEST_RELEASE.md) {
+              Copy-Item LATEST_RELEASE.md current_release_notes.md
+              Write-Host "Fallback to LATEST_RELEASE.md"
+          } else {
+              Copy-Item RELEASE_NOTES.md current_release_notes.md
+              Write-Host "Fallback to full RELEASE_NOTES.md"
+          }
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: RTMS ${{ github.ref_name }} — Ventana Nativa WebView2, System Tray de Cero Latencia y Limpieza Total
-          body_path: RELEASE_NOTES.md
+          name: RTMS ${{ github.ref_name }}
+          body_path: current_release_notes.md
           files: RTMS-*-Windows-x64.zip
           draft: false
           prerelease: false

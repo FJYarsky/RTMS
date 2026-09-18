@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Rutas HTTP, endpoints RESTful de control de transmisiones, previsualizaciones y sistema
+# Endpoints y controladores de la API REST de RTMS.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
@@ -10,6 +10,7 @@ import logging
 import secrets
 import time
 import threading
+import urllib.parse
 from fastapi import APIRouter, HTTPException, Header, Depends, Request, Response
 from fastapi.responses import StreamingResponse
 from typing import Optional
@@ -670,14 +671,23 @@ async def get_stream_connect_url(device_path: str):
 
     protocol = cfg.get("protocol", "srt")
     port = cfg.get("port", 9000)
-    passphrase = cfg.get("srt_passphrase", "")
+    raw_pass = cfg.get("srt_passphrase", "")
+    passphrase = ""
+    if raw_pass:
+        from core.secrets_mgr import unprotect_secret
+        passphrase = unprotect_secret(raw_pass)
     latency = int(cfg.get("srt_latency", 120))
     local_ip = get_local_ip()
 
     if protocol == "srt":
-        url = f"srt://{local_ip}:{port}?mode=caller&latency={latency * 1000}"
+        params = {
+            "mode": "caller",
+            "latency": str(latency * 1000)
+        }
         if passphrase:
-            url += f"&passphrase={passphrase}"
+            params["passphrase"] = passphrase
+        query = urllib.parse.urlencode(params)
+        url = f"srt://{local_ip}:{port}?{query}"
     else:
         ip_last = (int(port) % 200) + 1
         url = f"udp://239.255.0.{ip_last}:{port}?pkt_size=1316"

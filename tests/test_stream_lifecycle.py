@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Tests del ciclo de vida de subprocesos de streaming y máquinas de estados
+# Pruebas del ciclo de vida y estados de procesos de transmisión.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

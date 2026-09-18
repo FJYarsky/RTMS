@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Integración con System Tray de Windows, menú contextual y minimización a segundo plano
+# Integración y control del icono en la bandeja del sistema de Windows.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
