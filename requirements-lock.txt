@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Archivo de bloqueo (lockfile) de dependencias exactas para despliegues reproducibles.
+# Versiones fijadas de dependencias para despliegues reproducibles.
 # ==============================================================================
 
 fastapi==0.141.1
@@ -21,4 +21,3 @@ pytest-cov==6.0.0
 httpx==0.28.1
 ruff==0.16.7
 pyinstaller==6.22.3
- 
