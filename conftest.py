@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Pytest configuration, async cleanup, and test isolation fixtures."""
+"""Configuración de pytest, fixtures compartidos y aislamiento de pruebas."""
 
 import sys
 import os
