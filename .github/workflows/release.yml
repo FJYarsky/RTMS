@@ -54,13 +54,19 @@ jobs:
           $escapedTag = [regex]::Escape($tag)
           $pattern = "(?s)## RTMS ${escapedTag}\b.*?(?=\r?\n## RTMS v|\Z)"
           if ($content -match $pattern) {
-              $matches[0].Trim() | Set-Content -Path current_release_notes.md -Encoding utf8
-              Write-Host "Extracted release notes for $tag"
+              $cleanNotes = $matches[0].Trim()
+              $cleanNotes | Set-Content -Path current_release_notes.md -Encoding utf8
+              $titleLine = ($cleanNotes -split "`r?`n")[0] -replace "^##\s*", ""
+              "RELEASE_NAME=$titleLine" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              Write-Host "Extracted release notes and title for $tag`: $titleLine"
           } elseif (Test-Path LATEST_RELEASE.md) {
               Copy-Item LATEST_RELEASE.md current_release_notes.md
-              Write-Host "Fallback to LATEST_RELEASE.md"
+              $firstLine = (Get-Content LATEST_RELEASE.md -Encoding utf8 | Select-Object -First 1) -replace "^#\s*", ""
+              "RELEASE_NAME=$firstLine" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+              Write-Host "Fallback to LATEST_RELEASE.md with title: $firstLine"
           } else {
               Copy-Item RELEASE_NOTES.md current_release_notes.md
+              "RELEASE_NAME=RTMS $tag" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
               Write-Host "Fallback to full RELEASE_NOTES.md"
           }
 
@@ -68,7 +74,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: RTMS ${{ github.ref_name }}
+          name: ${{ env.RELEASE_NAME || format('RTMS {0}', github.ref_name) }}
           body_path: current_release_notes.md
           files: RTMS-*-Windows-x64.zip
           draft: false
