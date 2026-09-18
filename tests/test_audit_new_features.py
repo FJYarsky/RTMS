@@ -27,7 +27,7 @@ def client():
     return TestClient(app)
 
 def test_secret_filter_with_format_args():
-    """Valida que SecretFilter maneje correctamente records de logging con args %s sin TypeError (Claude N2)."""
+    """Valida que SecretFilter maneje correctamente registros de logging con argumentos formateados."""
     filter_instance = SecretFilter()
     logger = logging.getLogger("test.secret.filter")
     logger.setLevel(logging.INFO)
@@ -50,7 +50,7 @@ def test_secret_filter_with_format_args():
     assert record.args == ()
 
 def test_preview_ticket_single_use_and_invalidation():
-    """Valida consumo único estricto (single-use) e invalidación por dispositivo (Claude N7, N8 / ChatGPT P0-01, P1-03)."""
+    """Valida consumo único estricto (single-use) e invalidación por dispositivo."""
     dp = "@device_camera_test_ticket"
     ticket = preview_ticket_mgr.create_ticket(dp, ttl=60)
     assert ticket is not None
@@ -67,13 +67,13 @@ def test_preview_ticket_single_use_and_invalidation():
     assert preview_ticket_mgr.consume_ticket(ticket2, dp) is False
 
 def test_preview_ticket_capacity_limit():
-    """Valida que el gestor de tickets no crezca indefinidamente (cap a 100) (Claude N8 / ChatGPT P1-02)."""
+    """Valida que el gestor de tickets mantenga un límite superior de capacidad en memoria."""
     for i in range(150):
         preview_ticket_mgr.create_ticket(f"@cam_{i}", ttl=1)
     assert len(preview_ticket_mgr._tickets) <= 100
 
 def test_get_platform_details_returns_valid_structure():
-    """Valida que get_platform_details() retorne estructura esperada para el HUD y página de sistema (U-9)."""
+    """Valida que get_platform_details() retorne estructura esperada para el HUD y página de sistema."""
     info = get_platform_details()
     assert isinstance(info, dict)
     assert "os" in info
@@ -82,7 +82,7 @@ def test_get_platform_details_returns_valid_structure():
     assert "Windows" in info["summary"]
 
 def test_ignored_devices_persists_on_camera_delete():
-    """Valida que al eliminar una cámara se agregue a ignored_devices para evitar que el hotplug la resucite (Claude N1)."""
+    """Valida que al eliminar una cámara se agregue a ignored_devices para evitar auto-detección."""
     test_dp = "@device_ignored_camera_test"
 
     cam_cfg = get_or_allocate_camera_config(test_dp, "Cam Ignored Test")
@@ -103,7 +103,7 @@ def test_ignored_devices_persists_on_camera_delete():
     assert is_device_ignored(test_dp) is False
 
 def test_factory_reset_endpoint_requires_confirmation(client):
-    """Valida que el endpoint de restablecimiento de fábrica exija confirmación explícita (U-5)."""
+    """Valida que el endpoint de restablecimiento de fábrica exija confirmación explícita."""
     res = client.post(
         "/api/system/factory_reset",
         headers={"X-RTMS-Token": "test_audit_secret_token_123"},
@@ -112,7 +112,7 @@ def test_factory_reset_endpoint_requires_confirmation(client):
     assert res.status_code == 400
 
 def test_factory_reset_endpoint_success(client):
-    """Valida que el endpoint de restablecimiento limpie archivos de configuración y logs (U-5)."""
+    """Valida que el endpoint de restablecimiento limpie archivos de configuración y logs."""
     with patch("main.terminate_all_processes"):
         with patch("threading.Thread"):
             res = client.post(
@@ -124,7 +124,7 @@ def test_factory_reset_endpoint_success(client):
             assert res.json()["status"] == "ok"
 
 def test_system_shutdown_endpoint(client):
-    """Valida que el endpoint de shutdown invoque la terminación ordenada de procesos (U-3)."""
+    """Valida que el endpoint de shutdown invoque la terminación ordenada de procesos."""
     with patch("threading.Thread") as mock_thread:
         res = client.post(
             "/api/system/shutdown",

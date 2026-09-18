@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Generación y visualización bajo demanda de previsualizaciones de video en vivo (MJPEG y FFplay)."""
+
 import os
 import sys
 import re
@@ -34,12 +36,12 @@ def get_ffplay_bin() -> str:
 
 class PreviewManager:
     """
-    Gestor de Vista Previa de video On-Demand con control de concurrencia (N8, P1-10).
+    Gestor de Vista Previa de video On-Demand con control de concurrencia.
     Garantiza 0% de uso de CPU y GPU cuando no está activo.
     Completamente aislado del proceso principal de transmisión.
     """
     MAX_CONCURRENT_PREVIEWS = 3
-    MAX_JPEG_BUFFER = 4 * 1024 * 1024  # 4 MB límite de seguridad (N14)
+    MAX_JPEG_BUFFER = 4 * 1024 * 1024  # Límite de seguridad para buffer JPEG (4 MB)
 
     def __init__(self):
         self._active_ffplay: Dict[str, subprocess.Popen] = {}
@@ -49,11 +51,11 @@ class PreviewManager:
 
     @staticmethod
     def has_ffmpeg_binary() -> bool:
-        """Verifica si el binario de FFmpeg está disponible (N3)."""
+        """Verifica si el binario de FFmpeg está disponible en el sistema."""
         return has_ffmpeg_binary()
 
     async def acquire_slot(self, identifier: str) -> bool:
-        """Adquiere un slot de visualización concurrente (máx 3 globales, 1 por cámara) (P1-10)."""
+        """Adquiere un slot de visualización concurrente (máximo global configurable, uno por cámara)."""
         async with self._concurrency_lock:
             if identifier in self._active_camera_previews:
                 return False
@@ -187,7 +189,7 @@ class PreviewManager:
             if p.returncode == 0 and stdout:
                 return stdout
         except asyncio.TimeoutError:
-            # Eliminar FFmpeg huérfano para no bloquear la cámara DirectShow (N4)
+            # Terminar proceso huérfano para liberar el dispositivo DirectShow
             logger.warning(f"Timeout al capturar snapshot de DirectShow para {device_path}. Terminando proceso forzosamente.")
             if p:
                 try:
@@ -259,7 +261,7 @@ class PreviewManager:
                     break
                 buffer.extend(chunk)
 
-                # Control defensivo de desbordamiento de memoria (N14)
+                # Control defensivo contra desbordamiento de memoria
                 if len(buffer) > self.MAX_JPEG_BUFFER:
                     logger.warning(f"Buffer MJPEG superó {self.MAX_JPEG_BUFFER} bytes sin frame válido. Reiniciando buffer.")
                     buffer.clear()
@@ -308,7 +310,7 @@ class PreviewManager:
                 await self.release_slot(identifier)
 
     async def stop_all(self):
-        """Detiene todas las ventanas de FFplay y libera todos los slots de previsualización (N5, P1-12)."""
+        """Detiene todas las ventanas de FFplay y libera todos los slots de previsualización."""
         for proc in list(self._active_ffplay.values()):
             if proc.poll() is None:
                 try:

@@ -1021,7 +1021,7 @@ function triggerImportConfiguration() {
     input.click();
 }
 
-// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND CON TICKETS EFÍMEROS (P1-01)
+// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND CON TICKETS EFÍMEROS
 async function openPreviewModal(index) {
     const stream = _streams[index];
     if (!stream) return;

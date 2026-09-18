@@ -8,7 +8,7 @@ import asyncio
 from core.preview_mgr import PreviewManager
 
 def test_preview_slot_concurrency():
-    """TEST-05: acquire_slot enforces max 3 global previews and 1 preview per camera."""
+    """Verifica la concurrencia de previsualización limitando a 3 sesiones globales y 1 por cámara."""
     async def _run():
         pm = PreviewManager()
 
@@ -45,7 +45,7 @@ def test_preview_slot_concurrency():
     asyncio.run(_run())
 
 def test_mjpeg_buffer_cap(monkeypatch):
-    """TEST-06: generate_mjpeg_stream enforces 4MB buffer cap when boundary is missing."""
+    """Verifica que generate_mjpeg_stream aplique el límite de búfer de 4MB si falta el delimitador JPEG."""
     async def _run():
         pm = PreviewManager()
 
@@ -89,7 +89,7 @@ def test_mjpeg_buffer_cap(monkeypatch):
     asyncio.run(_run())
 
 def test_snapshot_timeout_kills_process(monkeypatch):
-    """TEST-07: get_snapshot_frame kills process on timeout to avoid holding DirectShow locks."""
+    """Verifica que get_snapshot_frame termine el proceso tras timeout para evitar retener bloqueos de DirectShow."""
     async def _run():
         pm = PreviewManager()
 
@@ -125,7 +125,7 @@ def test_snapshot_timeout_kills_process(monkeypatch):
     asyncio.run(_run())
 
 def test_preview_stop_all_cleans_up():
-    """TEST-08: stop_all cancels active tasks, clears slots and resets semaphore."""
+    """Verifica que stop_all cancele las tareas activas, limpie ranuras y restablezca el semáforo."""
     async def _run():
         pm = PreviewManager()
 

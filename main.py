@@ -137,7 +137,7 @@ def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
     application = FastAPI(title="RTMS API", version=__version__, lifespan=lifespan)
     application.state.api_token = token
 
-    # Middleware de Cabeceras de Seguridad HTTP (P2-10)
+    # Middleware de cabeceras de seguridad HTTP
     @application.middleware("http")
     async def add_security_headers(request: Request, call_next):
         response = await call_next(request)

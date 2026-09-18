@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Asignación, validación y administración de puertos de red para transmisiones multimedia."""
+
 import socket
 import logging
 import threading
@@ -15,7 +17,7 @@ class PortManager:
     """
     Gestor de asignación y reciclaje de puertos para transmisiones SRT/UDP.
     Verifica activamente la disponibilidad física del socket en el SO.
-    Previene condiciones TOCTOU mediante revalidación previa al lanzamiento (P1-01).
+    Previene condiciones de carrera mediante revalidación activa previa al lanzamiento.
     """
     DEFAULT_MIN_PORT = 9000
     DEFAULT_MAX_PORT = 9200

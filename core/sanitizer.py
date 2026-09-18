@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Sanitización y enmascaramiento de datos confidenciales en URLs, comandos y registros de log."""
+
 import re
 import logging
 import urllib.parse
@@ -11,7 +13,7 @@ from typing import List, Union
 
 logger = logging.getLogger("rtms.sanitizer")
 
-# Patrones exhaustivos de secretos a enmascarar en logs, comandos y APIs (P1-06)
+# Patrones de expresiones regulares para enmascarar secretos en texto
 _SECRET_PATTERNS = [
     re.compile(r"(passphrase=)([^& \r\n\"']+)", re.IGNORECASE),
     re.compile(r"(password=)([^& \r\n\"']+)", re.IGNORECASE),

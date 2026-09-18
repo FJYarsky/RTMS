@@ -21,7 +21,7 @@ def test_preview_endpoint_requires_auth(client):
     assert res.status_code == 403
 
 def test_preview_endpoint_rejects_global_token_in_query(client):
-    # Global API token in query parameter must be strictly rejected (P0-02)
+    # Global API token in query parameter must be strictly rejected
     res = client.get("/api/stream/test_cam/preview?token=test_preview_secret_token_123")
     assert res.status_code == 403
 

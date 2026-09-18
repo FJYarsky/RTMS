@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Configuración y utilidades del entorno de ejecución del sistema operativo Windows."""
+
 import subprocess
 import logging
 import sys
@@ -486,7 +488,7 @@ def release_stay_awake() -> bool:
 def get_platform_details() -> Dict[str, Any]:
     """
     Identifica de forma exhaustiva la versión de Windows, edición comercial,
-    número de compilación, UBR y arquitectura de hardware (U-9).
+    número de compilación, UBR y arquitectura de hardware.
     """
     import platform
     machine = platform.machine()

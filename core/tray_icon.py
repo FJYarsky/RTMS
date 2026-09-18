@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Integración y menú contextual de la aplicación en la bandeja del sistema (System Tray)."""
+
 import os
 import sys
 import logging
@@ -25,7 +27,7 @@ class SystemTrayManager:
         self._thread = None
 
     def _create_fallback_image(self):
-        """Genera un icono estético de 64x64 HD con diseño de cámara de estudio y acentos profesionales (U-7)."""
+        """Genera un icono de respaldo de 64x64 HD con diseño de cámara de estudio."""
         img = Image.new('RGBA', (64, 64), color=(0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 

@@ -81,7 +81,7 @@ def test_build_command_url_escapes_passphrase_special_characters():
         raw_url = cmd[-1]
         assert "mi_clave" in raw_url
         assert "foo=bar" not in raw_url.split("passphrase=")[0]
-        # La URL retornada para APIs y estado debe estar sanitizada (P0-01)
+        # La URL retornada para APIs y estado debe estar sanitizada
         assert "mi_clave" not in url
         assert "••••••••" in url or "********" in url
 

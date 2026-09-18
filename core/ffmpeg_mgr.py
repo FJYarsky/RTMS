@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Gestión, supervisión de procesos FFmpeg, watchdog de reconexión y pipeline de streaming SRT/UDP."""
+
 import asyncio
 import sys
 import re
@@ -24,7 +26,7 @@ logger = logging.getLogger("rtms.ffmpeg_mgr")
 _WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
 
 class ErrorCategory(str, Enum):
-    """Taxonomía formal de categorías de error para diagnósticos y políticas de reconexión (P1-07)."""
+    """Taxonomía formal de categorías de error para diagnósticos y políticas de reconexión."""
     CONFIGURATION  = "configuration"
     DEVICE         = "device"
     ENCODER        = "encoder"
@@ -58,7 +60,7 @@ def build_stream_url(
     latency_ms: int = 120,
     zerolatency: bool = True
 ) -> str:
-    """Construye la URL normalizada de transmisión para SRT o UDP con codificación segura (N2, N9)."""
+    """Construye la URL normalizada de transmisión para SRT o UDP con parámetros seguros."""
     if protocol == "udp":
         return build_multicast_url(port)
 
@@ -107,7 +109,7 @@ class StreamProc:
         self.last_transition: Optional[datetime] = None
 
     def transition_to(self, new_state: State) -> None:
-        """Formaliza la transición de estados de la máquina de estados del stream (P1-08)."""
+        """Formaliza la transición de estados de la máquina de estados del stream."""
         logger.debug(f"[{self.device_path}] Transición de estado: {self.state} -> {new_state}")
         self.state = new_state
         self.last_transition = datetime.now()
@@ -159,7 +161,7 @@ class StreamManager:
     async def detect_best_encoder(self, proc: Optional[StreamProc] = None) -> str:
         """
         Detecta el mejor codificador por hardware disponible consultando la caché global singleton.
-        Evita lanzar subprocesos redundantes de prueba en cada stream (P1-03 / GPU optimization).
+        Evita lanzar subprocesos redundantes de prueba en cada stream mediante caché compartida.
         """
         if proc and proc.per_stream_encoder:
             return proc.per_stream_encoder
@@ -283,7 +285,7 @@ class StreamManager:
                 raw_url
             ]
 
-        # Seguridad crítica (P0-01): Nunca retornar URL con credenciales en claro para APIs ni configs
+        # Seguridad: Nunca retornar URL con credenciales en claro para APIs ni configs
         sanitized_url = sanitize_url(raw_url)
         return cmd, sanitized_url, encoder
 
@@ -313,7 +315,7 @@ class StreamManager:
         proc._stop_evt.clear()
         proc.using_fallback_cpu = force_cpu
 
-        # Bloqueo por fallo de credencial (ChatGPT P0-04)
+        # Bloqueo por fallo de descifrado de credencial
         if proc.config.get("decryption_failed"):
             logger.error(f"[{proc.device_path}] Imposible iniciar transmisión: Falló el descifrado seguro DPAPI.")
             proc.transition_to(State.MANUAL_INTERVENTION_REQUIRED)
@@ -321,7 +323,7 @@ class StreamManager:
             proc.log("ERROR CRÍTICO: Falló el descifrado de la credencial SRT. Intervención manual requerida.")
             return
 
-        # Revalidación de puerto previo al vuelo para prevenir condiciones TOCTOU (P1-01)
+        # Revalidación de puerto en tiempo de inicio para prevenir colisiones
         cfg_port = proc.config.get("port")
         if cfg_port and not port_manager.revalidate_port(int(cfg_port)):
             logger.warning(f"Puerto {cfg_port} ocupado en el sistema antes de iniciar {proc.device_path}. Reasignando...")
@@ -385,7 +387,7 @@ class StreamManager:
         proc._stop_evt.set()
         proc.transition_to(State.STOPPING)
 
-        # Limpieza formal de recovery_task (P1-09)
+        # Cancelación y limpieza de la tarea asíncrona de recuperación
         if proc.recovery_task and not proc.recovery_task.done():
             proc.recovery_task.cancel()
             try:
@@ -430,7 +432,7 @@ class StreamManager:
         proc.log("Stream detenido limpiamente.")
 
     async def remove_stream(self, device_path: str) -> bool:
-        """Detiene la transmisión, libera el puerto y elimina la cámara de forma permanente (P1-06)."""
+        """Detiene la transmisión, libera el puerto y elimina la cámara de forma permanente."""
         proc = self._procs.get(device_path)
         if not proc:
             # Buscar por camera_id
@@ -451,7 +453,7 @@ class StreamManager:
                 proc.recovery_task.cancel()
             self._procs.pop(device_path, None)
 
-        # Invalidar tickets de preview asociados a esta cámara (ChatGPT P1-03)
+        # Invalidar tickets de preview asociados a esta cámara
         try:
             from api.routes import preview_ticket_mgr
             preview_ticket_mgr.invalidate_for_device(device_path)
@@ -560,7 +562,7 @@ class StreamManager:
                 logger.error(f"Error en Watchdog: {e}")
 
     async def reallocate_if_collided(self, proc: StreamProc) -> int:
-        """Reasigna un puerto libre ante colisión y actualiza la configuración (P1-05)."""
+        """Reasigna un puerto libre ante colisión y actualiza la configuración."""
         proc.last_error_category = ErrorCategory.PORT_COLLISION
         cfg_port = proc.config.get("port", 9000)
         new_port = port_manager.reallocate_if_collided(int(cfg_port))
@@ -615,7 +617,7 @@ class StreamManager:
 
                 line_lower = raw_line.lower()
 
-                # Detección de colisión de socket en runtime (P1-05)
+                # Detección de colisión de socket en tiempo de ejecución
                 if "bind failed" in line_lower or "address already in use" in line_lower:
                     logger.warning(f"[{device_path}] Colisión de socket detectada en FFmpeg: {clean_line}. Reasignando puerto...")
                     await self.reallocate_if_collided(proc)
@@ -623,7 +625,7 @@ class StreamManager:
                 if any(pat in line_lower for pat in FATAL_PATTERNS):
                     logger.warning(f"[{device_path}] Error en FFmpeg: {clean_line}")
 
-                    # Clasificación formal de categoría de error (P1-07)
+                    # Clasificación de categoría de error según diagnóstico de FFmpeg
                     if "could not find video device" in line_lower or "device not found" in line_lower or "dshow: could not" in line_lower:
                         proc.last_error_category = ErrorCategory.DEVICE
                     elif "error while opening encoder" in line_lower:
@@ -676,7 +678,7 @@ class StreamManager:
                 if proc.is_alive:
                     asyncio.create_task(self.stop_stream(dp, timeout=1.0))
 
-        # 2. Registrar y actualizar dispositivos presentes (omitiendo ignored_devices Claude N1)
+        # 2. Registrar y actualizar dispositivos presentes (omitiendo dispositivos en ignored_devices)
         from .config_mgr import load_config
         active_cfg = load_config()
         ignored_devs = set(active_cfg.get("ignored_devices", []))

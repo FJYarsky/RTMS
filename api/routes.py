@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Endpoints y controladores de la API REST de RTMS para gestión de streams, telemetría y configuración."""
+
 import socket
 import psutil
 import logging
@@ -44,9 +46,9 @@ _LAST_IP_CACHE: dict = {"ip": "127.0.0.1", "timestamp": 0.0}
 
 class PreviewTicketManager:
     """
-    Gestor en memoria de tickets efímeros para el streaming seguro de previsualizaciones MJPEG (P1-01).
+    Gestor en memoria de tickets efímeros para el streaming seguro de previsualizaciones MJPEG.
     Implementa consumo atómico de un solo uso (single-use), protección contra condiciones
-    de carrera mediante threading.Lock() y límite superior de tickets en memoria (Claude N7, N8 / ChatGPT P0-01, P1-02).
+    de carrera mediante threading.Lock() y límite superior de tickets en memoria.
     """
     MAX_TICKETS = 100
 
@@ -109,7 +111,7 @@ class PreviewTicketManager:
             return target_dp == resolved_ticket_dp
 
     def invalidate_for_device(self, device_path: str) -> None:
-        """Invalida de inmediato todos los tickets asociados a un dispositivo (ChatGPT P1-03)."""
+        """Invalida de inmediato todos los tickets asociados a un dispositivo."""
         with self._lock:
             cam = find_camera_by_id_or_path(device_path)
             target_dp = cam["device_path"] if cam else device_path
@@ -205,7 +207,7 @@ async def healthz():
 
 @router.get("/readyz")
 async def readyz():
-    """Readiness probe para verificar que el backend y binarios multimedia están listos (ChatGPT P2-15)."""
+    """Readiness probe para verificar que el backend y binarios multimedia están listos."""
     if not preview_manager.has_ffmpeg_binary():
         raise HTTPException(status_code=503, detail="Binario FFmpeg no disponible en el sistema.")
     return {"status": "ok", "ready": True, "ffmpeg": True}
@@ -255,7 +257,7 @@ async def emergency_stop():
 
 @router.post("/api/system/shutdown", dependencies=[Depends(verify_api_token)])
 async def system_shutdown(payload: Optional[SystemShutdownRequest] = None):
-    """Finaliza totalmente la aplicación y todos sus subprocesos (FFmpeg, FFplay) (U-3)."""
+    """Finaliza totalmente la aplicación y todos sus subprocesos (FFmpeg, FFplay)."""
     force = payload.force if payload else True
 
     def _delayed_exit():
@@ -269,7 +271,7 @@ async def system_shutdown(payload: Optional[SystemShutdownRequest] = None):
 async def system_factory_reset(payload: FactoryResetRequest):
     """
     Restaura la configuración de fábrica, purga credenciales, logs, copias de seguridad
-    y finaliza la aplicación para que la próxima apertura sea como primera vez (U-5).
+    y finaliza la aplicación para un restablecimiento limpio.
     """
     import os
     import json
@@ -422,7 +424,7 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
 
 @router.delete("/api/stream/{device_path:path}", dependencies=[Depends(verify_api_token)])
 async def delete_camera_endpoint(device_path: str):
-    """Elimina una cámara de la configuración persistida y detiene su proceso asociado (P1-06)."""
+    """Elimina una cámara de la configuración persistida y detiene su proceso asociado."""
     cam = find_camera_by_id_or_path(device_path)
     dp = cam["device_path"] if cam else device_path
 
@@ -519,13 +521,13 @@ async def power_status():
 
 @router.get("/api/config/export", dependencies=[Depends(verify_api_token)])
 async def export_config_endpoint(safe_mode: bool = True):
-    """Exporta la configuración completa para respaldo o migración (por seguridad, siempre oculta secretos en GET) (P0-05)."""
+    """Exporta la configuración completa para respaldo o migración (con secretos enmascarados en GET)."""
     return export_config(safe_mode=True)
 
 @router.post("/api/config/export/full", dependencies=[Depends(verify_api_token)])
 async def export_full_config_endpoint(payload: FullExportRequest, response: Response):
     """
-    Exporta la configuración completa incluyendo contraseñas sin enmascarar (P0-05).
+    Exporta la configuración completa incluyendo contraseñas sin enmascarar.
     Requiere confirmación explícita mediante confirm_export_secrets=True en el cuerpo.
     """
     if not payload.confirm_export_secrets:
@@ -552,7 +554,7 @@ async def import_config_endpoint(payload: ImportConfigRequest):
 @router.post("/api/preview/ticket", dependencies=[Depends(verify_api_token)])
 @router.post("/api/stream/{device_path:path}/preview_ticket", dependencies=[Depends(verify_api_token)])
 async def create_preview_ticket(payload: Optional[PreviewTicketRequest] = None, device_path: Optional[str] = None):
-    """Genera un ticket efímero de corta duración para previsualizaciones MJPEG seguras (P1-01)."""
+    """Genera un ticket efímero de corta duración para previsualizaciones MJPEG seguras."""
     target_path = device_path or (payload.device_path if payload else None)
     if not target_path:
         raise HTTPException(status_code=400, detail="device_path es requerido.")
@@ -572,13 +574,13 @@ async def stream_preview(
     """
     Canaliza un stream MJPEG de baja latencia on-demand.
     Soporta autenticación mediante ticket efímero de consumo único (?ticket=...) o cabecera X-RTMS-Token.
-    Controla concurrencia con semáforo global y slots por cámara (N8, P1-10).
+    Controla concurrencia con semáforo global y slots por cámara.
     Al desconectarse el cliente, el generador se detiene inmediatamente liberando recursos al 0%.
     """
     cam = find_camera_by_id_or_path(device_path)
     dp = cam["device_path"] if cam else device_path
 
-    # 1. Autenticación segura (P1-01 / P0-01 / P0-02)
+    # 1. Autenticación segura (ticket efímero o token en cabecera)
     if ticket:
         if not preview_ticket_mgr.consume_ticket(ticket, dp):
             raise HTTPException(status_code=403, detail="Ticket de previsualización inválido, expirado o ya consumido.")
@@ -591,11 +593,11 @@ async def stream_preview(
             )
         await verify_api_token(request, token=token)
 
-    # 2. Verificación de binario FFmpeg (N3)
+    # 2. Verificación de binario FFmpeg
     if not preview_manager.has_ffmpeg_binary():
         raise HTTPException(status_code=503, detail="Binario de FFmpeg no disponible en el sistema.")
 
-    # 3. Control de concurrencia y ranura de cámara (N8, P1-10)
+    # 3. Control de concurrencia y ranura por cámara
     slot_acquired = await preview_manager.acquire_slot(dp)
     if not slot_acquired:
         raise HTTPException(

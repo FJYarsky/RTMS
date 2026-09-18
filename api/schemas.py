@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Modelos Pydantic y esquemas de validación de datos para la API REST de RTMS."""
+
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal, Dict, Any, Union
 
@@ -85,7 +87,7 @@ class ImportConfigRequest(BaseModel):
     @field_validator("config_data")
     @classmethod
     def validate_config_data(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        """Valida semánticamente que los datos de configuración contengan una estructura válida (P1-02)."""
+        """Valida semánticamente que los datos de configuración contengan una estructura válida."""
         if not isinstance(v, dict):
             raise ValueError("El cuerpo de la configuración debe ser un objeto JSON/diccionario.")
         if "cameras" not in v or not isinstance(v["cameras"], dict):

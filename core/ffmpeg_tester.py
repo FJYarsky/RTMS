@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Diagnóstico, pruebas de rendimiento y análisis de latencia para flujos FFmpeg."""
+
 import asyncio
 import re
 import time

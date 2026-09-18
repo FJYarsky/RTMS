@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Control de instancia única de la aplicación en Windows mediante Mutex del sistema."""
+
 import sys
 import ctypes
 from ctypes import wintypes

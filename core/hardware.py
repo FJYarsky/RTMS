@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Detección y sondeo de dispositivos de captura DirectShow y encoders por hardware."""
+
 import asyncio
 import re
 import os
@@ -131,7 +133,7 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
 class HardwareCapabilityDetector:
     """
     Detector y caché singleton global de capacidades de aceleración por hardware.
-    Elimina la ejecución redundante de subprocesos de prueba de encoders en cada stream (P1-03).
+    Elimina la ejecución redundante de subprocesos de prueba de encoders mediante caché compartida.
     """
     _instance = None
 

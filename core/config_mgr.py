@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Gestión, validación, migración y persistencia atómica de la configuración del sistema."""
+
 import json
 import os
 import sys
@@ -27,7 +29,7 @@ def get_base_dir() -> str:
     r"""
     Retorna el directorio base persistente, evitando carpetas temporales de PyInstaller.
     Verifica que el directorio sea escribible; si no lo es (ej. C:\Program Files\),
-    cae a %LOCALAPPDATA%\RTMS\ (Claude N5).
+    cae a %LOCALAPPDATA%\RTMS\.
     """
     base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     test_file = os.path.join(base, ".rtms_perm_check")
@@ -115,7 +117,7 @@ def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
     """
     Genera un identificador UUID v5 estable y determinista para la cámara.
     Utiliza la ruta física DirectShow normalizada completa para asegurar que dos dispositivos
-    del mismo modelo (mismo VID/PID) en diferentes puertos USB obtengan IDs únicos y estables (P1-04).
+    del mismo modelo (mismo VID/PID) en diferentes puertos USB obtengan IDs únicos y estables en el sistema.
     """
     seed = device_path.lower().strip()
     if not seed and friendly_name:
@@ -128,9 +130,9 @@ def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
 
 def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Migra configuraciones heredadas hacia el esquema más reciente de forma incremental.
-    v1 -> v2 (2.0.2 / 2.0.3) -> v3 (v2.0.4 / v2.1.0 / v2.2.0 / v2.2.1 / v2.2.3 / v2.2.4 con camera_id y passphrases seguras).
-    Rechaza esquemas futuros con UnsupportedConfigSchemaError (P1-03).
+    Migra configuraciones heredadas hacia el esquema más reciente de forma incremental
+    (soporte de esquemas v1, v2 y v3 con camera_id y credenciales protegidas).
+    Rechaza esquemas futuros con UnsupportedConfigSchemaError.
     """
     schema_ver = data.get("config_schema_version", 1)
 
@@ -259,7 +261,7 @@ def _prepare_config_for_disk(config_data: Dict[str, Any]) -> Dict[str, Any]:
         raw_pass = cam.get("srt_passphrase", "")
         if raw_pass:
             cam["srt_passphrase"] = protect_secret(raw_pass)
-        # Purgar campos efímeros de runtime para no persistir URLs derivadas ni flags temporales (P2-06 / P2-07)
+        # Purgar campos efímeros de runtime para no persistir URLs derivadas ni flags temporales
         cam.pop("_url", None)
         cam.pop("_actual_encoder", None)
         cam.pop("decryption_failed", None)
@@ -269,7 +271,7 @@ def _atomic_save_unlocked(config_data: Dict[str, Any]):
     """
     Guarda en disco con escritura atómica (.tmp -> fsync -> .bak -> replace).
     Sin lock interno. Deduplica en memoria contra la configuración lógica en claro
-    para no generar I/O ni fsync innecesarios por la aleatoriedad de DPAPI (Claude #6).
+    para no generar operaciones de I/O ni fsync innecesarios cuando no hay cambios de contenido.
     """
     global _LAST_SAVED_CONFIG
     current_serialized = json.dumps(config_data, sort_keys=True)
@@ -302,7 +304,7 @@ def _atomic_save_unlocked(config_data: Dict[str, Any]):
     _LAST_SAVED_CONFIG = current_serialized
 
 def save_config(config_data: Dict[str, Any], raise_on_error: bool = False) -> bool:
-    """Persiste la configuración de forma atómica y protegida por cerrojo. Retorna True si tuvo éxito (P0-04)."""
+    """Persiste la configuración de forma atómica y protegida por cerrojo. Retorna True si tuvo éxito."""
     with _CONFIG_LOCK:
         try:
             _atomic_save_unlocked(config_data)
@@ -339,7 +341,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         save_config(config)
         return cam
 
-    # Asignar nuevo puerto validado por PortManager (sin bypass ciego P1-05)
+    # Asignar nuevo puerto validado por PortManager
     preferred = config.get("next_port", 9000)
     try:
         port = port_manager.allocate_port(preferred)
@@ -436,7 +438,7 @@ def export_config(safe_mode: bool = True, include_secrets: bool = False) -> Dict
     """
     Exporta la configuración completa lista para backup o transporte entre equipos.
     En modo seguro (por defecto), enmascara las contraseñas SRT para proteger
-    secretos (P0-02 / Claude #2).
+    secretos y credenciales de acceso.
     """
     cfg = load_config()
     export_data = json.loads(json.dumps(cfg))
@@ -453,7 +455,7 @@ def export_config(safe_mode: bool = True, include_secrets: bool = False) -> Dict
     return export_data
 
 def import_config(new_config: Dict[str, Any]) -> bool:
-    """Importa y valida una configuración externa, aplicando migraciones necesarias (ChatGPT P0-05)."""
+    """Importa y valida una configuración externa, aplicando migraciones de esquema necesarias."""
     if not isinstance(new_config, dict):
         return False
     cameras = new_config.get("cameras")
@@ -472,7 +474,7 @@ def import_config(new_config: Dict[str, Any]) -> bool:
 def remove_camera_config(identifier: str) -> bool:
     """
     Elimina permanentemente la configuración de una cámara por su device_path o ID,
-    liberando su puerto y agregándola a ignored_devices para prevenir auto-detección (Claude N1).
+    liberando su puerto y agregándola a ignored_devices para prevenir auto-detección.
     """
     config = load_config()
     cameras = config.get("cameras", {})

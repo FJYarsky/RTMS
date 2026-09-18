@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Recolección y monitorización en tiempo real de telemetría de CPU, RAM, GPU NVENC y red."""
+
 import ctypes
 import logging
 import threading
@@ -15,7 +17,7 @@ import psutil
 logger = logging.getLogger("rtms.telemetry")
 
 
-# Definición de estructuras de datos ctypes a nivel de módulo (N10)
+# Definición de estructuras de datos ctypes a nivel de módulo para NVML
 class nvmlUtilization_t(ctypes.Structure):
     _fields_ = [("gpu", ctypes.c_uint), ("memory", ctypes.c_uint)]
 
@@ -45,7 +47,7 @@ class GpuTelemetryReader:
         self._init_nvml()
 
     def _init_nvml(self):
-        """Intenta localizar e inicializar la biblioteca NVML nativa con liberación limpia en caso de error (N11, P2-04)."""
+        """Intenta localizar e inicializar la biblioteca NVML nativa con manejo seguro de errores."""
         try:
             # Buscar nvml.dll en el PATH estándar de Windows
             self._nvml = ctypes.CDLL("nvml.dll")
@@ -86,8 +88,8 @@ class GpuTelemetryReader:
 
     def get_metrics(self) -> Dict[str, Any]:
         """
-        Retorna las métricas de uso de GPU en tiempo real (GPU general y NVENC Encoder P2-01).
-        Si la GPU no está disponible o falla la lectura, conmuta a estado degradado (N12).
+        Retorna las métricas de uso de GPU en tiempo real (GPU general y motor NVENC).
+        Si la GPU no está disponible o falla la lectura, conmuta a estado degradado.
         """
         if not self.available or not self._nvml or not self._device_handle:
             return {
@@ -110,7 +112,7 @@ class GpuTelemetryReader:
                 if res_util == 0 and res_mem == 0:
                     self._consecutive_errors = 0
 
-                    # Consulta de métricas de codificador por hardware NVENC si disponible (P2-01)
+                    # Consulta de métricas del codificador por hardware NVENC si está disponible
                     encoder_percent = None
                     try:
                         if hasattr(self._nvml, "nvmlDeviceGetEncoderUtilization"):
@@ -135,7 +137,7 @@ class GpuTelemetryReader:
                 self._consecutive_errors += 1
                 logger.debug(f"Fallo transitorio al consultar métricas GPU: {e}")
 
-            # Detección de fallo persistente (N12)
+            # Detección de fallos persistentes para desactivación automática
             if self._consecutive_errors >= 5:
                 logger.warning("Desactivando telemetría de GPU tras 5 fallos consecutivos de NVML.")
                 self.available = False
@@ -150,7 +152,7 @@ class GpuTelemetryReader:
         }
 
     def shutdown(self):
-        """Libera de forma ordenada los handles de NVML y apaga la biblioteca nativa (N11, P2-04)."""
+        """Libera de forma ordenada los handles de NVML y apaga la biblioteca nativa."""
         with self._lock:
             if self._nvml and self._nvml_initialized:
                 try:
@@ -231,7 +233,7 @@ class SystemTelemetryService:
     _instance_lock = threading.Lock()
 
     def __init__(self):
-        # Cebado inicial del contador de CPU para que la primera lectura no sea 0.0% (N16)
+        # Inicialización del contador de CPU para calibrar la primera lectura
         try:
             psutil.cpu_percent(interval=None)
         except Exception:
@@ -247,7 +249,7 @@ class SystemTelemetryService:
             return cls._instance
 
     def collect(self, active_streams_count: int = 0, total_bitrate_kbps: float = 0.0) -> Dict[str, Any]:
-        """Recolecta y unifica el estado global de telemetría para el HUD con clara distinción de red (N13, P2-03)."""
+        """Recolecta y unifica el estado global de telemetría para el HUD y monitor de estado."""
         cpu_pct = psutil.cpu_percent(interval=None)
         mem = psutil.virtual_memory()
         gpu_stats = self.gpu_reader.get_metrics()
@@ -269,7 +271,7 @@ class SystemTelemetryService:
             "gpu_name": gpu_stats["name"],
             "gpu_memory_used_mb": gpu_stats["memory_used_mb"],
             "gpu_memory_total_mb": gpu_stats["memory_total_mb"],
-            # Tráfico de red del sistema global (N13, P2-03)
+            # Tráfico de red global del sistema operativo
             "net_system_total_kbps": net_stats["total_kbps"],
             "net_system_sent_kbps": net_stats["sent_kbps"],
             "net_system_recv_kbps": net_stats["recv_kbps"],
@@ -283,7 +285,7 @@ class SystemTelemetryService:
         }
 
     def shutdown(self):
-        """Cierra los subsistemas de telemetría de forma limpia (P2-04)."""
+        """Cierra los subsistemas de telemetría y libera recursos asociados."""
         self.gpu_reader.shutdown()
 
 

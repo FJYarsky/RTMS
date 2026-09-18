@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Gestión del inicio automático de la aplicación con Windows mediante accesos de inicio."""
+
 import os
 import sys
 import logging

@@ -17,7 +17,7 @@ from core.config_mgr import save_config
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Requiere DPAPI de Windows")
 def test_unprotect_secret_failure_never_leaks_ciphertext(monkeypatch):
-    """TEST-01: unprotect_secret returns '' or raises SecretDecryptionError on failure, never ciphertext."""
+    """Verifica que unprotect_secret retorne cadena vacía o lance SecretDecryptionError ante fallos, sin filtrar nunca el texto cifrado."""
     import base64
     fake_ciphertext = "dpapi:" + base64.b64encode(b"DummyCiphertextPayload").decode("utf-8")
 
@@ -33,7 +33,7 @@ def test_unprotect_secret_failure_never_leaks_ciphertext(monkeypatch):
         unprotect_secret(fake_ciphertext, raise_on_error=True)
 
 def test_secret_filter_and_sanitize_url():
-    """TEST-02: SecretFilter masks sensitive query parameters in log records."""
+    """Verifica que SecretFilter y sanitize_url enmascaren contraseñas y parámetros sensibles en URLs y logs."""
     # 1. Test sanitize_url
     srt_url = "srt://127.0.0.1:9000?mode=caller&passphrase=SuperSecretPassword123&latency=120000"
     sanitized = sanitize_url(srt_url)
@@ -56,7 +56,7 @@ def test_secret_filter_and_sanitize_url():
     assert "********" in record.msg
 
 def test_config_export_security():
-    """TEST-03: GET /api/config/export masks secrets; POST /api/config/export/full requires confirmation."""
+    """Verifica la exportación segura de configuración y el requerimiento de confirmación explícita para secretos en texto plano."""
     token = "test_token_secret_123"
     app = create_app(token=token)
     client = TestClient(app)
@@ -103,7 +103,7 @@ def test_config_export_security():
     assert data_full["cameras"]["cam1"]["srt_passphrase"] == "RealSecretPassphrase123"
 
 def test_preview_ticket_lifecycle():
-    """TEST-04: PreviewTicketManager handles generation, validation, expiration, and camera mismatch."""
+    """Verifica el ciclo de vida, validación, expiración y control de discrepancia de cámara en PreviewTicketManager."""
     dp1 = "video=CamOne"
     dp2 = "video=CamTwo"
 

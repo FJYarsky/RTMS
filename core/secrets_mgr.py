@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Cifrado y protección de credenciales y frases de paso mediante Windows DPAPI."""
+
 import sys
 import os
 import base64
@@ -40,7 +42,7 @@ def protect_secret(plaintext: str, require_secure: bool = True) -> str:
     """
     Cifra una credencial o frase de paso usando Windows DPAPI (atada al usuario de Windows).
     En entornos Windows de producción, si DPAPI falla, se levanta SecretEncryptionError
-    para impedir que se persistan secretos en texto plano (P0-01).
+    para impedir que se persistan secretos en texto plano.
     """
     if not plaintext:
         return ""
@@ -82,7 +84,7 @@ def unprotect_secret(ciphertext: str, raise_on_error: bool = False) -> str:
     Descifra un secreto previamente protegido con Windows DPAPI.
     Si no está cifrado con DPAPI, lo devuelve tal cual para compatibilidad retroactiva.
     Si falla el descifrado en Windows (ej. cambio de usuario o corrupción), NUNCA devuelve
-    el texto cifrado (P0-03 / Claude N1). Devuelve "" o levanta SecretDecryptionError.
+    el texto cifrado en bruto. Devuelve "" o levanta SecretDecryptionError.
     """
     if not ciphertext:
         return ""

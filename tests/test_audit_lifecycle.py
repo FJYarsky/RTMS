@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from main import create_app
 
 def test_camera_id_disambiguation():
-    """TEST-09: generate_stable_camera_id generates distinct IDs for same VID/PID cameras on different ports."""
+    """Valida que generate_stable_camera_id genere identificadores únicos para cámaras con mismo VID/PID en distintos puertos USB."""
     # Two cameras with identical VID/PID but different physical USB hub/port paths
     path1 = r"@device_pnp_\\?\usb#vid_046d&pid_0825&mi_00#7&2a1b94b&0&0000#{65e8773d-8f56-11d0-a3b9-00a0c9223196}\global"
     path2 = r"@device_pnp_\\?\usb#vid_046d&pid_0825&mi_00#7&3b2c05c&0&0000#{65e8773d-8f56-11d0-a3b9-00a0c9223196}\global"
@@ -24,7 +24,7 @@ def test_camera_id_disambiguation():
     assert id2.startswith("cam_046d_0825_")
 
 def test_error_category_and_recovery_task_cleanup():
-    """TEST-10: StreamProc transitions states and cleans up recovery_task properly on stop."""
+    """Valida que StreamProc realice transiciones de estado correctas y limpie la tarea asíncrona de recuperación al detenerse."""
     async def _run():
         proc = StreamProc("test_device")
         assert proc.state == State.STOPPED
@@ -52,7 +52,7 @@ def test_error_category_and_recovery_task_cleanup():
     asyncio.run(_run())
 
 def test_port_collision_detection_and_reallocation():
-    """TEST-11: reallocate_if_collided allocates a new free port when collision is detected."""
+    """Valida que reallocate_if_collided asigne un nuevo puerto libre al detectar una colisión de socket."""
     async def _run():
         proc = StreamProc("colliding_cam")
         proc.config = {"port": 9000, "protocol": "srt"}
@@ -67,7 +67,7 @@ def test_port_collision_detection_and_reallocation():
     asyncio.run(_run())
 
 def test_delete_camera_endpoint():
-    """TEST-12: DELETE /api/stream/{device_path} deletes camera from memory and disk config."""
+    """Valida que DELETE /api/stream/{device_path} elimine la cámara de la memoria y de la configuración en disco."""
     token = "delete_test_token"
     app = create_app(token=token)
     client = TestClient(app)
