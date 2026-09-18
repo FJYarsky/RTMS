@@ -1,4 +1,4 @@
-# RTMS project metadata and build configuration
+# Metadatos y configuración del proyecto RTMS
 [project]
 name = "rtms"
 version = "2.2.6"
