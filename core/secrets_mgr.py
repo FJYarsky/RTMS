@@ -46,7 +46,7 @@ def protect_secret(plaintext: str, require_secure: bool = True) -> str:
         return ""
 
     # Si ya está protegido, no volver a cifrar
-    if plaintext.startswith("dpapi:"):
+    if plaintext.lower().startswith("dpapi:"):
         return plaintext
 
     if sys.platform == "win32":
@@ -87,7 +87,7 @@ def unprotect_secret(ciphertext: str, raise_on_error: bool = False) -> str:
     if not ciphertext:
         return ""
 
-    if ciphertext.startswith("dpapi:"):
+    if ciphertext.lower().startswith("dpapi:"):
         if _HAS_DPAPI:
             try:
                 raw = base64.b64decode(ciphertext[6:])

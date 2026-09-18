@@ -6,7 +6,7 @@
 
 import logging
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
 from main import create_app
@@ -192,4 +192,73 @@ def test_connect_url_endpoint_srt_and_udp(client):
     assert data_udp["status"] == "ok"
     assert data_udp["protocol"] == "udp"
     assert "udp://239.255.0." in data_udp["connect_url"]
+
+
+def test_unprotect_secret_case_insensitive():
+    """Valida que el prefijo 'dpapi:' o 'DPAPI:' sea detectado insensible a mayúsculas."""
+    from core.secrets_mgr import protect_secret, unprotect_secret
+    assert protect_secret("DPAPI:fake_cipher_123") == "DPAPI:fake_cipher_123"
+    # Cadena DPAPI corrupta retorna vacío de forma segura sin importar capitalización
+    assert unprotect_secret("DPAPI:corrupt_base64_blob!!") == ""
+
+
+def test_ffplay_launch_unprotects_dpapi_passphrase(client):
+    """Valida que launch_external_ffplay descifre la passphrase DPAPI al armar la URL del monitor."""
+    from core.config_mgr import get_or_allocate_camera_config, update_camera_config
+    from core.ffmpeg_mgr import stream_manager
+    from core.secrets_mgr import protect_secret
+
+    cam = get_or_allocate_camera_config("@device_ffplay_dpapi_test", "FFplay DPAPI Test")
+    dp = cam["device_path"]
+    plain_pwd = "PlainSecretKey123"
+    cipher_pwd = protect_secret(plain_pwd, require_secure=False)
+    update_camera_config(dp, "720p", 30, 3000, protocol="srt", srt_passphrase=cipher_pwd)
+
+    proc = stream_manager.get_proc(dp)
+    proc.config = {"device_path": dp, "protocol": "srt", "port": 9977, "srt_passphrase": cipher_pwd, "friendly_name": "FFplay DPAPI Test"}
+    proc.process = MagicMock(returncode=None)
+
+    try:
+        with patch("core.preview_mgr.preview_manager.launch_ffplay") as mock_launch:
+            mock_launch.return_value = True
+            res = client.post(
+                f"/api/stream/{dp}/ffplay",
+                headers={"X-RTMS-Token": "test_audit_secret_token_123"}
+            )
+            assert res.status_code == 200
+            assert mock_launch.called
+            called_url = mock_launch.call_args[0][0]
+            assert "passphrase=" in called_url
+            assert plain_pwd in called_url
+            if cipher_pwd != plain_pwd:
+                assert "dpapi:" not in called_url.lower()
+    finally:
+        proc.process = None
+
+
+def test_config_update_preserves_optional_booleans(client):
+    """Valida que update_stream_config preserve valores booleanos en proc.config."""
+    from core.config_mgr import get_or_allocate_camera_config
+    from core.ffmpeg_mgr import stream_manager
+
+    cam = get_or_allocate_camera_config("@device_bool_test", "Bool Test")
+    dp = cam["device_path"]
+    proc = stream_manager.get_proc(dp)
+    proc.config = {"auto_start": True, "zerolatency": False, "is_virtual": True}
+
+    res = client.post(
+        "/api/stream/config",
+        headers={"X-RTMS-Token": "test_audit_secret_token_123"},
+        json={
+            "device_path": dp,
+            "resolution": "720p",
+            "fps": 30,
+            "bitrate": 3000
+        }
+    )
+    assert res.status_code == 200
+    assert proc.config["auto_start"] is not None
+    assert proc.config["zerolatency"] is not None
+    assert proc.config["is_virtual"] is not None
+
 

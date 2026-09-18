@@ -407,9 +407,12 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         proc.config["encoder"] = config.encoder or "auto"
         proc.config["srt_latency"] = config.srt_latency or 120
         proc.config["srt_passphrase"] = passphrase_to_set or ""
-        proc.config["auto_start"] = config.auto_start
-        proc.config["zerolatency"] = config.zerolatency
-        proc.config["is_virtual"] = config.is_virtual
+        if config.auto_start is not None:
+            proc.config["auto_start"] = config.auto_start
+        if config.zerolatency is not None:
+            proc.config["zerolatency"] = config.zerolatency
+        if config.is_virtual is not None:
+            proc.config["is_virtual"] = config.is_virtual
 
         if proc.is_alive:
             await stream_manager.stop_stream(dp)
@@ -607,7 +610,9 @@ async def stream_preview(
     if is_running:
         protocol = cfg.get("protocol", "srt")
         port = cfg.get("port", 9000)
-        passphrase = cfg.get("srt_passphrase", "")
+        from core.secrets_mgr import unprotect_secret
+        raw_pass = cfg.get("srt_passphrase", "")
+        passphrase = unprotect_secret(raw_pass) if raw_pass else ""
         latency = int(cfg.get("srt_latency", 120))
         zerolatency = bool(cfg.get("zerolatency", True))
         url = build_stream_url(
@@ -717,7 +722,9 @@ async def launch_external_ffplay(device_path: str):
     if is_running:
         protocol = cfg.get("protocol", "srt")
         port = cfg.get("port", 9000)
-        passphrase = cfg.get("srt_passphrase", "")
+        from core.secrets_mgr import unprotect_secret
+        raw_pass = cfg.get("srt_passphrase", "")
+        passphrase = unprotect_secret(raw_pass) if raw_pass else ""
         latency = int(cfg.get("srt_latency", 120))
         zerolatency = bool(cfg.get("zerolatency", True))
         url = build_stream_url(

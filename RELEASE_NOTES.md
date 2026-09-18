@@ -31,7 +31,7 @@ Historial completo y notas oficiales de lanzamiento organizadas cronológicament
 - **Herramienta CLI de Consola (`scripts/test_ffmpeg_pipeline.py`)**:
   - CLI interactivo y automatizado con soporte nativo UTF-8 en consolas Windows, banderas de diagnóstico (`--all`, `--srt`, `--udp`, `--bench`, `--camera`, `--virtual-cam`).
 - **Tests Automatizados de Integración (`tests/test_ffmpeg_live.py`)**:
-  - 5 tests de integración en vivo añadidos a la suite oficial de Pytest, elevando la cobertura a 110 tests unitarios y de integración pasando al 100%.
+  - 5 tests de integración en vivo añadidos a la suite oficial de Pytest, elevando la cobertura a 113 tests unitarios y de integración pasando al 100%.
 
 ---
 
