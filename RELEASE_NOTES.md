@@ -1,4 +1,4 @@
-# Notas Oficiales de Lanzamiento — RTMS (Real-Time Multicam System)
+# Notas Oficiales de Lanzamiento — RTMS
 
 Historial completo y notas oficiales de lanzamiento organizadas cronológicamente para cada versión de RTMS.
 
