@@ -1,6 +1,6 @@
 ' ==============================================================================
 ' RTMS — Real-Time Multicam System
-' Script de inicio silencioso sin ventana de consola.
+' Lanzador silencioso en segundo plano sin consola visible.
 ' Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 ' ==============================================================================
 
