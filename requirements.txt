@@ -1,10 +1,9 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Dependencias de producción y librerías base del sistema.
+# Dependencias principales de producción.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-# Core ASGI framework and live hardware monitoring libraries
 # Framework Web y Servidor ASGI
 fastapi>=0.115.0
 uvicorn[standard]>=0.52.4
