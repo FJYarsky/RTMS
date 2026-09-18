@@ -6,7 +6,6 @@
 
 -r requirements.txt
 
-# Testing, linting and code quality assurance tooling
 # Testing & Calidad de Código
 pytest>=9.0.3
 pytest-asyncio>=0.23.0
@@ -16,4 +15,3 @@ ruff>=0.16.7
 
 # Build & Packaging
 pyinstaller>=6.0.0
- 
