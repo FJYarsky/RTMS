@@ -3,7 +3,6 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-# Production deployment and runtime ignore rules
 # Python cache & bytecode
 __pycache__/
 *.py[cod]
@@ -57,4 +56,3 @@ scratch/
 .ruff_cache/
 .coverage
 htmlcov/
- 
