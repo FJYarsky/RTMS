@@ -102,7 +102,7 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
 if errorlevel 1 (
     echo.
     echo [ERROR] El proceso de build fallo.
-    pause
+    if not defined CI pause
     exit /b 1
 )
 
