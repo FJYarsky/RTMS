@@ -109,12 +109,28 @@ function copyServerIp() {
     copyText(_localIp);
 }
 
-function copyUrlByIndex(index) {
+async function copyUrlByIndex(index) {
     const stream = _streams[index];
     if (!stream) return;
+    try {
+        const res = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/connect_url`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.connect_url) {
+                copyText(data.connect_url);
+                showToast(`URL copiada (${stream.protocol.toUpperCase()}) lista para OBS / vMix`);
+                const urlInput = document.getElementById(`url-input-${index}`);
+                if (urlInput) urlInput.value = data.connect_url;
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('Fallo obteniendo connect_url, usando fallback local:', e);
+    }
     const urlInput = document.getElementById(`url-input-${index}`);
     if (urlInput) {
         copyText(urlInput.value);
+        showToast('URL de transmisión copiada al portapapeles');
     }
 }
 

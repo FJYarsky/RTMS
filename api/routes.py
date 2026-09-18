@@ -657,6 +657,39 @@ async def stream_preview_frame(device_path: str):
 
     return Response(content=jpeg_bytes, media_type="image/jpeg")
 
+@router.get("/api/stream/{device_path:path}/connect_url", dependencies=[Depends(verify_api_token)])
+async def get_stream_connect_url(device_path: str):
+    """Retorna la URL normalizada completa para que clientes externos (OBS/vMix) se conecten directamente."""
+    cam = find_camera_by_id_or_path(device_path)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Dispositivo de cámara no encontrado")
+
+    dp = cam["device_path"]
+    proc = stream_manager.get_proc(dp)
+    cfg = proc.config if (proc and proc.config) else cam
+
+    protocol = cfg.get("protocol", "srt")
+    port = cfg.get("port", 9000)
+    passphrase = cfg.get("srt_passphrase", "")
+    latency = int(cfg.get("srt_latency", 120))
+    local_ip = get_local_ip()
+
+    if protocol == "srt":
+        url = f"srt://{local_ip}:{port}?mode=caller&latency={latency * 1000}"
+        if passphrase:
+            url += f"&passphrase={passphrase}"
+    else:
+        ip_last = (int(port) % 200) + 1
+        url = f"udp://239.255.0.{ip_last}:{port}?pkt_size=1316"
+
+    return {
+        "status": "ok",
+        "device_path": dp,
+        "protocol": protocol,
+        "connect_url": url,
+        "has_passphrase": bool(passphrase)
+    }
+
 @router.post("/api/stream/{device_path:path}/ffplay", dependencies=[Depends(verify_api_token)])
 async def launch_external_ffplay(device_path: str):
     """Lanza ventana nativa de ultra baja latencia con FFplay para monitorización dedicada."""

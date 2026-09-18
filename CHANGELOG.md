@@ -2,6 +2,34 @@
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
+## [2.2.6] — 2026-09-17
+
+### Sistema de Pruebas Profundas, Digestión de Video y Simulación de Cámaras Virtuales
+- **Motor de Diagnóstico y Digestión de Video (`core/ffmpeg_tester.py`)**:
+  - Implementada la clase `VideoReceiverDigest` que conecta a flujos SRT y UDP con `-progress pipe:1` y decodifica cuadros en tiempo real, midiendo FPS decodificados reales, bitrate promedio, estabilidad temporal, cuadros caídos y capturando errores de sintaxis del bitstream H.264.
+  - Implementada la clase `VirtualCameraSource` que genera fuentes virtuales calibradas (`testsrc2`, barras SMPTE, reloj OSD) a cualquier resolución (720p, 1080p, 4K) y framerate (30fps, 60fps) mediante FFmpeg `lavfi` para pruebas controladas independientes de hardware físico.
+  - Implementada la suite `FFmpegDiagnosticSuite` con tests automatizados de binarios, aceleración por hardware (`h264_nvenc`, `libx264`), análisis de capacidades DirectShow y entablado de conexiones.
+- **Herramienta de Consola CLI (`scripts/test_ffmpeg_pipeline.py`)**:
+  - Nueva herramienta de diagnóstico integral por terminal con salida formateada y banderas de control (`--all`, `--srt`, `--udp`, `--bench`, `--camera`, `--virtual-cam`).
+- **Tests de Integración en Vivo para Pytest (`tests/test_ffmpeg_live.py`)**:
+  - Incorporados 5 tests automatizados de integración que validan el soporte de protocolos, benchmarking de codificadores, handshake SRT con contraseña, rechazo seguro y streaming UDP a 1080p60 sin pérdidas.
+
+### Correcciones Críticas de Conexión SRT y Ciclo de Vida
+- **Copia Fiable de URL de Conexión (`GET /api/stream/{device_path}/connect_url`)**:
+  - Incorporado el endpoint protegido `/api/stream/{device_path}/connect_url` en `api/routes.py` que genera la URL exacta de conexión para OBS Studio y vMix incluyendo la contraseña requerida si está activa.
+  - Actualizado `gui/static/app.js` (`copyUrlByIndex`) para consultar este endpoint y copiar al portapapeles la URL 100% funcional.
+  - Resuelto de raíz el error `ERROR:UNSECURE (Password required or unexpected)` que ocurría al intentar conectar clientes externos sin conocer la clave secreta auto-generada.
+- **Resiliencia y Reanudación Inmediata de Listener SRT**:
+  - En `core/ffmpeg_mgr.py`, el Watchdog detecta cuando un proceso FFmpeg en modo listener finaliza debido a la desconexión del cliente SRT (`-5 I/O error`) y reinicia el listener inmediatamente sin aplicar contadores de fallo ni retardos de *backoff*, asegurando que el flujo esté siempre disponible para nuevas conexiones o reconexiones de OBS.
+
+### Optimización y Estabilidad de UDP a 1080p @ 60 FPS
+- **Ampliación de Buffer de Socket a 4 MB**:
+  - En `core/ffmpeg_mgr.py` (`build_multicast_url`), el parámetro `buffer_size` se incrementó de `65535` (64 KB) a `4194304` (4 MB) con `overrun_nonfatal=1` y `fifo_size=50000000`, eliminando el descarte silencioso de datagramas UDP por desbordamiento de socket en Windows.
+- **Inyección Periódica de Cabeceras H.264 (`repeat-headers` y `dump_extra`)**:
+  - Añadido `-x264-params repeat-headers=1` para `libx264` y `-forced-idr 1` para `h264_nvenc`, junto al filtro de multiplexación `-bsf:v dump_extra` para MPEG-TS. Garantiza que cualquier receptor que sintonice a mitad de transmisión reciba inmediatamente SPS/PPS sin errores de decodificación (`non-existing PPS 0 referenced`).
+- **Soporte Nativo de Fuentes Virtuales en RTMS**:
+  - `build_command` en `core/ffmpeg_mgr.py` ahora admite cámaras virtuales con prefijo `virtual://` o `testsrc` generando patrones `testsrc2` en tiempo real para entornos de prueba o estudio sin capturadora física.
+
 ## [2.2.5] — 2026-09-16
 
 ### Desbloqueo Automático Mark-of-the-Web (Zone.Identifier) y Runtime .NET

@@ -46,9 +46,9 @@ class State(str, Enum):
     MANUAL_INTERVENTION_REQUIRED = "manual_intervention_required"
 
 def build_multicast_url(port: int) -> str:
-    """Calcula y retorna la URL multicast UDP para el puerto indicado (N2)."""
+    """Calcula y retorna la URL multicast UDP para el puerto indicado con buffer optimizado (4MB)."""
     ip_last_octet = (int(port) % 200) + 1
-    return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=65535"
+    return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=4194304&overrun_nonfatal=1&fifo_size=50000000"
 
 def build_stream_url(
     protocol: str,
@@ -188,19 +188,32 @@ class StreamManager:
         bufk = f"{bitrate * 2}k"
 
         ffmpeg_bin = get_ffmpeg_bin()
-        escaped_device = cfg.get("device_path", cfg.get("friendly_name", "")).replace(":", "\\:")
+        raw_device = cfg.get("device_path", cfg.get("friendly_name", ""))
+        is_virtual = raw_device.startswith("virtual://") or raw_device.startswith("testsrc") or cfg.get("is_virtual_generator", False)
 
         cmd = [
             ffmpeg_bin,
             "-hide_banner",
-            "-stats", "-stats_period", "1",
-            "-f", "dshow",
-            "-rtbufsize", "150M",
-            "-video_size", video_size,
-            "-framerate", str(fps),
-            "-i", f"video={escaped_device}",
-            "-pix_fmt", "yuv420p"
+            "-stats", "-stats_period", "1"
         ]
+
+        if is_virtual:
+            cmd += [
+                "-re",
+                "-f", "lavfi",
+                "-i", f"testsrc2=size={video_size}:rate={fps}"
+            ]
+        else:
+            escaped_device = raw_device.replace(":", "\\:")
+            cmd += [
+                "-f", "dshow",
+                "-rtbufsize", "150M",
+                "-video_size", video_size,
+                "-framerate", str(fps),
+                "-i", f"video={escaped_device}"
+            ]
+
+        cmd += ["-pix_fmt", "yuv420p"]
 
         if force_cpu:
             encoder = "libx264"
@@ -212,9 +225,9 @@ class StreamManager:
         # Ajuste de flags del codificador según opción zerolatency
         if zerolatency:
             if encoder == "libx264":
-                cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency"]
+                cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-x264-params", "repeat-headers=1"]
             elif encoder == "h264_nvenc":
-                cmd += ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ull", "-delay", "0", "-zerolatency", "1"]
+                cmd += ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ull", "-delay", "0", "-zerolatency", "1", "-forced-idr", "1"]
             elif encoder == "h264_amf":
                 cmd += ["-c:v", "h264_amf", "-quality", "speed", "-usage", "ultralowlatency"]
             elif encoder == "h264_qsv":
@@ -224,9 +237,9 @@ class StreamManager:
         else:
             # Perfil equilibrado de broadcast (sin comprometer calidad innecesariamente)
             if encoder == "libx264":
-                cmd += ["-c:v", "libx264", "-preset", "veryfast"]
+                cmd += ["-c:v", "libx264", "-preset", "veryfast", "-x264-params", "repeat-headers=1"]
             elif encoder == "h264_nvenc":
-                cmd += ["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "hq"]
+                cmd += ["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "hq", "-forced-idr", "1"]
             elif encoder == "h264_amf":
                 cmd += ["-c:v", "h264_amf", "-quality", "balanced"]
             elif encoder == "h264_qsv":
@@ -256,6 +269,7 @@ class StreamManager:
 
         if zerolatency:
             cmd += [
+                "-bsf:v", "dump_extra",
                 "-f", "mpegts",
                 "-muxdelay", "0",
                 "-muxpreload", "0",
@@ -264,6 +278,7 @@ class StreamManager:
             ]
         else:
             cmd += [
+                "-bsf:v", "dump_extra",
                 "-f", "mpegts",
                 raw_url
             ]
@@ -496,6 +511,20 @@ class StreamManager:
 
                     # 2. Detección de caída de flujo
                     if not proc.is_alive and proc.state == State.RUNNING:
+                        # Detección de desconexión de cliente en SRT listener
+                        is_srt_disconnect = False
+                        if proc.config.get("protocol") == "srt":
+                            recent_logs = "".join(proc.get_logs(5)).lower()
+                            if "i/o error" in recent_logs or "muxer" in recent_logs or "conversion failed" in recent_logs:
+                                is_srt_disconnect = True
+
+                        if is_srt_disconnect:
+                            logger.info(f"[{dp}] Cliente SRT desconectado. Reiniciando listener inmediatamente...")
+                            proc.log("Cliente SRT desconectado. Reiniciando listener a la espera de nueva conexión...")
+                            proc.transition_to(State.STARTING)
+                            proc.recovery_task = asyncio.create_task(self.start_stream(dp, force_cpu=proc.using_fallback_cpu))
+                            continue
+
                         logger.warning(f"Flujo {dp} caído inesperadamente (error #{proc.error_count + 1}).")
                         proc.error_count += 1
                         proc.transition_to(State.ERROR)
