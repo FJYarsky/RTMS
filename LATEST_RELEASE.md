@@ -1,7 +1,6 @@
 # RTMS v2.2.6 — Corrección Crítica de Conexión SRT, Optimización UDP 1080p60 y Suite de Diagnóstico FFmpeg
 
-**Fecha de lanzamiento:** 17 de Septiembre de 2026  
-**Etiqueta:** `v2.2.6`
+**Fecha:** 17 de Septiembre de 2026 | **Versión:** `v2.2.6`
 
 ---
 
