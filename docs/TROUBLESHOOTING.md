@@ -1,4 +1,4 @@
-# Guía de Resolución de Problemas (Troubleshooting) — RTMS
+# Guía de Resolución de Problemas — RTMS
 
 Esta guía ofrece soluciones prácticas e instrucciones paso a paso para los incidentes más frecuentes en transmisiones multicámara con RTMS.
 

@@ -1,4 +1,4 @@
-# Matriz de Compatibilidad de Hardware y Encoders — RTMS
+# Matriz de Compatibilidad de Hardware — RTMS
 
 Este documento describe la matriz de compatibilidad validada de RTMS para captura de video DirectShow en Windows, codificación acelerada por hardware o CPU, y telemetría en tiempo real.
 
