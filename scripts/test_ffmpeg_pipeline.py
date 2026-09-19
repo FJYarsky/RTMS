@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Herramienta de línea de comandos para diagnóstico y pruebas de FFmpeg.
+# Diagnóstico y pruebas de la canalización de FFmpeg.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

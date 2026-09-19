@@ -1,10 +1,9 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Descarga y verificación de integridad de binarios multimedia.
+# Descarga y verificación de binarios multimedia.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-# Automated FFmpeg & FFplay binary setup and SHA256 integrity validation
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
