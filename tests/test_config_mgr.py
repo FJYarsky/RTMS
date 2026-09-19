@@ -43,7 +43,7 @@ def test_get_or_allocate_camera_config():
 def test_import_config_valid():
     """Valida la importación exitosa de un diccionario de configuración válido."""
     valid_payload = {
-        "version": "3.0.0",
+        "version": "2.3.0",
         "config_schema_version": 4,
         "cameras": {
             "@cam1": {
