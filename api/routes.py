@@ -1,10 +1,10 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Endpoints y controladores de la API REST de RTMS.
+# Endpoints y rutas de la API REST del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Endpoints y controladores de la API REST de RTMS para gestión de streams, telemetría y configuración."""
+"""Endpoints REST para control de streaming, telemetría y configuración."""
 
 import socket
 import psutil

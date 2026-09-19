@@ -1,7 +1,7 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Módulo de la API REST de RTMS.
+# Módulo de la API REST del sistema.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""RTMS FastAPI REST API routes, schemas, and live endpoints."""
+"""Rutas, esquemas y endpoints de la API REST de RTMS."""

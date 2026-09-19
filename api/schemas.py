@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Modelos Pydantic y esquemas de validación de datos para la API REST de RTMS."""
+"""Modelos Pydantic y esquemas de validación para la API REST."""
 
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal, Dict, Any, Union
