@@ -40,7 +40,7 @@ python main.py
 ```
 
 > [!TIP]
-> En producción, ejecuta `run.bat` o `run_silent.vbs` para iniciar en segundo plano sin consola visible.
+> En producción, ejecuta `run.bat` para iniciar el entorno de ejecución.
 
 ---
 
