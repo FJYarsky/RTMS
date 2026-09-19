@@ -20,11 +20,27 @@
    ruff check .
    pytest tests/ -v
    ```
-5. **Haz Commit de tus Cambios** siguiendo convenciones de [Conventional Commits](https://www.conventionalcommits.org/):
+5. **Haz Commit de tus Cambios Conservando las Descripciones en GitHub**:
+   Para mantener el explorador de archivos de GitHub limpio y sin truncamientos, RTMS sigue la **Convención Asunto / Cuerpo**:
+   - **Asunto (1ª línea)**: Debe mantener la descripción canónica del archivo/módulo (<45 caracteres, en español).
+   - **Cuerpo (líneas siguientes)**: Explica los detalles técnicos y notas de parches del cambio.
+   
+   Ejemplo manual:
    ```bash
-   git commit -m "feat(srt): optimizar buffer de transmision en vivo"
+   git commit -m "app: punto de entrada y servidor principal" -m "Detalle: optimización del ciclo de vida y reconexión."
    ```
-6. **Envía un Pull Request** hacia la rama `main` del repositorio oficial detallando el propósito y pruebas realizadas.
+   
+   O mediante el asistente automático del proyecto:
+   ```bash
+   python scripts/manage_descriptions.py --commit main.py -m "Detalle: optimización del ciclo de vida y reconexión."
+   ```
+
+6. **Audita las Descripciones del Repositorio**:
+   ```bash
+   python scripts/manage_descriptions.py --check
+   ```
+
+7. **Envía un Pull Request** hacia la rama `main` del repositorio oficial detallando el propósito y pruebas realizadas.
 
 ---
 
@@ -32,4 +48,3 @@
 - Código Python conforme a directivas PEP 8.
 - Tipado estricto con anotaciones de tipo (`typing`).
 - Manejo explícito de excepciones evitando cláusulas `except Exception: pass` sin registro de logs.
- 
