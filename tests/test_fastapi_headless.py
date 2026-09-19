@@ -7,8 +7,11 @@
 """Pruebas del servidor API en modo sin interfaz gráfica."""
 
 import sys
+
 import uvicorn
+
 from main import _NullWriter, create_app, get_free_port
+
 
 def test_null_writer_interface():
     """Valida que _NullWriter implemente la interfaz básica de un stream writer."""
@@ -16,6 +19,7 @@ def test_null_writer_interface():
     assert writer.isatty() is False
     assert writer.write("test message") == len("test message")
     writer.flush()
+
 
 def test_uvicorn_config_with_none_streams():
     """Valida que uvicorn.Config no falle al inicializarse cuando stdout/stderr son None."""
@@ -31,6 +35,7 @@ def test_uvicorn_config_with_none_streams():
         assert server.config.log_config is None
     finally:
         sys.stdout, sys.stderr = orig_stdout, orig_stderr
+
 
 def test_get_free_port_returns_valid_port():
     """Valida que get_free_port retorne un puerto entero en rango válido."""

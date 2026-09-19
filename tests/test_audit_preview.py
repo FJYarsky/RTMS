@@ -7,10 +7,13 @@
 """Pruebas de límites y concurrencia del servicio de previsualización."""
 
 import asyncio
+
 from core.preview_mgr import PreviewManager
+
 
 def test_preview_slot_concurrency():
     """Verifica la concurrencia de previsualización limitando a 3 sesiones globales y 1 por cámara."""
+
     async def _run():
         pm = PreviewManager()
 
@@ -46,8 +49,10 @@ def test_preview_slot_concurrency():
 
     asyncio.run(_run())
 
+
 def test_mjpeg_buffer_cap(monkeypatch):
     """Verifica que generate_mjpeg_stream aplique el límite de búfer de 4MB si falta el delimitador JPEG."""
+
     async def _run():
         pm = PreviewManager()
 
@@ -55,6 +60,7 @@ def test_mjpeg_buffer_cap(monkeypatch):
         class FakeStdout:
             def __init__(self):
                 self.sent = 0
+
             async def read(self, n):
                 if self.sent < 5 * 1024 * 1024:
                     chunk = b"X" * n
@@ -67,10 +73,13 @@ def test_mjpeg_buffer_cap(monkeypatch):
                 self.stdout = FakeStdout()
                 self.stderr = FakeStdout()
                 self.returncode = None
+
             def terminate(self):
                 self.returncode = 0
+
             def kill(self):
                 self.returncode = -9
+
             async def wait(self):
                 self.returncode = -9
                 return -9
@@ -90,8 +99,10 @@ def test_mjpeg_buffer_cap(monkeypatch):
 
     asyncio.run(_run())
 
+
 def test_snapshot_timeout_kills_process(monkeypatch):
     """Verifica que get_snapshot_frame termine el proceso tras timeout para evitar retener bloqueos de DirectShow."""
+
     async def _run():
         pm = PreviewManager()
 
@@ -100,14 +111,17 @@ def test_snapshot_timeout_kills_process(monkeypatch):
         class StuckProc:
             def __init__(self):
                 self.returncode = None
+
             async def communicate(self):
                 # Hang indefinitely until killed
                 await asyncio.sleep(100)
                 return b"", b""
+
             def kill(self):
                 nonlocal killed
                 killed = True
                 self.returncode = -9
+
             async def wait(self):
                 self.returncode = -9
                 return -9
@@ -126,8 +140,10 @@ def test_snapshot_timeout_kills_process(monkeypatch):
 
     asyncio.run(_run())
 
+
 def test_preview_stop_all_cleans_up():
     """Verifica que stop_all cancele las tareas activas, limpie ranuras y restablezca el semáforo."""
+
     async def _run():
         pm = PreviewManager()
 

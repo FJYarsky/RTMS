@@ -7,7 +7,9 @@
 """Pruebas de integración para flujos de transmisión FFmpeg."""
 
 import asyncio
+
 import pytest
+
 from core.ffmpeg_tester import FFmpegDiagnosticSuite
 from core.hardware import has_ffmpeg_binary
 
@@ -61,12 +63,7 @@ def test_srt_handshake_with_passphrase(suite):
     async def _run():
         pwd = "TestPassphrase123"
         digest = await suite.test_srt_connection(
-            port=9961,
-            resolution="720p",
-            fps=30,
-            passphrase_sender=pwd,
-            passphrase_receiver=pwd,
-            duration_seconds=2.5
+            port=9961, resolution="720p", fps=30, passphrase_sender=pwd, passphrase_receiver=pwd, duration_seconds=2.5
         )
         assert digest.is_connected is True
         assert digest.frames_decoded >= 5
@@ -90,7 +87,7 @@ def test_srt_rejection_without_passphrase(suite):
             fps=30,
             passphrase_sender="SecretPass123",
             passphrase_receiver="",
-            duration_seconds=2.0
+            duration_seconds=2.0,
         )
         assert digest.is_connected is False
         assert len(digest.errors) > 0
@@ -114,7 +111,7 @@ def test_udp_stream_1080p60(suite):
             fps=60,
             buffer_size=4194304,
             repeat_headers=True,
-            duration_seconds=2.5
+            duration_seconds=2.5,
         )
         assert digest.is_connected is True
         assert digest.frames_decoded >= 10

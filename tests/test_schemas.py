@@ -8,14 +8,16 @@
 
 import pytest
 from pydantic import ValidationError
+
 from api.schemas import (
-    CameraConfigUpdate,
-    StreamAction,
+    ApplyPresetRequest,
     AutostartToggle,
     CameraAutostartToggle,
-    ApplyPresetRequest,
-    ImportConfigRequest
+    CameraConfigUpdate,
+    ImportConfigRequest,
+    StreamAction,
 )
+
 
 def test_camera_config_update_valid():
     """Valida que una configuración con parámetros dentro de rango sea válida."""
@@ -29,11 +31,12 @@ def test_camera_config_update_valid():
         srt_latency=120,
         srt_passphrase="passphrase_valida_123",
         auto_start=True,
-        zerolatency=True
+        zerolatency=True,
     )
     assert cfg.resolution == "1080p"
     assert cfg.fps == 60
     assert cfg.srt_passphrase == "passphrase_valida_123"
+
 
 def test_camera_config_update_passphrase_empty_and_masked_are_allowed():
     """Valida que passphrases vacías o enmascaradas '••••••••' no sean rechazadas por longitud."""
@@ -43,11 +46,13 @@ def test_camera_config_update_passphrase_empty_and_masked_are_allowed():
     cfg_masked = CameraConfigUpdate(device_path="@test", srt_passphrase="••••••••")
     assert cfg_masked.srt_passphrase == "••••••••"
 
+
 def test_camera_config_update_passphrase_too_short():
     """Valida que passphrases menores a 10 caracteres sean rechazadas según estándar SRT."""
     with pytest.raises(ValidationError) as exc:
         CameraConfigUpdate(device_path="@test", srt_passphrase="corta")
     assert "entre 10 y 79 caracteres" in str(exc.value)
+
 
 def test_camera_config_update_passphrase_too_long():
     """Valida que passphrases mayores a 79 caracteres sean rechazadas según estándar SRT."""
@@ -55,10 +60,12 @@ def test_camera_config_update_passphrase_too_long():
         CameraConfigUpdate(device_path="@test", srt_passphrase="A" * 80)
     assert "entre 10 y 79 caracteres" in str(exc.value)
 
+
 def test_camera_config_update_invalid_resolution():
     """Valida que resoluciones no permitidas sean rechazadas."""
     with pytest.raises(ValidationError):
         CameraConfigUpdate(device_path="@test", resolution="999p")
+
 
 def test_camera_config_update_invalid_fps_and_bitrate():
     """Valida los límites numéricos de FPS y Bitrate."""
@@ -71,6 +78,7 @@ def test_camera_config_update_invalid_fps_and_bitrate():
     with pytest.raises(ValidationError):
         CameraConfigUpdate(device_path="@test", bitrate=999999)
 
+
 def test_stream_action_valid_and_invalid():
     """Valida las acciones de stream permitidas."""
     for act in ["start", "stop", "restart"]:
@@ -79,6 +87,7 @@ def test_stream_action_valid_and_invalid():
 
     with pytest.raises(ValidationError):
         StreamAction(device_path="@test", action="pause")
+
 
 def test_other_schemas():
     """Valida los modelos auxiliares."""
@@ -93,6 +102,7 @@ def test_other_schemas():
 
     ic = ImportConfigRequest(config_data={"version": 3, "cameras": {}})
     assert ic.config_data["version"] == 3
+
 
 def test_import_config_request_validation():
     """Valida que ImportConfigRequest exija un diccionario con estructura 'cameras'."""

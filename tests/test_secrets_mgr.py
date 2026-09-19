@@ -7,28 +7,29 @@
 """Pruebas de cifrado y protección de credenciales con DPAPI."""
 
 import sys
+
 import pytest
-from core.secrets_mgr import (
-    protect_secret,
-    unprotect_secret,
-    SecretEncryptionError,
-    _HAS_DPAPI
-)
+
+from core.secrets_mgr import _HAS_DPAPI, SecretEncryptionError, protect_secret, unprotect_secret
+
 
 def test_protect_and_unprotect_empty_or_none():
     """Valida que cadenas vacías o None no intenten cifrarse ni descifrarse."""
     assert protect_secret("") == ""
     assert unprotect_secret("") == ""
 
+
 def test_protect_secret_idempotency():
     """Valida que un secreto ya protegido con prefijo 'dpapi:' no se vuelva a cifrar."""
     already_protected = "dpapi:AQAAANCMnd8BFdERjHoAwE/Cl+sBAAA..."
     assert protect_secret(already_protected) == already_protected
 
+
 def test_unprotect_plaintext_backward_compatibility():
     """Valida que cadenas sin prefijo 'dpapi:' se retornen intactas."""
     plaintext = "mi_clave_sin_cifrar_123"
     assert unprotect_secret(plaintext) == plaintext
+
 
 def test_protect_and_unprotect_roundtrip():
     """Valida el ciclo completo de cifrado y descifrado de credenciales."""
@@ -45,11 +46,13 @@ def test_protect_and_unprotect_roundtrip():
         assert ciphertext == secret
         assert unprotect_secret(ciphertext) == secret
 
+
 def test_unprotect_corrupted_dpapi_string():
     """Valida que un payload DPAPI inválido o corrupto no produzca crash y retorne cadena vacía."""
     corrupted = "dpapi:este_no_es_un_blob_valido_base64@@@!!!"
     res = unprotect_secret(corrupted)
     assert res == ""
+
 
 def test_strict_security_policy_rejection(monkeypatch):
     """Valida que en Windows sin flag de dev se levante SecretEncryptionError si DPAPI falla."""

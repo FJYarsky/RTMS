@@ -7,6 +7,7 @@
 """Pruebas de recolección de telemetría y métricas del sistema."""
 
 from unittest.mock import MagicMock, patch
+
 from starlette.testclient import TestClient
 
 from core.telemetry import GpuTelemetryReader, NetworkTelemetryTracker, SystemTelemetryService

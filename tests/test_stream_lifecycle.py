@@ -7,7 +7,9 @@
 """Pruebas del ciclo de vida y estados de procesos de transmisión."""
 
 import asyncio
-from core.ffmpeg_mgr import StreamProc, State
+
+from core.ffmpeg_mgr import State, StreamProc
+
 
 def test_stream_proc_initial_state():
     """Valida los estados iniciales por defecto de StreamProc."""
@@ -18,14 +20,17 @@ def test_stream_proc_initial_state():
     assert proc.using_fallback_cpu is False
     assert proc.permanent_failure is False
 
+
 def test_state_enum_values():
     """Valida que todos los estados formales del ciclo de vida estén definidos."""
     expected_states = ["stopped", "starting", "running", "error", "restarting", "stopping", "disconnected"]
     for s in expected_states:
         assert State(s) in list(State)
 
+
 def test_stream_proc_lock_prevents_race_condition():
     """Valida que el lock de StreamProc garantice exclusión mutua."""
+
     async def _run():
         proc = StreamProc("@device_lock_test")
         counter = 0

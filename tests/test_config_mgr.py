@@ -6,7 +6,8 @@
 
 """Pruebas de gestión y validación de configuraciones."""
 
-from core.config_mgr import is_virtual_device, get_or_allocate_camera_config, import_config, load_config
+from core.config_mgr import get_or_allocate_camera_config, import_config, is_virtual_device, load_config
+
 
 def test_is_virtual_device_detection():
     """Valida la detección heurística de dispositivos de software/virtuales."""
@@ -23,6 +24,7 @@ def test_is_virtual_device_detection():
     assert is_virtual_device("Sony A6400 (Cam Link 4K)") is False
     assert is_virtual_device("Integrated Camera") is False
 
+
 def test_get_or_allocate_camera_config():
     """Valida asignación de puerto, protocolo SRT y generación de contraseña segura."""
     device_path = "@device_test_cam_123"
@@ -37,24 +39,26 @@ def test_get_or_allocate_camera_config():
     assert cfg["zerolatency"] is True
     assert cfg["is_virtual"] is False
 
+
 def test_import_config_valid():
     """Valida la importación exitosa de un diccionario de configuración válido."""
     valid_payload = {
-        "version": "2.2.2",
-        "config_schema_version": 3,
+        "version": "3.0.0",
+        "config_schema_version": 4,
         "cameras": {
             "@cam1": {
                 "id": "cam_abc123",
                 "device_path": "@cam1",
                 "friendly_name": "Camera 1",
                 "port": 9000,
-                "protocol": "srt"
+                "protocol": "srt",
             }
-        }
+        },
     }
     assert import_config(valid_payload) is True
     loaded = load_config()
     assert "@cam1" in loaded.get("cameras", {})
+
 
 def test_import_config_invalid_payloads():
     """Valida que payloads con tipos erróneos o sin formato de cámaras sean rechazados de forma segura."""

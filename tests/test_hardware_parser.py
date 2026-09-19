@@ -8,6 +8,7 @@
 
 from core.hardware import parse_dshow_output
 
+
 def test_parse_dshow_modern_format():
     """Valida el análisis del formato moderno de DirectShow introducido en FFmpeg 7.x/8.x."""
     sample_output = """
@@ -26,6 +27,7 @@ ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
     assert "@device_pnp_" in devices[0]["device_path"]
     assert devices[1]["friendly_name"] == "OBS Virtual Camera"
 
+
 def test_parse_dshow_legacy_format():
     """Valida el análisis del formato clásico de DirectShow (FFmpeg 4.x - 6.x)."""
     sample_output = """
@@ -38,6 +40,7 @@ def test_parse_dshow_legacy_format():
     assert len(devices) == 1
     assert devices[0]["friendly_name"] == "Integrated Camera"
     assert "@device_pnp_" in devices[0]["device_path"]
+
 
 def test_parse_dshow_empty_output():
     """Valida que una salida vacía o sin cámaras retorne lista vacía sin excepciones."""

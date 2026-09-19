@@ -6,12 +6,8 @@
 
 """Pruebas de configuración del inicio automático en Windows."""
 
-from core.autostart import (
-    get_startup_path,
-    get_launch_command,
-    enable_autostart,
-    is_autostart_enabled
-)
+from core.autostart import enable_autostart, get_launch_command, get_startup_path, is_autostart_enabled
+
 
 def test_get_startup_path_structure():
     """Valida que la ruta de inicio apunte a un archivo .cmd dentro del Start Menu de Windows."""
@@ -19,11 +15,13 @@ def test_get_startup_path_structure():
     assert str(path).endswith("rtms_startup.cmd")
     assert "Startup" in str(path) or "Inicio" in str(path)
 
+
 def test_get_launch_command_content():
     """Valida que el comando de lanzamiento contenga invocación desacoplada con start."""
     workdir, cmd = get_launch_command()
     assert len(workdir) > 0
     assert 'start ""' in cmd
+
 
 def test_enable_and_disable_autostart_isolated(tmp_path, monkeypatch):
     """Valida la creación, lectura y eliminación del archivo de autoarranque en un directorio aislado."""

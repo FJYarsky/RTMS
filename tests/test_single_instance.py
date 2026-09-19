@@ -6,10 +6,8 @@
 
 """Pruebas de prevención de instancias múltiples de la aplicación."""
 
-from core.single_instance import (
-    acquire_single_instance_lock,
-    release_single_instance_lock
-)
+from core.single_instance import acquire_single_instance_lock, release_single_instance_lock
+
 
 def test_single_instance_lifecycle():
     """Valida que el mutex de instancia única pueda adquirirse y liberarse limpiamente."""
@@ -22,6 +20,7 @@ def test_single_instance_lifecycle():
 
     # Liberar mutex
     release_single_instance_lock()
+
 
 def test_double_release_is_safe():
     """Valida que liberar un mutex ya liberado o inexistente no arroje excepciones."""

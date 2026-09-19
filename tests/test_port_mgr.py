@@ -7,7 +7,9 @@
 """Pruebas de asignación y gestión de puertos de red."""
 
 import socket
+
 from core.port_mgr import PortManager
+
 
 def test_port_allocation_in_range():
     """Valida que los puertos se asignen dentro del rango permitido."""
@@ -18,6 +20,7 @@ def test_port_allocation_in_range():
     assert 9150 <= p1 <= 9160
     assert 9150 <= p2 <= 9160
     assert p1 != p2
+
 
 def test_port_release_and_reuse():
     """Valida que un puerto liberado pueda ser reasignado posteriormente."""
@@ -30,6 +33,7 @@ def test_port_release_and_reuse():
 
     # p3 debe haber reutilizado p1 o el siguiente disponible
     assert p3 in (p1, 9182)
+
 
 def test_detect_port_in_use():
     """Valida que PortManager detecte si un socket ya está enlazado por el SO."""

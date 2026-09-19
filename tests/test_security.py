@@ -7,11 +7,13 @@
 """Pruebas de autenticación y seguridad en endpoints de la API."""
 
 from fastapi.testclient import TestClient
+
 from main import create_app
 
 TEST_TOKEN = "test_crypto_session_token_123456789"
 app = create_app(token=TEST_TOKEN)
 client = TestClient(app)
+
 
 def test_healthz_endpoint_is_public():
     """El endpoint /healthz debe responder 200 OK sin requerir token de sesión."""
@@ -21,6 +23,7 @@ def test_healthz_endpoint_is_public():
     assert data["status"] == "ok"
     assert "version" in data
 
+
 def test_sensitive_get_endpoints_require_token():
     """Valida que todos los endpoints GET sensibles rechacen peticiones sin token con 403."""
     endpoints = [
@@ -28,11 +31,12 @@ def test_sensitive_get_endpoints_require_token():
         "/api/system/metrics",
         "/api/stream/logs?device_path=dummy",
         "/api/power/status",
-        "/api/config/export"
+        "/api/config/export",
     ]
     for ep in endpoints:
         res = client.get(ep)
         assert res.status_code == 403, f"Endpoint {ep} no fue bloqueado sin token"
+
 
 def test_sensitive_get_endpoints_with_valid_token():
     """Valida que las peticiones GET con token válido sean aceptadas."""
@@ -46,6 +50,7 @@ def test_sensitive_get_endpoints_with_valid_token():
     res_power = client.get("/api/power/status", headers=headers)
     assert res_power.status_code == 200
 
+
 def test_api_status_masks_passphrase():
     """Valida que /api/status nunca devuelva contraseñas SRT en texto plano."""
     headers = {"X-RTMS-Token": TEST_TOKEN}
@@ -57,9 +62,11 @@ def test_api_status_masks_passphrase():
         if s.get("has_passphrase"):
             assert s.get("srt_passphrase") == "••••••••"
 
+
 def test_mutating_post_endpoints_require_token(monkeypatch):
     """Valida que peticiones POST sean rechazadas con 403 si falta el token o es incorrecto."""
     from unittest.mock import AsyncMock
+
     monkeypatch.setattr("api.routes.sync_streams_with_hardware", AsyncMock())
     # Sin token
     res_no_token = client.post("/api/hardware/scan")

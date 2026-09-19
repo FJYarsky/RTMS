@@ -7,8 +7,10 @@
 """Pruebas del icono y menú contextual en la bandeja del sistema."""
 
 from unittest.mock import MagicMock, patch
-from core.tray_icon import SystemTrayManager
+
 from PIL import Image
+
+from core.tray_icon import SystemTrayManager
 
 
 def test_system_tray_manager_init():
@@ -24,7 +26,7 @@ def test_system_tray_manager_init():
         on_stop_streams=stop_cb,
         on_terminate_all=term_cb,
         on_exit_app=exit_cb,
-        on_about=about_cb
+        on_about=about_cb,
     )
 
     assert mgr.on_show_window is show_cb
@@ -57,7 +59,7 @@ def test_system_tray_start_and_menu_items():
         on_stop_streams=stop_cb,
         on_terminate_all=term_cb,
         on_exit_app=exit_cb,
-        on_about=about_cb
+        on_about=about_cb,
     )
 
     def mock_thread_factory(target, daemon=True, args=(), kwargs=None):
@@ -128,9 +130,10 @@ def test_system_tray_about_fallback_dialog():
 
 def test_unblock_app_binaries():
     """Valida que unblock_app_binaries elimine flujos Zone.Identifier."""
-    from core.system_env import unblock_app_binaries
-    import tempfile
     import os
+    import tempfile
+
+    from core.system_env import unblock_app_binaries
 
     with tempfile.TemporaryDirectory() as tmpdir:
         test_dll = os.path.join(tmpdir, "test.dll")
@@ -195,6 +198,3 @@ def test_show_about_from_tray_behavior():
                 main.show_about_from_tray()
                 assert not mock_win.evaluate_js.called
                 assert mock_tray._show_default_about.called
-
-
-
