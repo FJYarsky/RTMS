@@ -2,7 +2,7 @@
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
-## [3.0.0] — 2026-09-19
+## [2.3.0] — 2026-09-19
 
 ### Seguridad Crítica y Protección de Sesión (Hotfixes P0)
 - **Corrección de Limpieza Asíncrona de Procesos (`core/process_cleanup.py`)**:
@@ -28,10 +28,10 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 - **Rollback Atómico y Persistencia**:
   - Creación de respaldo seguro en `config/power_backup.json` con restauración garantizada de directivas originales al cerrar o solicitar la restauración.
 
-### Ruptura Limpia de Retrocompatibilidad (< 3.0.0)
+### Ruptura Limpia de Retrocompatibilidad (< 2.3.0)
 - **Esquema de Configuración v4 (`core/config_mgr.py`)**:
   - Actualizado a `CURRENT_SCHEMA_VERSION = 4` y purgadas todas las rutinas de migración heredadas v1 y v2.
-  - Detección automática de versiones de configuración previas (< 4) con respaldo seguro en `config/config.json.legacy_v2_bak` y reinicialización limpia a valores por defecto para v3.0.0.
+  - Detección automática de versiones de configuración previas (< 4) con respaldo seguro en `config/config.json.legacy_v2_bak` y reinicialización limpia a valores por defecto para v2.3.0.
   - Eliminado el script obsoleto `run_silent.vbs` y actualizadas las referencias de arranque en el proyecto.
 
 ### Estandarización de Arquitectura y Herramientas (PEP 621)
