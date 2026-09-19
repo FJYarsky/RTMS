@@ -1,35 +1,47 @@
-# RTMS v2.2.6 — Corrección Crítica de Conexión SRT, Optimización UDP 1080p60 y Suite de Diagnóstico FFmpeg
+# RTMS v3.0.0 — Seguridad Crítica, Gobernador Energético Win32 y Estandarización de Arquitectura
 
-**Fecha:** 17 de Septiembre de 2026 | **Versión:** `v2.2.6`
-
----
-
-### 🛠️ Corrección Crítica de Entablado de Conexión SRT y Copia de URL
-- **Resolución Definitiva de Rechazo por Contraseña Faltante (`ERROR:UNSECURE`)**:
-  - RTMS genera passphrases criptográficas seguras al registrar cámaras, pero la interfaz web copiaba la URL `srt://IP:port?mode=caller...` omitiendo el parámetro `&passphrase=...`. Sockets externos como OBS Studio o vMix eran rechazados inmediatamente con `ERROR:UNSECURE (Password required or unexpected)`.
-  - Se implementó el endpoint protegido `GET /api/stream/{device_path}/connect_url` en `api/routes.py` que calcula y devuelve la URL completa, normalizada y funcional con su passphrase configurada y codificación de caracteres especiales (`urllib.parse.urlencode`).
-  - Se actualizó `gui/static/app.js` (`copyUrlByIndex`) para consultar este endpoint al pulsar "Copiar URL", copiando al portapapeles la dirección exacta y garantizando la conexión al 100%.
-- **Resiliencia del Listener SRT ante Desconexiones de Clientes**:
-  - En `core/ffmpeg_mgr.py`, el Watchdog detecta cuando FFmpeg finaliza tras la desconexión normal de un cliente receptor (`-5 I/O error` / `muxer`) y reinicia el proceso listener de inmediato con penalización cero y sin retardos de *backoff*, dejando el socket disponible para reconexión instantánea.
+**Fecha:** 19 de Septiembre de 2026 | **Versión:** `v3.0.0`
 
 ---
 
-### 🚀 Optimización y Estabilidad Continua de Streaming UDP a 1080p @ 60 FPS
-- **Ampliación de Buffer de Socket de Red a 4 MB**:
-  - El buffer de socket UDP en `core/ffmpeg_mgr.py` (`build_multicast_url`) se incrementó de 64 KB (`buffer_size=65535`) a 4 MB (`buffer_size=4194304&overrun_nonfatal=1&fifo_size=50000000`). Esto elimina la saturación de socket en Windows a altas tasas de bits (6–12 Mbps) y erradica por completo la pérdida de paquetes y tirones de framerate.
-- **Inyección Forzada de Cabeceras SPS/PPS (`repeat-headers` y `dump_extra`)**:
-  - Se añadieron los parámetros `-x264-params repeat-headers=1` (para CPU `libx264`) y `-forced-idr 1` (para GPU `h264_nvenc`), combinados con el bitstream filter `-bsf:v dump_extra` para MPEG-TS. Receptores que conectan con la transmisión ya iniciada reciben de inmediato los parámetros de secuencia sin arrojar errores `non-existing PPS 0 referenced`.
-- **Soporte Nativo de Fuentes de Cámara Virtual (`virtual://` / `testsrc`)**:
-  - `core/ffmpeg_mgr.py` ahora admite cámaras virtuales `virtual://` que generan patrones sintéticos `testsrc2` en tiempo real, permitiendo transmitir y verificar 1080p60 continuo en hardware de test o sin cámara física 60fps.
+### 🛡️ Seguridad Crítica y Protección de Sesión (Hotfixes P0)
+- **Corrección de Limpieza Asíncrona de Procesos (`core/process_cleanup.py`)**:
+  - Resuelto fallo P0-01 encapsulando `asyncio.gather` dentro de una corrutina real antes de llamar a `asyncio.run_coroutine_threadsafe()`, garantizando la terminación ordenada de los managers de streaming y preview sin excepciones de runtime.
+- **Filtro Estricto y Seguro de Terminación de Procesos (`core/process_cleanup.py`)**:
+  - Resuelto fallo P0-02 acotando la terminación forzada exclusivamente a subprocesos hijos de RTMS (`ppid == my_pid`), binarios ubicados en el directorio `bin/` de RTMS o líneas de comando con marca `rtms`. Protege instancias externas de FFmpeg utilizadas por otras aplicaciones en el sistema del usuario.
+- **Eliminación de Fuga de Tokens en Query Parameters (`api/routes.py`)**:
+  - Resuelto fallo P0-03 eliminando la aceptación de tokens en la URL (`?token=...`), retornando código HTTP 403. Incorporadas cabeceras `Cache-Control: no-store, no-cache, must-revalidate` y `Pragma: no-cache` en `/api/stream/{device}/connect_url`.
+- **Autenticación por Cookie HttpOnly y Eliminación de Meta Tag (`main.py` y `gui/templates/index.html`)**:
+  - Resuelto fallo P0-04 eliminando `<meta name="rtms-token">` del DOM y del contexto de plantilla. Emisión de cookie segura `rtms_session` con flags `httponly=True, samesite='lax'` y configuración de `credentials: 'same-origin'` en todas las peticiones `apiFetch` de la interfaz web.
+- **Corrección de Visualización y Revelado de Contraseña en URLs (`gui/static/app.js`)**:
+  - Las URLs de conexión mostradas en las tarjetas cargan inmediatamente la contraseña descifrada para streams activos e incorporan un botón conmutable para ocultar/mostrar la clave (icono 👁️ / 🔒), garantizando la copia exacta al portapapeles.
 
 ---
 
-### 🔬 Suite Integral de Diagnóstico, Digestión de Video y Pruebas en Vivo
-- **Motor de Análisis y Digestión en Tiempo Real (`core/ffmpeg_tester.py`)**:
-  - `VideoReceiverDigest`: Receptor y analizador de flujos en vivo que decodifica flujos SRT y UDP con `-progress pipe:1`, calculando FPS decodificados reales, bitrate instantáneo, estabilidad de jitter, frames descartados y errores de bitstream H.264.
-  - `VirtualCameraSource`: Generador de video sintético calibrado con patrones `testsrc2`, barras SMPTE y reloj OSD con microsegundos a cualquier resolución y framerate.
-  - `FFmpegDiagnosticSuite`: Orquestador de pruebas locales que valida binarios, códecs de hardware (NVENC/x264), dispositivos DirectShow y entablado de conexiones en bucle local (loopback).
-- **Herramienta CLI de Consola (`scripts/test_ffmpeg_pipeline.py`)**:
-  - CLI interactivo y automatizado con soporte nativo UTF-8 en consolas Windows, banderas de diagnóstico (`--all`, `--srt`, `--udp`, `--bench`, `--camera`, `--virtual-cam`).
-- **Tests Automatizados de Integración (`tests/test_ffmpeg_live.py`)**:
-  - 5 tests de integración en vivo añadidos a la suite oficial de Pytest, elevando la cobertura a 113 tests unitarios y de integración pasando al 100%.
+### ⚡ Gestión Energética Profesional y Nativa (Win32)
+- **Nuevo Módulo de Energía Nativo (`core/power_mgr.py`)**:
+  - Implementación de control energético mediante APIs Win32 nativas (`powrprof.dll`, `kernel32.dll`) sin invocar scripts externos de PowerShell, eliminando alertas de antivirus y falsos positivos.
+- **Gobernador Dinámico de Energía (`DynamicPowerGovernor`)**:
+  - Elevación automática al plan de energía de **Alto Rendimiento** de Windows en cuanto inicia al menos una transmisión activa (`active_streams >= 1`) y restauración inmediata y transparente del plan original al concluir todas las transmisiones (`active_streams == 0`).
+- **Prevención Nativa de Suspensión de Pantalla y Equipo**:
+  - Activación continua de `SetThreadExecutionState` (`ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED`) durante la operación activa.
+- **Optimización de Adaptadores de Red Vía Registro**:
+  - Desactivación de ahorro de energía (`PnPCapabilities = 24`) mediante manipulación directa en el registro con `winreg` y verificación de privilegios `is_admin()`.
+- **Rollback Atómico y Persistencia**:
+  - Creación de respaldo seguro en `config/power_backup.json` con restauración garantizada de directivas originales al cerrar o solicitar la restauración.
+
+---
+
+### 🔄 Ruptura Limpia de Retrocompatibilidad (< 3.0.0)
+- **Esquema de Configuración v4 (`core/config_mgr.py`)**:
+  - Actualizado a `CURRENT_SCHEMA_VERSION = 4` y purgadas todas las rutinas de migración heredadas v1 y v2.
+  - Detección automática de versiones de configuración previas (< 4) con respaldo seguro en `config/config.json.legacy_v2_bak` y reinicialización limpia a valores por defecto para v3.0.0.
+  - Eliminado el script obsoleto `run_silent.vbs` y actualizadas las referencias de arranque en el proyecto.
+
+---
+
+### 🛠️ Estandarización de Arquitectura y Herramientas (PEP 621)
+- **Modernización de pyproject.toml**:
+  - Configuración del sistema de empaquetado estándar `hatchling` con metadatos PEP 621.
+  - Incorporadas reglas de linting y formato estrictas con Ruff (`line-length = 120`, reglas `E`, `F`, `W`, `I`, `B`), tipado con Mypy y configuración de Pytest.
+  - 100% de la base de código formateada y alineada con estándares modernos de Python.
