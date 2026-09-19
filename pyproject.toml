@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rtms"
-version = "3.0.0"
+version = "2.3.0"
 description = "Servidor multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX"
 readme = "README.md"
 requires-python = ">=3.11"
