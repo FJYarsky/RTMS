@@ -9,7 +9,7 @@
 # Testing & Calidad de Código
 pytest>=9.0.3
 pytest-asyncio>=0.23.0
-pytest-cov>=5.0.0
+pytest-cov>=7.1.0
 httpx>=0.28.1
 ruff>=0.16.7
 
