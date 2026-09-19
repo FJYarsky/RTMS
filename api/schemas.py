@@ -6,19 +6,24 @@
 
 """Modelos Pydantic y esquemas de validación para la API REST."""
 
+from typing import Any, Dict, Literal, Optional, Union
+
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, Literal, Dict, Any, Union
+
 
 class AutostartToggle(BaseModel):
     enable: bool
+
 
 class CameraAutostartToggle(BaseModel):
     device_path: str
     auto_start: bool
 
+
 class StreamAction(BaseModel):
     device_path: str
     action: Literal["start", "stop", "restart"]
+
 
 class CameraConfigUpdate(BaseModel):
     device_path: str
@@ -41,22 +46,28 @@ class CameraConfigUpdate(BaseModel):
             raise ValueError("La passphrase SRT debe tener entre 10 y 79 caracteres según el estándar del protocolo.")
         return v
 
+
 class ApplyPresetRequest(BaseModel):
     device_path: str
     preset_key: str
 
+
 class FullExportRequest(BaseModel):
     confirm_export_secrets: bool
+
 
 class PreviewTicketRequest(BaseModel):
     device_path: Optional[str] = None
     ttl_seconds: Optional[int] = Field(default=60, ge=5, le=120)
 
+
 class FactoryResetRequest(BaseModel):
     confirm: bool
 
+
 class SystemShutdownRequest(BaseModel):
     force: bool = True
+
 
 class CameraPersistedConfig(BaseModel):
     id: Optional[str] = ""
@@ -74,12 +85,14 @@ class CameraPersistedConfig(BaseModel):
     auto_start: Optional[bool] = True
     is_virtual: Optional[bool] = False
 
+
 class RTMSConfigModel(BaseModel):
     version: Optional[Union[str, int]] = None
-    config_schema_version: Optional[int] = Field(default=3, ge=1)
+    config_schema_version: Optional[int] = Field(default=4, ge=1)
     cameras: Dict[str, Union[CameraPersistedConfig, Dict[str, Any]]] = Field(default_factory=dict)
     next_port: Optional[int] = Field(default=9000, ge=1024, le=65535)
     unattended_autostart: Optional[bool] = True
+
 
 class ImportConfigRequest(BaseModel):
     config_data: Dict[str, Any]

@@ -6,37 +6,46 @@
 
 """Endpoints REST para control de streaming, telemetría y configuración."""
 
-import socket
-import psutil
 import logging
 import secrets
-import time
+import socket
 import threading
+import time
 import urllib.parse
-from fastapi import APIRouter, HTTPException, Header, Depends, Request, Response
-from fastapi.responses import StreamingResponse
 from typing import Optional
 
+import psutil
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi.responses import JSONResponse, StreamingResponse
+
 from core.__version__ import __version__
-from .schemas import (
-    CameraConfigUpdate, StreamAction, AutostartToggle,
-    CameraAutostartToggle, ApplyPresetRequest, ImportConfigRequest,
-    FullExportRequest, PreviewTicketRequest, FactoryResetRequest,
-    SystemShutdownRequest
-)
-from core.ffmpeg_mgr import (
-    get_all_stream_statuses, stream_manager, sync_streams_with_hardware,
-    build_stream_url
-)
 from core.config_mgr import (
-    update_camera_config, set_camera_autostart, find_camera_by_id_or_path,
-    apply_camera_preset, export_config, import_config,
-    CAMERA_PRESETS
+    CAMERA_PRESETS,
+    apply_camera_preset,
+    export_config,
+    find_camera_by_id_or_path,
+    import_config,
+    set_camera_autostart,
+    update_camera_config,
 )
+from core.ffmpeg_mgr import build_stream_url, get_all_stream_statuses, stream_manager, sync_streams_with_hardware
 from core.preview_mgr import preview_manager
-from core.telemetry import telemetry_service
 from core.process_cleanup import terminate_all_processes
 from core.system_env import get_platform_details
+from core.telemetry import telemetry_service
+
+from .schemas import (
+    ApplyPresetRequest,
+    AutostartToggle,
+    CameraAutostartToggle,
+    CameraConfigUpdate,
+    FactoryResetRequest,
+    FullExportRequest,
+    ImportConfigRequest,
+    PreviewTicketRequest,
+    StreamAction,
+    SystemShutdownRequest,
+)
 
 logger = logging.getLogger("rtms.routes")
 router = APIRouter()
@@ -44,12 +53,14 @@ router = APIRouter()
 _GLOBAL_API_TOKEN: Optional[str] = None
 _LAST_IP_CACHE: dict = {"ip": "127.0.0.1", "timestamp": 0.0}
 
+
 class PreviewTicketManager:
     """
     Gestor en memoria de tickets efímeros para el streaming seguro de previsualizaciones MJPEG.
     Implementa consumo atómico de un solo uso (single-use), protección contra condiciones
     de carrera mediante threading.Lock() y límite superior de tickets en memoria.
     """
+
     MAX_TICKETS = 100
 
     def __init__(self, default_ttl: int = 60):
@@ -66,10 +77,7 @@ class PreviewTicketManager:
 
             token = secrets.token_urlsafe(32)
             ttl_sec = ttl if (ttl is not None and ttl > 0) else self.default_ttl
-            self._tickets[token] = {
-                "device_path": device_path,
-                "expires_at": time.time() + ttl_sec
-            }
+            self._tickets[token] = {"device_path": device_path, "expires_at": time.time() + ttl_sec}
             return token
 
     def consume_ticket(self, ticket: str, device_path: str) -> bool:
@@ -134,21 +142,23 @@ class PreviewTicketManager:
         with self._lock:
             self._cleanup_locked()
 
+
 preview_ticket_mgr = PreviewTicketManager()
+
 
 def set_global_api_token(token: str):
     """Establece el token de sesión criptográfico generado al inicio de la aplicación."""
     global _GLOBAL_API_TOKEN
     _GLOBAL_API_TOKEN = token
 
+
 async def verify_api_token(
     request: Request,
     x_rtms_token: Optional[str] = Header(None, alias="X-RTMS-Token"),
-    token: Optional[str] = None
 ):
     """
     Middleware de seguridad que valida el token de sesión en peticiones protegidas.
-    Soporta Header 'X-RTMS-Token' y query param '?token=' (para tags <img> de preview).
+    Exige la cabecera 'X-RTMS-Token' obligatoria. No acepta tokens en query strings.
     Utiliza comparación en tiempo constante para mitigar timing attacks.
     """
     expected_token = getattr(request.app.state, "api_token", _GLOBAL_API_TOKEN)
@@ -158,14 +168,13 @@ async def verify_api_token(
             provided = x_rtms_token
         elif hasattr(request, "headers") and request.headers.get("x-rtms-token"):
             provided = request.headers.get("x-rtms-token")
-        elif isinstance(token, str) and token:
-            provided = token
-        elif hasattr(request, "query_params") and request.query_params.get("token"):
-            provided = request.query_params.get("token")
+        elif hasattr(request, "cookies") and request.cookies.get("rtms_session"):
+            provided = request.cookies.get("rtms_session")
 
         if not provided or not secrets.compare_digest(str(provided), str(expected_token)):
             logger.warning("Petición rechazada: Token de seguridad X-RTMS-Token inválido o ausente.")
             raise HTTPException(status_code=403, detail="Acceso denegado: Token de seguridad inválido o ausente.")
+
 
 def get_local_ip() -> str:
     """Obtiene la IP local con caché TTL de 30s para evitar sondeos de sockets constantes."""
@@ -185,7 +194,7 @@ def get_local_ip() -> str:
     except Exception:
         try:
             addrs = psutil.net_if_addrs()
-            for iface, addr_list in addrs.items():
+            for _iface, addr_list in addrs.items():
                 for addr in addr_list:
                     if addr.family == socket.AF_INET:
                         ip_candidate = addr.address
@@ -200,10 +209,12 @@ def get_local_ip() -> str:
     _LAST_IP_CACHE = {"ip": ip, "timestamp": now}
     return ip
 
+
 @router.get("/healthz")
 async def healthz():
     """Endpoint público de verificación de salud para supervisores externos de procesos."""
     return {"status": "ok", "version": __version__}
+
 
 @router.get("/readyz")
 async def readyz():
@@ -212,10 +223,12 @@ async def readyz():
         raise HTTPException(status_code=503, detail="Binario FFmpeg no disponible en el sistema.")
     return {"status": "ok", "ready": True, "ffmpeg": True}
 
+
 @router.get("/api/status", dependencies=[Depends(verify_api_token)])
 async def get_status():
     """Retorna el estado general del sistema, IP local y flujos con contraseñas enmascaradas."""
     from core.autostart import is_autostart_enabled
+
     raw_streams = get_all_stream_statuses()
 
     # Seguridad: Enmascarar srt_passphrase para no exponerla en texto plano
@@ -233,8 +246,9 @@ async def get_status():
         "platform_info": get_platform_details(),
         "autostart_enabled": is_autostart_enabled(),
         "streams": sanitized_streams,
-        "presets": {k: v["name"] for k, v in CAMERA_PRESETS.items()}
+        "presets": {k: v["name"] for k, v in CAMERA_PRESETS.items()},
     }
+
 
 @router.get("/api/system/metrics", dependencies=[Depends(verify_api_token)])
 async def get_system_metrics():
@@ -248,12 +262,14 @@ async def get_system_metrics():
         total_bitrate_kbps=total_bitrate,
     )
 
+
 @router.post("/api/system/emergency_stop", dependencies=[Depends(verify_api_token)])
 @router.post("/api/system/global_stop", dependencies=[Depends(verify_api_token)])
 async def emergency_stop():
     """Detiene inmediatamente todos los flujos de FFmpeg de forma ordenada y segura (Protegido por Token)."""
     await stream_manager.emergency_stop_all()
     return {"status": "ok", "message": "Todas las transmisiones activas fueron detenidas correctamente."}
+
 
 @router.post("/api/system/shutdown", dependencies=[Depends(verify_api_token)])
 async def system_shutdown(payload: Optional[SystemShutdownRequest] = None):
@@ -267,14 +283,16 @@ async def system_shutdown(payload: Optional[SystemShutdownRequest] = None):
     threading.Thread(target=_delayed_exit, daemon=True).start()
     return {"status": "ok", "message": "RTMS finalizando todos los procesos y cerrando aplicación."}
 
+
 @router.post("/api/system/factory_reset", dependencies=[Depends(verify_api_token)])
 async def system_factory_reset(payload: FactoryResetRequest):
     """
     Restaura la configuración de fábrica, purga credenciales, logs, copias de seguridad
     y finaliza la aplicación para un restablecimiento limpio.
     """
-    import os
     import json
+    import os
+
     if not payload.confirm:
         raise HTTPException(status_code=400, detail="Debe confirmar explícitamente el restablecimiento de fábrica.")
 
@@ -285,6 +303,7 @@ async def system_factory_reset(payload: FactoryResetRequest):
     # 2. Eliminar autostart de Windows si estaba activo
     try:
         from core.autostart import enable_autostart
+
         enable_autostart(False)
     except Exception as e:
         logger.debug(f"Aviso al deshabilitar autostart durante reset: {e}")
@@ -292,12 +311,14 @@ async def system_factory_reset(payload: FactoryResetRequest):
     # 3. Restaurar configuraciones de energía si existen
     try:
         from core.system_env import restore_original_power_settings
+
         restore_original_power_settings()
     except Exception:
         pass
 
     # 4. Limpiar archivos de configuración y logs
-    from core.config_mgr import CONFIG_DIR, CONFIG_FILE, CONFIG_BAK_FILE, get_base_dir
+    from core.config_mgr import CONFIG_BAK_FILE, CONFIG_DIR, CONFIG_FILE, get_base_dir
+
     base_dir = get_base_dir()
 
     for fname in [CONFIG_FILE, CONFIG_BAK_FILE, os.path.join(CONFIG_DIR, "power_backup.json")]:
@@ -312,7 +333,7 @@ async def system_factory_reset(payload: FactoryResetRequest):
         os.path.join(base_dir, "rtms.log"),
         os.path.join(base_dir, "rtms.log.1"),
         os.path.join(base_dir, "rtms.log.2"),
-        os.path.join(os.environ.get("LOCALAPPDATA", ""), "RTMS", "rtms.log")
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "RTMS", "rtms.log"),
     ]
     for log_candidate in log_candidates:
         try:
@@ -325,11 +346,11 @@ async def system_factory_reset(payload: FactoryResetRequest):
     try:
         clean_config = {
             "version": __version__,
-            "config_schema_version": 3,
+            "config_schema_version": 4,
             "cameras": {},
             "ignored_devices": [],
             "next_port": 9000,
-            "unattended_autostart": True
+            "unattended_autostart": True,
         }
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(clean_config, f, indent=4)
@@ -342,6 +363,7 @@ async def system_factory_reset(payload: FactoryResetRequest):
 
     threading.Thread(target=_delayed_exit, daemon=True).start()
     return {"status": "ok", "message": "Datos eliminados y configuración restablecida. RTMS se cerrará ahora."}
+
 
 @router.post("/api/stream/action", dependencies=[Depends(verify_api_token)])
 async def handle_stream_action(action: StreamAction):
@@ -370,6 +392,7 @@ async def handle_stream_action(action: StreamAction):
 
     raise HTTPException(status_code=400, detail="Acción inválida")
 
+
 @router.post("/api/stream/config", dependencies=[Depends(verify_api_token)])
 async def update_stream_config_endpoint(config: CameraConfigUpdate):
     """Actualiza la configuración de una cámara (Protegido por Token)."""
@@ -396,7 +419,7 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         srt_passphrase=passphrase_to_set or "",
         auto_start=config.auto_start if config.auto_start is not None else True,
         zerolatency=config.zerolatency if config.zerolatency is not None else True,
-        is_virtual=config.is_virtual if config.is_virtual is not None else False
+        is_virtual=config.is_virtual if config.is_virtual is not None else False,
     )
     if not saved:
         raise HTTPException(status_code=500, detail="Error al persistir la configuración de la cámara en disco.")
@@ -422,6 +445,7 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
 
     return {"status": "ok", "message": "Configuración guardada y aplicada"}
 
+
 @router.delete("/api/stream/{device_path:path}", dependencies=[Depends(verify_api_token)])
 async def delete_camera_endpoint(device_path: str):
     """Elimina una cámara de la configuración persistida y detiene su proceso asociado."""
@@ -438,6 +462,7 @@ async def delete_camera_endpoint(device_path: str):
 
     return {"status": "ok", "message": f"Cámara {dp} eliminada permanentemente"}
 
+
 @router.post("/api/stream/preset", dependencies=[Depends(verify_api_token)])
 async def apply_preset_endpoint(payload: ApplyPresetRequest):
     """Aplica un perfil predefinido a una cámara existente."""
@@ -446,7 +471,9 @@ async def apply_preset_endpoint(payload: ApplyPresetRequest):
 
     updated_cam = apply_camera_preset(dp, payload.preset_key)
     if not updated_cam:
-        raise HTTPException(status_code=404, detail="Perfil o cámara no encontrados, o error al persistir configuración.")
+        raise HTTPException(
+            status_code=404, detail="Perfil o cámara no encontrados, o error al persistir configuración."
+        )
 
     proc = stream_manager.get_proc(dp)
     if proc:
@@ -456,6 +483,7 @@ async def apply_preset_endpoint(payload: ApplyPresetRequest):
             await stream_manager.start_stream(dp)
 
     return {"status": "ok", "message": f"Perfil aplicado exitosamente a {dp}", "camera": updated_cam}
+
 
 @router.post("/api/stream/autostart_toggle", dependencies=[Depends(verify_api_token)])
 async def toggle_cam_autostart(payload: CameraAutostartToggle):
@@ -472,18 +500,22 @@ async def toggle_cam_autostart(payload: CameraAutostartToggle):
         proc.config["auto_start"] = payload.auto_start
     return {"status": "ok", "auto_start": payload.auto_start}
 
+
 @router.post("/api/hardware/scan", dependencies=[Depends(verify_api_token)])
 async def scan_hardware():
     """Fuerza un sondeo completo de hardware DirectShow (Protegido por Token)."""
     await sync_streams_with_hardware()
     return {"status": "ok", "message": "Escaneo de hardware completado"}
 
+
 @router.post("/api/autostart", dependencies=[Depends(verify_api_token)])
 async def set_autostart(toggle: AutostartToggle):
     """Habilita o deshabilita el autoarranque de RTMS con Windows (Protegido por Token)."""
     from core.autostart import enable_autostart
+
     enable_autostart(toggle.enable)
     return {"status": "ok", "autostart": toggle.enable}
+
 
 @router.get("/api/stream/logs", dependencies=[Depends(verify_api_token)])
 async def get_stream_logs(device_path: str):
@@ -496,33 +528,42 @@ async def get_stream_logs(device_path: str):
         raise HTTPException(status_code=404, detail="Dispositivo no encontrado")
     return {"logs": proc.get_logs()}
 
+
 @router.post("/api/power/apply", dependencies=[Depends(verify_api_token)])
 async def apply_power():
     """Aplica las optimizaciones de energía y estabilidad en Windows y reporta el resultado real."""
     from core.system_env import setup_windows_environment
+
     result = setup_windows_environment()
     return result
+
 
 @router.post("/api/power/restore", dependencies=[Depends(verify_api_token)])
 async def restore_power():
     """Restaura la configuración original de energía de Windows (Protegido por Token)."""
     from core.system_env import restore_original_power_settings
+
     result = restore_original_power_settings()
     if result.get("status") == "ok":
         return result
     raise HTTPException(status_code=400, detail=result.get("message", "Error al restaurar"))
 
+
 @router.get("/api/power/status", dependencies=[Depends(verify_api_token)])
 async def power_status():
     """Retorna si las optimizaciones de energía están aplicadas actualmente."""
     import os
+
     from core.system_env import BACKUP_FILE
+
     return {"optimizations_applied": os.path.exists(BACKUP_FILE)}
+
 
 @router.get("/api/config/export", dependencies=[Depends(verify_api_token)])
 async def export_config_endpoint(safe_mode: bool = True):
     """Exporta la configuración completa para respaldo o migración (con secretos enmascarados en GET)."""
     return export_config(safe_mode=True)
+
 
 @router.post("/api/config/export/full", dependencies=[Depends(verify_api_token)])
 async def export_full_config_endpoint(payload: FullExportRequest, response: Response):
@@ -533,11 +574,12 @@ async def export_full_config_endpoint(payload: FullExportRequest, response: Resp
     if not payload.confirm_export_secrets:
         raise HTTPException(
             status_code=400,
-            detail="Debe confirmar explícitamente la exportación de secretos con confirm_export_secrets=True."
+            detail="Debe confirmar explícitamente la exportación de secretos con confirm_export_secrets=True.",
         )
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     return export_config(safe_mode=False)
+
 
 @router.post("/api/config/import", dependencies=[Depends(verify_api_token)])
 async def import_config_endpoint(payload: ImportConfigRequest):
@@ -550,6 +592,7 @@ async def import_config_endpoint(payload: ImportConfigRequest):
     except Exception as e:
         logger.warning(f"Error sincronizando hardware tras importación de config: {e}")
     return {"status": "ok", "message": "Configuración importada y aplicada exitosamente"}
+
 
 @router.post("/api/preview/ticket", dependencies=[Depends(verify_api_token)])
 @router.post("/api/stream/{device_path:path}/preview_ticket", dependencies=[Depends(verify_api_token)])
@@ -564,13 +607,9 @@ async def create_preview_ticket(payload: Optional[PreviewTicketRequest] = None, 
     ticket = preview_ticket_mgr.create_ticket(dp, ttl=ttl)
     return {"ticket": ticket, "expires_in": ttl}
 
+
 @router.get("/api/stream/{device_path:path}/preview")
-async def stream_preview(
-    request: Request,
-    device_path: str,
-    ticket: Optional[str] = None,
-    token: Optional[str] = None
-):
+async def stream_preview(request: Request, device_path: str, ticket: Optional[str] = None):
     """
     Canaliza un stream MJPEG de baja latencia on-demand.
     Soporta autenticación mediante ticket efímero de consumo único (?ticket=...) o cabecera X-RTMS-Token.
@@ -589,9 +628,9 @@ async def stream_preview(
         if request.query_params.get("token"):
             raise HTTPException(
                 status_code=403,
-                detail="El uso de token global por query parameter está deshabilitado por seguridad. Utilice tickets efímeros o la cabecera X-RTMS-Token."
+                detail="El uso de token global por query parameter está deshabilitado por seguridad. Utilice tickets efímeros o la cabecera X-RTMS-Token.",
             )
-        await verify_api_token(request, token=token)
+        await verify_api_token(request)
 
     # 2. Verificación de binario FFmpeg
     if not preview_manager.has_ffmpeg_binary():
@@ -602,7 +641,7 @@ async def stream_preview(
     if not slot_acquired:
         raise HTTPException(
             status_code=429,
-            detail="Límite de previsualizaciones concurrentes alcanzado o previsualización ya activa para esta cámara."
+            detail="Límite de previsualizaciones concurrentes alcanzado o previsualización ya activa para esta cámara.",
         )
 
     proc = stream_manager.get_proc(dp)
@@ -613,6 +652,7 @@ async def stream_preview(
         protocol = cfg.get("protocol", "srt")
         port = cfg.get("port", 9000)
         from core.secrets_mgr import unprotect_secret
+
         raw_pass = cfg.get("srt_passphrase", "")
         passphrase = unprotect_secret(raw_pass) if raw_pass else ""
         latency = int(cfg.get("srt_latency", 120))
@@ -623,7 +663,7 @@ async def stream_preview(
             passphrase=passphrase,
             mode="caller",
             latency_ms=latency,
-            zerolatency=zerolatency
+            zerolatency=zerolatency,
         )
         gen = preview_manager.generate_mjpeg_stream(url, is_dshow=False, identifier=dp)
     else:
@@ -644,8 +684,9 @@ async def stream_preview(
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",
             "Expires": "0",
-        }
+        },
     )
+
 
 @router.get("/api/stream/{device_path:path}/preview_frame", dependencies=[Depends(verify_api_token)])
 async def stream_preview_frame(device_path: str):
@@ -665,6 +706,7 @@ async def stream_preview_frame(device_path: str):
 
     return Response(content=jpeg_bytes, media_type="image/jpeg")
 
+
 @router.get("/api/stream/{device_path:path}/connect_url", dependencies=[Depends(verify_api_token)])
 async def get_stream_connect_url(device_path: str):
     """Retorna la URL normalizada completa para que clientes externos (OBS/vMix) se conecten directamente."""
@@ -682,15 +724,13 @@ async def get_stream_connect_url(device_path: str):
     passphrase = ""
     if raw_pass:
         from core.secrets_mgr import unprotect_secret
+
         passphrase = unprotect_secret(raw_pass)
     latency = int(cfg.get("srt_latency", 120))
     local_ip = get_local_ip()
 
     if protocol == "srt":
-        params = {
-            "mode": "caller",
-            "latency": str(latency * 1000)
-        }
+        params = {"mode": "caller", "latency": str(latency * 1000)}
         if passphrase:
             params["passphrase"] = passphrase
         query = urllib.parse.urlencode(params)
@@ -699,13 +739,20 @@ async def get_stream_connect_url(device_path: str):
         ip_last = (int(port) % 200) + 1
         url = f"udp://239.255.0.{ip_last}:{port}?pkt_size=1316"
 
-    return {
-        "status": "ok",
-        "device_path": dp,
-        "protocol": protocol,
-        "connect_url": url,
-        "has_passphrase": bool(passphrase)
-    }
+    return JSONResponse(
+        content={
+            "status": "ok",
+            "device_path": dp,
+            "protocol": protocol,
+            "connect_url": url,
+            "has_passphrase": bool(passphrase),
+        },
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "Pragma": "no-cache",
+        },
+    )
+
 
 @router.post("/api/stream/{device_path:path}/ffplay", dependencies=[Depends(verify_api_token)])
 async def launch_external_ffplay(device_path: str):
@@ -725,6 +772,7 @@ async def launch_external_ffplay(device_path: str):
         protocol = cfg.get("protocol", "srt")
         port = cfg.get("port", 9000)
         from core.secrets_mgr import unprotect_secret
+
         raw_pass = cfg.get("srt_passphrase", "")
         passphrase = unprotect_secret(raw_pass) if raw_pass else ""
         latency = int(cfg.get("srt_latency", 120))
@@ -735,14 +783,15 @@ async def launch_external_ffplay(device_path: str):
             passphrase=passphrase,
             mode="caller",
             latency_ms=latency,
-            zerolatency=zerolatency
+            zerolatency=zerolatency,
         )
         ok = preview_manager.launch_ffplay(url, title=f"RTMS Monitor — {name} ({port})", is_dshow=False)
     else:
         ok = preview_manager.launch_ffplay(name, title=f"RTMS Encuadre DirectShow — {name}", is_dshow=True)
 
     if not ok:
-        raise HTTPException(status_code=500, detail="No se pudo iniciar FFplay. Verifique que bin/ffplay.exe esté disponible.")
+        raise HTTPException(
+            status_code=500, detail="No se pudo iniciar FFplay. Verifique que bin/ffplay.exe esté disponible."
+        )
 
     return {"status": "ok", "message": f"Monitor FFplay lanzado para {name}"}
-
