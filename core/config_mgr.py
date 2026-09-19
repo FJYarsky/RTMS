@@ -160,7 +160,7 @@ def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
 
 def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Valida la configuración contra el esquema v4 oficial de RTMS v3.0.0.
+    Valida la configuración contra el esquema v4 oficial de RTMS v2.3.0.
     Rechaza esquemas heredados incompatibles (< 4) con LegacyConfigSchemaError
     y esquemas futuros desconocidos (> 4) con UnsupportedConfigSchemaError.
     """
@@ -173,7 +173,7 @@ def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
 
     if schema_ver < CURRENT_SCHEMA_VERSION:
         raise LegacyConfigSchemaError(
-            f"Versión de esquema heredada ({schema_ver} < {CURRENT_SCHEMA_VERSION}) no compatible con RTMS v3.0.0+. "
+            f"Versión de esquema heredada ({schema_ver} < {CURRENT_SCHEMA_VERSION}) no compatible con RTMS v2.3.0+. "
             "La retrocompatibilidad para versiones previas ha sido descontinuada para garantizar la estabilidad."
         )
 
@@ -196,8 +196,8 @@ def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
 def load_config() -> Dict[str, Any]:
     """
     Carga la configuración desde disco de forma protegida contra concurrencia y corrupción.
-    Si detecta una versión heredada previa a v3.0.0 (< 4), crea un respaldo en
-    'config.json.legacy_v2_bak' y reinicializa la configuración limpia para v3.0.0.
+    Si detecta una versión heredada previa a v2.3.0 (< 4), crea un respaldo en
+    'config.json.legacy_v2_bak' y reinicializa la configuración limpia para v2.3.0.
     Si el archivo está dañado, intenta recuperar desde .bak automáticamente.
     """
     with _CONFIG_LOCK:
@@ -241,7 +241,7 @@ def load_config() -> Dict[str, Any]:
                 except LegacyConfigSchemaError as lce:
                     logger.warning(
                         f"Configuración heredada detectada: {lce}. "
-                        f"Creando respaldo en {CONFIG_LEGACY_BAK_FILE} y reinicializando configuración limpia para v3.0.0."
+                        f"Creando respaldo en {CONFIG_LEGACY_BAK_FILE} y reinicializando configuración limpia para v2.3.0."
                     )
                     try:
                         import shutil
