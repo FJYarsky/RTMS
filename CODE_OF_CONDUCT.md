@@ -1,4 +1,4 @@
-﻿# Código de Conducta del Contribuyente de RTMS
+# Código de Conducta — RTMS
 
 ## Nuestro Compromiso
 
