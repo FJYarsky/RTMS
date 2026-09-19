@@ -24,4 +24,3 @@ Por favor incluye:
 3. Impacto potencial en sistemas de producción.
 
 Todas las comunicaciones se tratarán de forma confidencial y se emitirá una respuesta en un plazo máximo de 48 horas con el plan de mitigación correspondiente.
- 
