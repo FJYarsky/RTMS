@@ -6,9 +6,12 @@
 
 """Pruebas de auditoría y catálogo de descripciones canónicas en GitHub."""
 
+import pytest
+
 from scripts.manage_descriptions import (
     DESCRIPTIONS_CATALOG,
     get_repo_root,
+    is_shallow_repo,
     run_check,
 )
 
@@ -40,5 +43,7 @@ def test_get_repo_root_exists():
 
 def test_run_check_current_repository():
     """Valida que el repositorio actual reporte 100% de sincronización con el catálogo."""
+    if is_shallow_repo():
+        pytest.skip("Repositorio clonado superficialmente (shallow clone). Se requiere historial completo.")
     result = run_check()
     assert result == 0
