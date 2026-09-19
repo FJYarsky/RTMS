@@ -1,3 +1,4 @@
+# RTMS — Plantilla de reporte de errores
 name: Reporte de Error (Bug)
 description: Reporta un fallo o comportamiento inesperado en RTMS.
 title: "[BUG]: "

@@ -1,3 +1,4 @@
+# RTMS — Plantilla de compatibilidad de hardware
 name: Compatibilidad de Hardware / Cámara
 description: Reporta resultados de pruebas con modelos específicos de cámaras, capturadoras o GPUs.
 title: "[HW]: "

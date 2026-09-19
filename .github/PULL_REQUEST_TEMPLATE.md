@@ -1,3 +1,5 @@
+<!-- RTMS — Plantilla para solicitudes de extracción (Pull Request) -->
+
 ## Descripción del Cambio
 
 Por favor describe de forma concisa qué problema resuelve este Pull Request y qué componentes modifica.
