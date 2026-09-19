@@ -191,7 +191,7 @@ async def run_srt_tests(suite: FFmpegDiagnosticSuite, base_port: int = 9970):
     # Prueba 4.2: SRT con contraseña correcta (handshake cifrado PBKDF2)
     port += 1
     pwd = "ClaveSegura12345"
-    info_mark(f"Prueba 4.2: Emisor Listener <-> Receptor Caller (CON contraseña idéntica: '{pwd}') en puerto {port}...")
+    info_mark(f"Prueba 4.2: Emisor Listener <-> Receptor Caller (CON contraseña configurada) en puerto {port}...")
     digest = await suite.test_srt_connection(
         port=port,
         resolution="1080p",
@@ -302,7 +302,7 @@ async def run_virtual_camera_server(args):
             url += f"&passphrase={pwd}"
         client_url = f"srt://127.0.0.1:{port}?mode=caller&latency=120000"
         if pwd:
-            client_url += f"&passphrase={pwd}"
+            client_url += "&passphrase=********"
     else:
         ip_last = (port % 200) + 1
         url = f"udp://239.255.0.{ip_last}:{port}?pkt_size=1316&buffer_size=4194304"
@@ -314,7 +314,7 @@ async def run_virtual_camera_server(args):
     print(f"    - Codificador: {args.encoder}")
     print(f"    - Bitrate: {args.bitrate} kbps")
     if pwd:
-        print(f"    - Contraseña SRT: {pwd}")
+        print("    - Contraseña SRT: ******** (configurada)")
     print(f"\n  {GREEN}{BOLD}URL PARA CONECTAR DESDE OBS / vMix / VLC:{RESET}")
     print(f"  {CYAN}{BOLD}{client_url}{RESET}\n")
 
