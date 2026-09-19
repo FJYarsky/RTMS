@@ -1,0 +1,44 @@
+# ==============================================================================
+# RTMS — Real-Time Multicam System
+# Pruebas de auditoría y catálogo de descripciones canónicas en GitHub.
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
+# ==============================================================================
+
+"""Pruebas de auditoría y catálogo de descripciones canónicas en GitHub."""
+
+from scripts.manage_descriptions import (
+    DESCRIPTIONS_CATALOG,
+    get_repo_root,
+    run_check,
+)
+
+
+def test_catalog_completeness():
+    """Valida que el catálogo contenga exactamente los 29 elementos raíz oficiales."""
+    assert len(DESCRIPTIONS_CATALOG) == 29
+    expected_directories = [".github", "api", "config", "core", "docs", "gui", "scripts", "tests"]
+    for d in expected_directories:
+        assert d in DESCRIPTIONS_CATALOG
+
+
+def test_catalog_string_lengths_and_format():
+    """Valida que cada descripción cumpla con la longitud (<45 chars) y formato <categoria>: <texto>."""
+    for item, desc in DESCRIPTIONS_CATALOG.items():
+        assert len(desc) <= 45, f"Descripción para '{item}' excede 45 caracteres ({len(desc)}): '{desc}'"
+        assert len(desc) >= 20, f"Descripción para '{item}' es demasiado corta ({len(desc)}): '{desc}'"
+        assert ": " in desc, f"Descripción para '{item}' debe seguir el formato '<categoria>: <texto>': '{desc}'"
+        assert "..." not in desc, f"Descripción para '{item}' no debe contener puntos suspensivos: '{desc}'"
+
+
+def test_get_repo_root_exists():
+    """Valida que la función localice la raíz del repositorio correctamente."""
+    root = get_repo_root()
+    assert root.exists()
+    assert (root / "main.py").exists()
+    assert (root / "pyproject.toml").exists()
+
+
+def test_run_check_current_repository():
+    """Valida que el repositorio actual reporte 100% de sincronización con el catálogo."""
+    result = run_check()
+    assert result == 0
