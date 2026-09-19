@@ -6,8 +6,8 @@
 
 """Sanitización y enmascaramiento de datos confidenciales en logs."""
 
-import re
 import logging
+import re
 import urllib.parse
 from typing import List, Union
 
@@ -25,6 +25,7 @@ _SECRET_PATTERNS = [
 ]
 
 _SENSITIVE_PARAM_KEYS = {"passphrase", "password", "secret", "token", "key", "auth"}
+
 
 def sanitize_url(url: str) -> str:
     """
@@ -63,6 +64,7 @@ def sanitize_url(url: str) -> str:
     except Exception:
         return sanitize_log_line(url)
 
+
 def sanitize_log_line(text: str) -> str:
     """
     Sanitiza una línea de log o mensaje de error eliminando credenciales SRT,
@@ -76,6 +78,7 @@ def sanitize_log_line(text: str) -> str:
     # URL pattern sustituye el grupo 2
     sanitized = _SECRET_PATTERNS[-1].sub(r"\1********\3", sanitized)
     return sanitized
+
 
 def sanitize_command_for_log(cmd: Union[List[str], str]) -> str:
     """
@@ -93,11 +96,13 @@ def sanitize_command_for_log(cmd: Union[List[str], str]) -> str:
         return " ".join(clean_parts)
     return sanitize_url(str(cmd))
 
+
 class SecretFilter(logging.Filter):
     """
     Filtro de logging global para interceptar todo LogRecord emitido hacia los handlers
     y asegurar que ninguna contraseña, token o credencial se escriba en consola ni en archivo.
     """
+
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             if record.args:

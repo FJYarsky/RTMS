@@ -6,20 +6,21 @@
 
 """Diagnóstico del entorno de ejecución y dependencias del sistema."""
 
-import os
-import sys
-import socket
 import asyncio
+import os
 import platform
+import socket
 import subprocess
+import sys
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _BASE_DIR)
 
 from core.__version__ import __version__
-from core.port_mgr import port_manager
 from core.config_mgr import load_config
-from core.hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN, _WIN_FLAGS
+from core.hardware import _FFMPEG_BIN, _WIN_FLAGS, get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary
+from core.port_mgr import port_manager
+
 
 def check_os() -> bool:
     is_win = platform.system() == "Windows"
@@ -27,13 +28,16 @@ def check_os() -> bool:
     print(f"[{'OK' if is_win else 'FAIL'}] Sistema Operativo: {platform.system()} {rel} ({platform.architecture()[0]})")
     return is_win
 
+
 def check_ffmpeg_binary() -> bool:
     ffmpeg_exe = get_ffmpeg_bin()
     if not has_ffmpeg_binary():
         print(f"[FAIL] FFmpeg: No encontrado en {_FFMPEG_BIN} ni en PATH del sistema")
         return False
     try:
-        res = subprocess.run([ffmpeg_exe, "-version"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS)
+        res = subprocess.run(
+            [ffmpeg_exe, "-version"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS
+        )
         first_line = res.stdout.splitlines()[0] if res.stdout else "Versión desconocida"
         print(f"[OK] FFmpeg ({ffmpeg_exe}): {first_line}")
         return True
@@ -41,19 +45,25 @@ def check_ffmpeg_binary() -> bool:
         print(f"[FAIL] FFmpeg: Error al ejecutar: {e}")
         return False
 
+
 def check_srt_support() -> bool:
     ffmpeg_exe = get_ffmpeg_bin()
     if not has_ffmpeg_binary():
         print("[FAIL] Protocolo SRT: FFmpeg ausente")
         return False
     try:
-        res = subprocess.run([ffmpeg_exe, "-protocols"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS)
+        res = subprocess.run(
+            [ffmpeg_exe, "-protocols"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS
+        )
         has_srt = "srt" in res.stdout.lower()
-        print(f"[{'OK' if has_srt else 'FAIL'}] Protocolo SRT: {'Habilitado' if has_srt else 'No soportado por el build'}")
+        print(
+            f"[{'OK' if has_srt else 'FAIL'}] Protocolo SRT: {'Habilitado' if has_srt else 'No soportado por el build'}"
+        )
         return has_srt
     except Exception:
         print("[FAIL] Protocolo SRT: Error al consultar protocolos")
         return False
+
 
 async def check_gpu_encoders() -> bool:
     if not has_ffmpeg_binary():
@@ -61,6 +71,7 @@ async def check_gpu_encoders() -> bool:
         return False
 
     from core.hardware import hardware_detector
+
     found = await hardware_detector.get_available_encoders()
     hw_only = [e for e in found if e != "libx264"]
 
@@ -71,6 +82,7 @@ async def check_gpu_encoders() -> bool:
         print("[WARN] GPU Hardware Encoders: Ninguno detectado (Se utilizará CPU libx264)")
         return True  # Fallback viable
 
+
 async def check_directshow_cameras() -> bool:
     devices = await get_directshow_devices()
     if devices:
@@ -80,6 +92,7 @@ async def check_directshow_cameras() -> bool:
     else:
         print("[WARN] Dispositivos DirectShow: No se detectaron cámaras conectadas en este momento")
         return True
+
 
 def check_network_ip() -> bool:
     try:
@@ -93,6 +106,7 @@ def check_network_ip() -> bool:
         print("[WARN] Red LAN: Sin conexión externa (Utilizando 127.0.0.1)")
         return True
 
+
 def check_media_ports() -> bool:
     free_count = 0
     for p in range(9000, 9010):
@@ -105,6 +119,7 @@ def check_media_ports() -> bool:
         print("[FAIL] Puertos Multimedia: Rango 9000-9010 bloqueado u ocupado por otros procesos")
         return False
 
+
 def check_config_storage() -> bool:
     try:
         cfg = load_config()
@@ -114,6 +129,7 @@ def check_config_storage() -> bool:
     except Exception as e:
         print(f"[FAIL] Configuración: Error al leer: {e}")
         return False
+
 
 async def run_doctor() -> bool:
     print("=" * 60)
@@ -135,13 +151,14 @@ async def run_doctor() -> bool:
     total = len(checks)
 
     print("=" * 60)
-    success = (passed == total)
+    success = passed == total
     if success:
         print(f"RTMS Doctor: {passed}/{total} verificaciones aprobadas. ¡Sistema listo para producción!")
     else:
         print(f"RTMS Doctor: {passed}/{total} verificaciones aprobadas. Revisa las advertencias o fallos anteriores.")
     print("=" * 60)
     return success
+
 
 if __name__ == "__main__":
     ok = asyncio.run(run_doctor())

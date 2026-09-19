@@ -6,25 +6,27 @@
 
 """Generación y control de previsualizaciones de video en vivo."""
 
-import os
-import sys
-import re
-import shlex
-import urllib.parse
-import shutil
 import asyncio
 import logging
+import os
+import re
+import shlex
+import shutil
 import subprocess
-from typing import Optional, Dict, AsyncGenerator, Set
+import sys
+import urllib.parse
+from typing import AsyncGenerator, Dict, Optional, Set
 
 from core.sanitizer import sanitize_url
-from .hardware import get_ffmpeg_bin, has_ffmpeg_binary, _WIN_FLAGS
+
+from .hardware import _WIN_FLAGS, get_ffmpeg_bin, has_ffmpeg_binary
 
 logger = logging.getLogger("rtms.preview")
 
+
 def get_ffplay_bin() -> str:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         base_dir = os.path.dirname(sys.executable)
     bundled = os.path.join(base_dir, "bin", "ffplay.exe")
     if os.path.exists(bundled):
@@ -34,12 +36,14 @@ def get_ffplay_bin() -> str:
         return system_play
     return bundled
 
+
 class PreviewManager:
     """
     Gestor de Vista Previa de video On-Demand con control de concurrencia.
     Garantiza 0% de uso de CPU y GPU cuando no está activo.
     Completamente aislado del proceso principal de transmisión.
     """
+
     MAX_CONCURRENT_PREVIEWS = 3
     MAX_JPEG_BUFFER = 4 * 1024 * 1024  # Límite de seguridad para buffer JPEG (4 MB)
 
@@ -88,7 +92,7 @@ class PreviewManager:
             return False
 
         # Sanitizar título de ventana para prevenir inyección de caracteres o banderas
-        safe_title = re.sub(r'[^a-zA-Z0-9\s\-_\.\(\):áéíóúÁÉÍÓÚñÑ—]', '', str(title))[:120].strip() or "RTMS Preview"
+        safe_title = re.sub(r"[^a-zA-Z0-9\s\-_\.\(\):áéíóúÁÉÍÓÚñÑ—]", "", str(title))[:120].strip() or "RTMS Preview"
         safe_title = shlex.quote(safe_title).strip("'\"")
 
         # Cerrar instancia previa para esta URL si ya existe
@@ -105,7 +109,7 @@ class PreviewManager:
                     pass
 
         if is_dshow:
-            clean_device = re.sub(r'[\r\n\t\0"]', '', str(url)).strip()
+            clean_device = re.sub(r'[\r\n\t\0"]', "", str(url)).strip()
             if not clean_device or clean_device.startswith("-"):
                 logger.warning(f"Dispositivo DirectShow no válido para FFplay: {url}")
                 return False
@@ -113,14 +117,21 @@ class PreviewManager:
             escaped = clean_device.replace(":", "\\:")
             cmd = [
                 ffplay_bin,
-                "-window_title", safe_title,
-                "-f", "dshow",
-                "-fflags", "nobuffer",
-                "-flags", "low_delay",
+                "-window_title",
+                safe_title,
+                "-f",
+                "dshow",
+                "-fflags",
+                "nobuffer",
+                "-flags",
+                "low_delay",
                 "-framedrop",
-                "-x", "854",
-                "-y", "480",
-                "-i", f"video={escaped}"
+                "-x",
+                "854",
+                "-y",
+                "480",
+                "-i",
+                f"video={escaped}",
             ]
         else:
             clean_url = str(url).strip()
@@ -134,24 +145,25 @@ class PreviewManager:
             clean_url = shlex.quote(clean_url).strip("'\"")
             cmd = [
                 ffplay_bin,
-                "-window_title", safe_title,
-                "-fflags", "nobuffer",
-                "-flags", "low_delay",
+                "-window_title",
+                safe_title,
+                "-fflags",
+                "nobuffer",
+                "-flags",
+                "low_delay",
                 "-framedrop",
-                "-x", "854",
-                "-y", "480",
-                "-i", clean_url
+                "-x",
+                "854",
+                "-y",
+                "480",
+                "-i",
+                clean_url,
             ]
 
         safe_url_log = sanitize_url(url)
         logger.info(f"Lanzando ventana nativa de vista previa con FFplay: {safe_url_log}")
         try:
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                creationflags=_WIN_FLAGS
-            )
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_FLAGS)
             self._active_ffplay[url] = proc
             return True
         except Exception as e:
@@ -169,28 +181,32 @@ class PreviewManager:
         cmd = [
             ffmpeg_bin,
             "-hide_banner",
-            "-f", "dshow",
-            "-i", f"video={escaped_device}",
-            "-vframes", "1",
-            "-s", "640x360",
-            "-f", "image2",
-            "-"
+            "-f",
+            "dshow",
+            "-i",
+            f"video={escaped_device}",
+            "-vframes",
+            "1",
+            "-s",
+            "640x360",
+            "-f",
+            "image2",
+            "-",
         ]
 
         p = None
         try:
             p = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-                creationflags=_WIN_FLAGS
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, creationflags=_WIN_FLAGS
             )
             stdout, _ = await asyncio.wait_for(p.communicate(), timeout=timeout)
             if p.returncode == 0 and stdout:
                 return stdout
         except asyncio.TimeoutError:
             # Terminar proceso huérfano para liberar el dispositivo DirectShow
-            logger.warning(f"Timeout al capturar snapshot de DirectShow para {device_path}. Terminando proceso forzosamente.")
+            logger.warning(
+                f"Timeout al capturar snapshot de DirectShow para {device_path}. Terminando proceso forzosamente."
+            )
             if p:
                 try:
                     p.kill()
@@ -203,10 +219,7 @@ class PreviewManager:
         return None
 
     async def generate_mjpeg_stream(
-        self,
-        input_source: str,
-        is_dshow: bool = False,
-        identifier: Optional[str] = None
+        self, input_source: str, is_dshow: bool = False, identifier: Optional[str] = None
     ) -> AsyncGenerator[bytes, None]:
         """
         Generador asíncrono que canaliza un flujo continuo de frames JPEG por HTTP (MJPEG).
@@ -221,36 +234,46 @@ class PreviewManager:
             cmd = [
                 ffmpeg_bin,
                 "-hide_banner",
-                "-f", "dshow",
-                "-i", f"video={escaped}",
-                "-vf", "fps=10,scale=640:-1",
-                "-f", "image2pipe",
-                "-vcodec", "mjpeg",
-                "-q:v", "5",
-                "-"
+                "-f",
+                "dshow",
+                "-i",
+                f"video={escaped}",
+                "-vf",
+                "fps=10,scale=640:-1",
+                "-f",
+                "image2pipe",
+                "-vcodec",
+                "mjpeg",
+                "-q:v",
+                "5",
+                "-",
             ]
         else:
             cmd = [
                 ffmpeg_bin,
                 "-hide_banner",
-                "-fflags", "nobuffer",
-                "-flags", "low_delay",
-                "-i", input_source,
-                "-vf", "fps=10,scale=640:-1",
-                "-f", "image2pipe",
-                "-vcodec", "mjpeg",
-                "-q:v", "5",
-                "-"
+                "-fflags",
+                "nobuffer",
+                "-flags",
+                "low_delay",
+                "-i",
+                input_source,
+                "-vf",
+                "fps=10,scale=640:-1",
+                "-f",
+                "image2pipe",
+                "-vcodec",
+                "mjpeg",
+                "-q:v",
+                "5",
+                "-",
             ]
 
         proc = None
         safe_source_log = sanitize_url(input_source)
         try:
             proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-                creationflags=_WIN_FLAGS
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, creationflags=_WIN_FLAGS
             )
             logger.info(f"Worker de vista previa iniciado para: {safe_source_log}")
 
@@ -263,7 +286,9 @@ class PreviewManager:
 
                 # Control defensivo contra desbordamiento de memoria
                 if len(buffer) > self.MAX_JPEG_BUFFER:
-                    logger.warning(f"Buffer MJPEG superó {self.MAX_JPEG_BUFFER} bytes sin frame válido. Reiniciando buffer.")
+                    logger.warning(
+                        f"Buffer MJPEG superó {self.MAX_JPEG_BUFFER} bytes sin frame válido. Reiniciando buffer."
+                    )
                     buffer.clear()
                     continue
 
@@ -278,8 +303,8 @@ class PreviewManager:
                             del buffer[:start]
                         break
 
-                    jpg_data = bytes(buffer[start:end+2])
-                    del buffer[:end+2]
+                    jpg_data = bytes(buffer[start : end + 2])
+                    del buffer[: end + 2]
 
                     frame_block = (
                         b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
@@ -327,5 +352,6 @@ class PreviewManager:
         async with self._concurrency_lock:
             self._active_camera_previews.clear()
             self._preview_semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_PREVIEWS)
+
 
 preview_manager = PreviewManager()

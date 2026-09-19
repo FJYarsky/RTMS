@@ -7,13 +7,13 @@
 """Diagnóstico, pruebas de rendimiento y análisis de latencia para flujos FFmpeg."""
 
 import asyncio
+import logging
 import re
 import time
-import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from core.hardware import get_ffmpeg_bin, has_ffmpeg_binary, _WIN_FLAGS
+from core.hardware import _WIN_FLAGS, get_ffmpeg_bin, has_ffmpeg_binary
 
 logger = logging.getLogger("rtms.ffmpeg_tester")
 
@@ -21,6 +21,7 @@ logger = logging.getLogger("rtms.ffmpeg_tester")
 @dataclass
 class StreamDigestResult:
     """Resultado estructurado de la digestión y análisis de un flujo de video recibido."""
+
     protocol: str
     url: str
     is_connected: bool = False
@@ -54,7 +55,7 @@ class StreamDigestResult:
             f"  FPS Declarado: {self.detected_fps:.1f} | FPS Decodificado Real: {self.real_fps:.2f}",
             f"  Cuadros Decodificados: {self.frames_decoded} en {self.elapsed_seconds:.2f}s",
             f"  Cuadros Caídos: {self.dropped_frames} | Duplicados: {self.duplicate_frames}",
-            f"  Velocidad: {self.speed} | Bitrate: {self.avg_bitrate_kbps:.1f} kbps"
+            f"  Velocidad: {self.speed} | Bitrate: {self.avg_bitrate_kbps:.1f} kbps",
         ]
         if self.errors:
             lines.append(f"  Errores detectados ({len(self.errors)}):")
@@ -69,6 +70,7 @@ class VideoReceiverDigest:
     Conecta al flujo mediante FFmpeg, analiza los descriptores de entrada, decodifica cuadros
     y mide en tiempo real FPS, estabilidad, caída de paquetes y errores de sintaxis H.264.
     """
+
     def __init__(self, ffmpeg_bin: Optional[str] = None):
         self.ffmpeg_bin = ffmpeg_bin or get_ffmpeg_bin()
 
@@ -78,7 +80,7 @@ class VideoReceiverDigest:
         protocol: str,
         duration_seconds: float = 4.0,
         timeout_seconds: float = 8.0,
-        extra_input_args: Optional[List[str]] = None
+        extra_input_args: Optional[List[str]] = None,
     ) -> StreamDigestResult:
         result = StreamDigestResult(protocol=protocol, url=url)
         if not has_ffmpeg_binary():
@@ -91,12 +93,7 @@ class VideoReceiverDigest:
             cmd.extend(extra_input_args)
 
         # Usar -progress pipe:1 para telemetría frame a frame determinista
-        cmd.extend([
-            "-i", url,
-            "-t", str(duration_seconds),
-            "-f", "null", "-",
-            "-progress", "pipe:1"
-        ])
+        cmd.extend(["-i", url, "-t", str(duration_seconds), "-f", "null", "-", "-progress", "pipe:1"])
 
         start_time = time.time()
         conn_start = time.time()
@@ -105,19 +102,22 @@ class VideoReceiverDigest:
 
         try:
             proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                creationflags=_WIN_FLAGS
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, creationflags=_WIN_FLAGS
             )
         except Exception as e:
             result.errors.append(f"No se pudo lanzar el receptor: {e}")
             return result
 
-        stats_pattern = re.compile(r"Stream #0:0.*Video:\s*(\w+).*?,\s*([a-zA-Z0-9_]+).*?,\s*(\d+)x(\d+).*?,\s*([0-9.]+)\s*fps")
+        stats_pattern = re.compile(
+            r"Stream #0:0.*Video:\s*(\w+).*?,\s*([a-zA-Z0-9_]+).*?,\s*(\d+)x(\d+).*?,\s*([0-9.]+)\s*fps"
+        )
         fatal_patterns = [
-            "connection refused", "password required", "error:unsecure",
-            "reject reported", "i/o error", "could not find video device"
+            "connection refused",
+            "password required",
+            "error:unsecure",
+            "reject reported",
+            "i/o error",
+            "could not find video device",
         ]
 
         # Leer stdout (progreso) y stderr (logs y metadatos) asíncronamente
@@ -194,10 +194,7 @@ class VideoReceiverDigest:
                         result.errors.append(line_str)
 
         try:
-            await asyncio.wait_for(
-                asyncio.gather(read_stdout(), read_stderr(), proc.wait()),
-                timeout=timeout_seconds
-            )
+            await asyncio.wait_for(asyncio.gather(read_stdout(), read_stderr(), proc.wait()), timeout=timeout_seconds)
         except asyncio.TimeoutError:
             result.errors.append(f"Timeout esperando respuesta del flujo tras {timeout_seconds}s")
             try:
@@ -227,6 +224,7 @@ class VirtualCameraSource:
     Produce video en tiempo real (-re) con reloj en pantalla, resolución y framerate exactos,
     sirviendo como generador de referencia calibrado.
     """
+
     def __init__(self, ffmpeg_bin: Optional[str] = None):
         self.ffmpeg_bin = ffmpeg_bin or get_ffmpeg_bin()
         self.process: Optional[asyncio.subprocess.Process] = None
@@ -242,15 +240,9 @@ class VirtualCameraSource:
         bitrate: int = 6000,
         zerolatency: bool = True,
         repeat_headers: bool = True,
-        pattern: str = "testsrc2"
+        pattern: str = "testsrc2",
     ) -> List[str]:
-        res_map = {
-            "480p": "854x480",
-            "720p": "1280x720",
-            "1080p": "1920x1080",
-            "1440p": "2560x1440",
-            "4K": "3840x2160"
-        }
+        res_map = {"480p": "854x480", "720p": "1280x720", "1080p": "1920x1080", "1440p": "2560x1440", "4K": "3840x2160"}
         res_str = res_map.get(resolution, resolution)
         gop = fps  # 1 keyframe por segundo para ultra-baja latencia y enganche inmediato
 
@@ -258,9 +250,12 @@ class VirtualCameraSource:
             self.ffmpeg_bin,
             "-hide_banner",
             "-re",  # Ritmo de reloj en tiempo real
-            "-f", "lavfi",
-            "-i", f"{pattern}=size={res_str}:rate={fps}",
-            "-pix_fmt", "yuv420p"
+            "-f",
+            "lavfi",
+            "-i",
+            f"{pattern}=size={res_str}:rate={fps}",
+            "-pix_fmt",
+            "yuv420p",
         ]
 
         # Configuración del codificador
@@ -287,11 +282,7 @@ class VirtualCameraSource:
         bk = f"{bitrate}k"
         maxbk = f"{int(bitrate * 1.15)}k"
         bufk = f"{bitrate * 2}k"
-        cmd += [
-            "-b:v", bk, "-maxrate", maxbk, "-bufsize", bufk,
-            "-g", str(gop),
-            "-an"
-        ]
+        cmd += ["-b:v", bk, "-maxrate", maxbk, "-bufsize", bufk, "-g", str(gop), "-an"]
 
         # Formato de multiplexación MPEG-TS optimizado
         if zerolatency:
@@ -310,7 +301,7 @@ class VirtualCameraSource:
         encoder: str = "libx264",
         bitrate: int = 6000,
         zerolatency: bool = True,
-        repeat_headers: bool = True
+        repeat_headers: bool = True,
     ) -> bool:
         cmd = self.build_command(
             output_url=output_url,
@@ -319,7 +310,7 @@ class VirtualCameraSource:
             encoder=encoder,
             bitrate=bitrate,
             zerolatency=zerolatency,
-            repeat_headers=repeat_headers
+            repeat_headers=repeat_headers,
         )
         self.logs.clear()
 
@@ -329,7 +320,7 @@ class VirtualCameraSource:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.PIPE,
-                creationflags=_WIN_FLAGS
+                creationflags=_WIN_FLAGS,
             )
             self._log_task = asyncio.create_task(self._collect_logs())
             return True
@@ -373,6 +364,7 @@ class FFmpegDiagnosticSuite:
     Suite integral de diagnóstico y validación en vivo para todas las funciones
     utilizadas de FFmpeg en RTMS.
     """
+
     def __init__(self):
         self.receiver = VideoReceiverDigest()
         self.virtual_cam = VirtualCameraSource()
@@ -391,21 +383,26 @@ class FFmpegDiagnosticSuite:
             "nvenc_enabled": False,
             "amf_enabled": False,
             "qsv_enabled": False,
-            "libx264_enabled": False
+            "libx264_enabled": False,
         }
         if not available:
             return report
 
         import subprocess
+
         try:
-            res = subprocess.run([bin_path, "-version"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS)
+            res = subprocess.run(
+                [bin_path, "-version"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS
+            )
             if res.stdout:
                 report["version"] = res.stdout.splitlines()[0]
         except Exception:
             pass
 
         try:
-            res = subprocess.run([bin_path, "-protocols"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS)
+            res = subprocess.run(
+                [bin_path, "-protocols"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS
+            )
             out = (res.stdout or "").lower()
             report["srt_enabled"] = "srt" in out
             report["udp_enabled"] = "udp" in out
@@ -413,13 +410,17 @@ class FFmpegDiagnosticSuite:
             pass
 
         try:
-            res = subprocess.run([bin_path, "-devices"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS)
+            res = subprocess.run(
+                [bin_path, "-devices"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS
+            )
             report["dshow_enabled"] = "dshow" in (res.stdout or "").lower()
         except Exception:
             pass
 
         try:
-            res = subprocess.run([bin_path, "-encoders"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS)
+            res = subprocess.run(
+                [bin_path, "-encoders"], capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS
+            )
             out = (res.stdout or "").lower()
             report["nvenc_enabled"] = "h264_nvenc" in out
             report["amf_enabled"] = "h264_amf" in out
@@ -437,33 +438,34 @@ class FFmpegDiagnosticSuite:
         """
         bin_path = get_ffmpeg_bin()
         import subprocess
+
         caps = {
             "friendly_name": friendly_name,
             "supported_modes": [],
             "max_resolution": "Desconocida",
             "max_fps": 0,
             "supports_1080p60": False,
-            "error": None
+            "error": None,
         }
         try:
             res = subprocess.run(
                 [bin_path, "-hide_banner", "-list_options", "true", "-f", "dshow", "-i", f"video={friendly_name}"],
-                capture_output=True, text=True, timeout=5, creationflags=_WIN_FLAGS
+                capture_output=True,
+                text=True,
+                timeout=5,
+                creationflags=_WIN_FLAGS,
             )
             output = res.stderr or ""
-            pattern = re.compile(r"pixel_format=([a-zA-Z0-9]+)\s+min s=(\d+)x(\d+)\s+fps=([0-9.]+)\s+max s=(\d+)x(\d+)\s+fps=([0-9.]+)")
+            pattern = re.compile(
+                r"pixel_format=([a-zA-Z0-9]+)\s+min s=(\d+)x(\d+)\s+fps=([0-9.]+)\s+max s=(\d+)x(\d+)\s+fps=([0-9.]+)"
+            )
             max_w, max_h, max_fps = 0, 0, 0
             for line in output.splitlines():
                 m = pattern.search(line)
                 if m:
                     fmt = m.group(1)
                     w, h, fps = int(m.group(5)), int(m.group(6)), float(m.group(7))
-                    caps["supported_modes"].append({
-                        "pixel_format": fmt,
-                        "width": w,
-                        "height": h,
-                        "fps": fps
-                    })
+                    caps["supported_modes"].append({"pixel_format": fmt, "width": w, "height": h, "fps": fps})
                     if (w * h) > (max_w * max_h) or (w * h == max_w * max_h and fps > max_fps):
                         max_w, max_h = w, h
                         max_fps = fps
@@ -471,13 +473,15 @@ class FFmpegDiagnosticSuite:
             if max_w > 0:
                 caps["max_resolution"] = f"{max_w}x{max_h}"
                 caps["max_fps"] = max_fps
-                caps["supports_1080p60"] = (max_w >= 1920 and max_h >= 1080 and max_fps >= 59.0)
+                caps["supports_1080p60"] = max_w >= 1920 and max_h >= 1080 and max_fps >= 59.0
         except Exception as e:
             caps["error"] = str(e)
 
         return caps
 
-    async def benchmark_encoder(self, encoder: str, resolution: str = "1080p", fps: int = 60, frames: int = 180) -> Dict[str, Any]:
+    async def benchmark_encoder(
+        self, encoder: str, resolution: str = "1080p", fps: int = 60, frames: int = 180
+    ) -> Dict[str, Any]:
         """
         Evalúa el rendimiento de codificación a 1080p@60fps sin cuellos de botella de red.
         Mide el FPS de codificación alcanzado y el tiempo invertido.
@@ -487,9 +491,14 @@ class FFmpegDiagnosticSuite:
         ffmpeg_bin = get_ffmpeg_bin()
 
         cmd = [
-            ffmpeg_bin, "-hide_banner",
-            "-f", "lavfi", "-i", f"testsrc2=size={res_str}:rate={fps}",
-            "-pix_fmt", "yuv420p"
+            ffmpeg_bin,
+            "-hide_banner",
+            "-f",
+            "lavfi",
+            "-i",
+            f"testsrc2=size={res_str}:rate={fps}",
+            "-pix_fmt",
+            "yuv420p",
         ]
 
         if encoder == "libx264":
@@ -507,10 +516,7 @@ class FFmpegDiagnosticSuite:
 
         t0 = time.time()
         proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-            creationflags=_WIN_FLAGS
+            *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE, creationflags=_WIN_FLAGS
         )
         _, stderr = await proc.communicate()
         elapsed = time.time() - t0
@@ -524,7 +530,7 @@ class FFmpegDiagnosticSuite:
             "elapsed_seconds": elapsed,
             "achieved_fps": fps_achieved,
             "success": (proc.returncode == 0),
-            "can_maintain_realtime": fps_achieved >= (fps * 0.95)
+            "can_maintain_realtime": fps_achieved >= (fps * 0.95),
         }
 
     async def test_srt_connection(
@@ -534,7 +540,7 @@ class FFmpegDiagnosticSuite:
         fps: int = 30,
         passphrase_sender: str = "",
         passphrase_receiver: str = "",
-        duration_seconds: float = 3.0
+        duration_seconds: float = 3.0,
     ) -> StreamDigestResult:
         """
         Prueba completa de entablado y transmisión SRT:
@@ -556,7 +562,7 @@ class FFmpegDiagnosticSuite:
             encoder="libx264",
             bitrate=3000,
             zerolatency=True,
-            repeat_headers=True
+            repeat_headers=True,
         )
         if not started:
             res = StreamDigestResult(protocol="srt", url=receiver_url)
@@ -571,7 +577,7 @@ class FFmpegDiagnosticSuite:
                 protocol="srt",
                 duration_seconds=duration_seconds,
                 timeout_seconds=duration_seconds + 5.0,
-                extra_input_args=["-probesize", "128000", "-analyzeduration", "500000"]
+                extra_input_args=["-probesize", "128000", "-analyzeduration", "500000"],
             )
         finally:
             await cam.stop()
@@ -586,7 +592,7 @@ class FFmpegDiagnosticSuite:
         fps: int = 60,
         buffer_size: int = 4194304,
         repeat_headers: bool = True,
-        duration_seconds: float = 3.0
+        duration_seconds: float = 3.0,
     ) -> StreamDigestResult:
         """
         Prueba completa de entablado y transmisión UDP (Multicast o Unicast).
@@ -608,7 +614,7 @@ class FFmpegDiagnosticSuite:
             encoder="libx264",
             bitrate=6000,
             zerolatency=True,
-            repeat_headers=repeat_headers
+            repeat_headers=repeat_headers,
         )
         if not started:
             res = StreamDigestResult(protocol="udp", url=receiver_url)
@@ -623,7 +629,7 @@ class FFmpegDiagnosticSuite:
                 protocol="udp",
                 duration_seconds=duration_seconds,
                 timeout_seconds=duration_seconds + 5.0,
-                extra_input_args=["-probesize", "128000", "-analyzeduration", "500000"]
+                extra_input_args=["-probesize", "128000", "-analyzeduration", "500000"],
             )
         finally:
             await cam.stop()

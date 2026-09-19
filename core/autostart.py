@@ -6,12 +6,13 @@
 
 """Gestión del inicio automático de la aplicación en Windows."""
 
+import logging
 import os
 import sys
-import logging
 from pathlib import Path
 
 logger = logging.getLogger("rtms.autostart")
+
 
 def get_startup_path() -> Path:
     appdata = os.getenv("APPDATA")
@@ -19,11 +20,13 @@ def get_startup_path() -> Path:
         appdata = str(Path.home() / "AppData" / "Roaming")
     return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / "rtms_startup.cmd"
 
+
 BATCH_NAME = "rtms_startup.cmd"
+
 
 def get_launch_command() -> tuple[str, str]:
     """Retorna (workdir, command_line) para iniciar RTMS sin ventana de consola."""
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         exe_path = sys.executable
         exe_dir = os.path.dirname(exe_path)
         return exe_dir, f'start "" "{exe_path}"'
@@ -39,12 +42,14 @@ def get_launch_command() -> tuple[str, str]:
         main_script = os.path.join(base_dir, "main.py")
         return base_dir, f'start "" "{python_bin}" "{main_script}"'
 
+
 def _ensure_startup_dir() -> None:
     try:
         get_startup_path().parent.mkdir(parents=True, exist_ok=True)
     except Exception as e:
         logger.error(f"Failed to create Startup directory: {e}")
         raise
+
 
 def _write_batch_file() -> None:
     exe_dir, cmd = get_launch_command()
@@ -59,6 +64,7 @@ def _write_batch_file() -> None:
         logger.error(f"Failed to write autostart batch: {e}")
         raise
 
+
 def _remove_batch_file() -> None:
     p = get_startup_path()
     try:
@@ -69,6 +75,7 @@ def _remove_batch_file() -> None:
         logger.error(f"Failed to remove autostart batch: {e}")
         raise
 
+
 def enable_autostart(enable: bool) -> None:
     _ensure_startup_dir()
     if enable:
@@ -76,6 +83,7 @@ def enable_autostart(enable: bool) -> None:
     else:
         _remove_batch_file()
     logger.debug(f"Autostart set to {'enabled' if enable else 'disabled'}")
+
 
 def is_autostart_enabled() -> bool:
     return get_startup_path().is_file()

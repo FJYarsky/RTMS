@@ -6,4 +6,4 @@
 
 """Definición centralizada de la versión del sistema."""
 
-__version__ = "2.2.6"
+__version__ = "3.0.0"

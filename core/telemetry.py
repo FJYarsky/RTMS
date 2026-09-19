@@ -21,12 +21,14 @@ logger = logging.getLogger("rtms.telemetry")
 class nvmlUtilization_t(ctypes.Structure):
     _fields_ = [("gpu", ctypes.c_uint), ("memory", ctypes.c_uint)]
 
+
 class nvmlMemory_t(ctypes.Structure):
     _fields_ = [
         ("total", ctypes.c_ulonglong),
         ("free", ctypes.c_ulonglong),
         ("used", ctypes.c_ulonglong),
     ]
+
 
 class GpuTelemetryReader:
     """
@@ -118,7 +120,12 @@ class GpuTelemetryReader:
                         if hasattr(self._nvml, "nvmlDeviceGetEncoderUtilization"):
                             enc_util = ctypes.c_uint()
                             sampling = ctypes.c_uint()
-                            if self._nvml.nvmlDeviceGetEncoderUtilization(self._device_handle, ctypes.byref(enc_util), ctypes.byref(sampling)) == 0:
+                            if (
+                                self._nvml.nvmlDeviceGetEncoderUtilization(
+                                    self._device_handle, ctypes.byref(enc_util), ctypes.byref(sampling)
+                                )
+                                == 0
+                            ):
                                 encoder_percent = float(enc_util.value)
                     except Exception:
                         pass

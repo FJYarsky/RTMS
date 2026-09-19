@@ -6,20 +6,25 @@
 
 """Cifrado y protección de credenciales y frases de paso mediante Windows DPAPI."""
 
-import sys
-import os
 import base64
 import logging
+import os
+import sys
 
 logger = logging.getLogger("rtms.secrets_mgr")
 
+
 class SecretEncryptionError(RuntimeError):
     """Excepción de seguridad levantada cuando el cifrado DPAPI falla y se rechaza el guardado en texto plano."""
+
     pass
+
 
 class SecretDecryptionError(RuntimeError):
     """Excepción levantada cuando un secreto cifrado no puede recuperarse."""
+
     pass
+
 
 # Definición de estructuras para Windows DPAPI si estamos en win32
 _HAS_DPAPI = False
@@ -29,14 +34,12 @@ if sys.platform == "win32":
         import ctypes.wintypes
 
         class DATA_BLOB(ctypes.Structure):
-            _fields_ = [
-                ('cbData', ctypes.wintypes.DWORD),
-                ('pbData', ctypes.POINTER(ctypes.c_byte))
-            ]
+            _fields_ = [("cbData", ctypes.wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_byte))]
 
         _HAS_DPAPI = True
     except Exception as e:
         logger.warning(f"No se pudo inicializar ctypes para DPAPI: {e}")
+
 
 def protect_secret(plaintext: str, require_secure: bool = True) -> str:
     """
@@ -54,18 +57,17 @@ def protect_secret(plaintext: str, require_secure: bool = True) -> str:
     if sys.platform == "win32":
         if _HAS_DPAPI:
             try:
-                data = plaintext.encode('utf-8')
-                in_blob = DATA_BLOB(len(data), ctypes.cast(ctypes.create_string_buffer(data), ctypes.POINTER(ctypes.c_byte)))
+                data = plaintext.encode("utf-8")
+                in_blob = DATA_BLOB(
+                    len(data), ctypes.cast(ctypes.create_string_buffer(data), ctypes.POINTER(ctypes.c_byte))
+                )
                 out_blob = DATA_BLOB()
                 if ctypes.windll.crypt32.CryptProtectData(
-                    ctypes.byref(in_blob),
-                    'rtms_passphrase',
-                    None, None, None, 0,
-                    ctypes.byref(out_blob)
+                    ctypes.byref(in_blob), "rtms_passphrase", None, None, None, 0, ctypes.byref(out_blob)
                 ):
                     res = ctypes.string_at(out_blob.pbData, out_blob.cbData)
                     ctypes.windll.kernel32.LocalFree(out_blob.pbData)
-                    return "dpapi:" + base64.b64encode(res).decode('utf-8')
+                    return "dpapi:" + base64.b64encode(res).decode("utf-8")
             except Exception as exc:
                 logger.error(f"Fallo al proteger secreto con DPAPI: {exc}")
 
@@ -74,10 +76,13 @@ def protect_secret(plaintext: str, require_secure: bool = True) -> str:
         if not require_secure or is_dev:
             logger.warning("DPAPI falló o no disponible. Permitiendo texto plano solo por flag de desarrollo/test.")
             return plaintext
-        raise SecretEncryptionError("Fallo crítico de DPAPI al proteger credencial. Guardado en texto plano rechazado por seguridad.")
+        raise SecretEncryptionError(
+            "Fallo crítico de DPAPI al proteger credencial. Guardado en texto plano rechazado por seguridad."
+        )
 
     # Entornos no Windows (CI / Testing multiplataforma)
     return plaintext
+
 
 def unprotect_secret(ciphertext: str, raise_on_error: bool = False) -> str:
     """
@@ -93,16 +98,16 @@ def unprotect_secret(ciphertext: str, raise_on_error: bool = False) -> str:
         if _HAS_DPAPI:
             try:
                 raw = base64.b64decode(ciphertext[6:])
-                in_blob = DATA_BLOB(len(raw), ctypes.cast(ctypes.create_string_buffer(raw), ctypes.POINTER(ctypes.c_byte)))
+                in_blob = DATA_BLOB(
+                    len(raw), ctypes.cast(ctypes.create_string_buffer(raw), ctypes.POINTER(ctypes.c_byte))
+                )
                 out_blob = DATA_BLOB()
                 if ctypes.windll.crypt32.CryptUnprotectData(
-                    ctypes.byref(in_blob),
-                    None, None, None, None, 0,
-                    ctypes.byref(out_blob)
+                    ctypes.byref(in_blob), None, None, None, None, 0, ctypes.byref(out_blob)
                 ):
                     res = ctypes.string_at(out_blob.pbData, out_blob.cbData)
                     ctypes.windll.kernel32.LocalFree(out_blob.pbData)
-                    return res.decode('utf-8')
+                    return res.decode("utf-8")
 
                 # CryptUnprotectData retornó 0 / FALSE
                 logger.warning(

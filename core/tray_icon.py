@@ -6,18 +6,22 @@
 
 """Integración y menú contextual de la aplicación en la bandeja del sistema (System Tray)."""
 
+import logging
 import os
 import sys
-import logging
 import threading
+
 from PIL import Image, ImageDraw
 
 from core.__version__ import __version__
 
 logger = logging.getLogger("rtms.tray")
 
+
 class SystemTrayManager:
-    def __init__(self, on_show_window=None, on_stop_streams=None, on_terminate_all=None, on_exit_app=None, on_about=None):
+    def __init__(
+        self, on_show_window=None, on_stop_streams=None, on_terminate_all=None, on_exit_app=None, on_about=None
+    ):
         self.on_show_window = on_show_window
         self.on_stop_streams = on_stop_streams
         self.on_terminate_all = on_terminate_all
@@ -28,7 +32,7 @@ class SystemTrayManager:
 
     def _create_fallback_image(self):
         """Genera un icono de respaldo de 64x64 HD con diseño de cámara de estudio."""
-        img = Image.new('RGBA', (64, 64), color=(0, 0, 0, 0))
+        img = Image.new("RGBA", (64, 64), color=(0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
         # Base con esquinas redondeadas en pizarra oscura (#0f172a) y contorno teal (#0d9488)
@@ -50,19 +54,19 @@ class SystemTrayManager:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         candidates = []
 
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             exe_dir = os.path.dirname(sys.executable)
-            candidates.extend([
-                os.path.join(exe_dir, "icon.ico"),
-                os.path.join(exe_dir, "_internal", "icon.ico"),
-                os.path.join(getattr(sys, '_MEIPASS', exe_dir), "icon.ico")
-            ])
+            candidates.extend(
+                [
+                    os.path.join(exe_dir, "icon.ico"),
+                    os.path.join(exe_dir, "_internal", "icon.ico"),
+                    os.path.join(getattr(sys, "_MEIPASS", exe_dir), "icon.ico"),
+                ]
+            )
 
-        candidates.extend([
-            os.path.join(base_dir, "icon.ico"),
-            os.path.join(base_dir, "_internal", "icon.ico"),
-            "icon.ico"
-        ])
+        candidates.extend(
+            [os.path.join(base_dir, "icon.ico"), os.path.join(base_dir, "_internal", "icon.ico"), "icon.ico"]
+        )
 
         for ico_path in candidates:
             if os.path.exists(ico_path):
@@ -98,11 +102,14 @@ class SystemTrayManager:
                     self.on_stop_streams()
                 else:
                     try:
-                        from core.ffmpeg_mgr import stream_manager
                         import asyncio
+
+                        from core.ffmpeg_mgr import stream_manager
+
                         asyncio.run(stream_manager.stop_all())
                     except Exception as e:
                         logger.debug(f"Aviso deteniendo streams desde tray: {e}")
+
             _dispatch_async(_do_stop)
 
         def _terminate(icon, item):
@@ -112,9 +119,11 @@ class SystemTrayManager:
                 else:
                     try:
                         from core.process_cleanup import terminate_all_processes
+
                         terminate_all_processes(force=True)
                     except Exception:
                         sys.exit(0)
+
             _dispatch_async(_do_terminate)
 
         def _about(icon, item):
@@ -123,6 +132,7 @@ class SystemTrayManager:
                     self.on_about()
                 else:
                     self._show_default_about()
+
             _dispatch_async(_do_about)
 
         def _exit(icon, item):
@@ -133,6 +143,7 @@ class SystemTrayManager:
                     pass
                 if self.on_exit_app:
                     self.on_exit_app()
+
             _dispatch_async(_do_exit)
 
         menu = pystray.Menu(
@@ -143,7 +154,7 @@ class SystemTrayManager:
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Acerca de RTMS", _about),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Salir de RTMS", _exit)
+            pystray.MenuItem("Salir de RTMS", _exit),
         )
 
         self.icon = pystray.Icon("RTMS", image, f"RTMS v{__version__} — Real-Time Multicam System", menu)
@@ -156,6 +167,7 @@ class SystemTrayManager:
         """Muestra un cuadro de diálogo nativo de Windows con la información oficial de RTMS."""
         try:
             import ctypes
+
             title = "Acerca de RTMS"
             msg = (
                 f"RTMS — Real-Time Multicam System v{__version__}\n\n"
@@ -166,10 +178,7 @@ class SystemTrayManager:
             )
             # MB_OK (0x0) | MB_ICONINFORMATION (0x40) | MB_SETFOREGROUND (0x10000) | MB_TOPMOST (0x40000)
             flags = 0x40 | 0x10000 | 0x40000
-            threading.Thread(
-                target=lambda: ctypes.windll.user32.MessageBoxW(0, msg, title, flags),
-                daemon=True
-            ).start()
+            threading.Thread(target=lambda: ctypes.windll.user32.MessageBoxW(0, msg, title, flags), daemon=True).start()
         except Exception as e:
             logger.warning(f"No se pudo mostrar el diálogo Acerca de: {e}")
 

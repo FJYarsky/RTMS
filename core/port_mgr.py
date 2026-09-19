@@ -6,12 +6,13 @@
 
 """Asignación y validación de puertos de red para streaming."""
 
-import socket
 import logging
+import socket
 import threading
 from typing import Optional, Set
 
 logger = logging.getLogger("rtms.port_mgr")
+
 
 class PortManager:
     """
@@ -19,6 +20,7 @@ class PortManager:
     Verifica activamente la disponibilidad física del socket en el SO.
     Previene condiciones de carrera mediante revalidación activa previa al lanzamiento.
     """
+
     DEFAULT_MIN_PORT = 9000
     DEFAULT_MAX_PORT = 9200
 
@@ -87,6 +89,7 @@ class PortManager:
         """Registra un puerto cargado desde configuración persistente."""
         with self._lock:
             self._allocated_ports.add(port)
+
 
 # Instancia global única
 port_manager = PortManager()

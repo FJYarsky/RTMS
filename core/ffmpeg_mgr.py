@@ -7,50 +7,56 @@
 """Gestión de procesos FFmpeg, pipeline de streaming y watchdog."""
 
 import asyncio
-import sys
-import re
 import logging
+import re
+import sys
 import urllib.parse
-from enum import Enum
 from collections import deque
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from core.sanitizer import sanitize_command_for_log, sanitize_log_line, sanitize_url
-from .hardware import get_directshow_devices, get_ffmpeg_bin, has_ffmpeg_binary, _FFMPEG_BIN, hardware_detector
+
 from .config_mgr import get_or_allocate_camera_config
+from .hardware import _FFMPEG_BIN, get_directshow_devices, get_ffmpeg_bin, hardware_detector, has_ffmpeg_binary
 from .port_mgr import port_manager
 
 logger = logging.getLogger("rtms.ffmpeg_mgr")
 
 _WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
 
+
 class ErrorCategory(str, Enum):
     """Taxonomía formal de categorías de error para diagnósticos y políticas de reconexión."""
-    CONFIGURATION  = "configuration"
-    DEVICE         = "device"
-    ENCODER        = "encoder"
-    NETWORK        = "network"
+
+    CONFIGURATION = "configuration"
+    DEVICE = "device"
+    ENCODER = "encoder"
+    NETWORK = "network"
     PORT_COLLISION = "port_collision"
-    PROCESS        = "process"
+    PROCESS = "process"
     AUTHENTICATION = "authentication"
-    UNKNOWN        = "unknown"
+    UNKNOWN = "unknown"
+
 
 class State(str, Enum):
-    STOPPED                      = "stopped"
-    STARTING                     = "starting"
-    RUNNING                      = "running"
-    ERROR                        = "error"
-    RESTARTING                   = "restarting"
-    RECOVERING                   = "recovering"
-    STOPPING                     = "stopping"
-    DISCONNECTED                 = "disconnected"
+    STOPPED = "stopped"
+    STARTING = "starting"
+    RUNNING = "running"
+    ERROR = "error"
+    RESTARTING = "restarting"
+    RECOVERING = "recovering"
+    STOPPING = "stopping"
+    DISCONNECTED = "disconnected"
     MANUAL_INTERVENTION_REQUIRED = "manual_intervention_required"
+
 
 def build_multicast_url(port: int) -> str:
     """Calcula y retorna la URL multicast UDP para el puerto indicado con buffer optimizado (4MB)."""
     ip_last_octet = (int(port) % 200) + 1
     return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=4194304&overrun_nonfatal=1&fifo_size=50000000"
+
 
 def build_stream_url(
     protocol: str,
@@ -58,7 +64,7 @@ def build_stream_url(
     passphrase: str = "",
     mode: str = "listener",
     latency_ms: int = 120,
-    zerolatency: bool = True
+    zerolatency: bool = True,
 ) -> str:
     """Construye la URL normalizada de transmisión para SRT o UDP con parámetros seguros."""
     if protocol == "udp":
@@ -75,12 +81,13 @@ def build_stream_url(
         "smoother": "live",
         "tlpktdrop": drop_flag,
         "sndbuf": "262144",
-        "rcvbuf": "262144"
+        "rcvbuf": "262144",
     }
     if passphrase:
         params["passphrase"] = passphrase
     query = urllib.parse.urlencode(params)
     return f"srt://{host}:{port}?{query}"
+
 
 class StreamProc:
     def __init__(self, device_path: str):
@@ -172,13 +179,7 @@ class StreamManager:
         return best
 
     async def build_command(self, cfg: Dict[str, Any], force_cpu: bool = False, proc: Optional[StreamProc] = None):
-        res_map = {
-            "480p": "854x480",
-            "720p": "1280x720",
-            "1080p": "1920x1080",
-            "1440p": "2560x1440",
-            "4K": "3840x2160"
-        }
+        res_map = {"480p": "854x480", "720p": "1280x720", "1080p": "1920x1080", "1440p": "2560x1440", "4K": "3840x2160"}
         video_size = res_map.get(cfg.get("resolution", "720p"), "1280x720")
         fps = cfg.get("fps", 30)
         gop = fps * 2
@@ -191,28 +192,29 @@ class StreamManager:
 
         ffmpeg_bin = get_ffmpeg_bin()
         raw_device = cfg.get("device_path", cfg.get("friendly_name", ""))
-        is_virtual = raw_device.startswith("virtual://") or raw_device.startswith("testsrc") or cfg.get("is_virtual_generator", False)
+        is_virtual = (
+            raw_device.startswith("virtual://")
+            or raw_device.startswith("testsrc")
+            or cfg.get("is_virtual_generator", False)
+        )
 
-        cmd = [
-            ffmpeg_bin,
-            "-hide_banner",
-            "-stats", "-stats_period", "1"
-        ]
+        cmd = [ffmpeg_bin, "-hide_banner", "-stats", "-stats_period", "1"]
 
         if is_virtual:
-            cmd += [
-                "-re",
-                "-f", "lavfi",
-                "-i", f"testsrc2=size={video_size}:rate={fps}"
-            ]
+            cmd += ["-re", "-f", "lavfi", "-i", f"testsrc2=size={video_size}:rate={fps}"]
         else:
             escaped_device = raw_device.replace(":", "\\:")
             cmd += [
-                "-f", "dshow",
-                "-rtbufsize", "150M",
-                "-video_size", video_size,
-                "-framerate", str(fps),
-                "-i", f"video={escaped_device}"
+                "-f",
+                "dshow",
+                "-rtbufsize",
+                "150M",
+                "-video_size",
+                video_size,
+                "-framerate",
+                str(fps),
+                "-i",
+                f"video={escaped_device}",
             ]
 
         cmd += ["-pix_fmt", "yuv420p"]
@@ -227,9 +229,31 @@ class StreamManager:
         # Ajuste de flags del codificador según opción zerolatency
         if zerolatency:
             if encoder == "libx264":
-                cmd += ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-x264-params", "repeat-headers=1"]
+                cmd += [
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "ultrafast",
+                    "-tune",
+                    "zerolatency",
+                    "-x264-params",
+                    "repeat-headers=1",
+                ]
             elif encoder == "h264_nvenc":
-                cmd += ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ull", "-delay", "0", "-zerolatency", "1", "-forced-idr", "1"]
+                cmd += [
+                    "-c:v",
+                    "h264_nvenc",
+                    "-preset",
+                    "p1",
+                    "-tune",
+                    "ull",
+                    "-delay",
+                    "0",
+                    "-zerolatency",
+                    "1",
+                    "-forced-idr",
+                    "1",
+                ]
             elif encoder == "h264_amf":
                 cmd += ["-c:v", "h264_amf", "-quality", "speed", "-usage", "ultralowlatency"]
             elif encoder == "h264_qsv":
@@ -249,11 +273,7 @@ class StreamManager:
             else:
                 cmd += ["-c:v", encoder]
 
-        cmd += [
-            "-b:v", bk, "-maxrate", maxbk, "-bufsize", bufk,
-            "-g", str(gop),
-            "-an"
-        ]
+        cmd += ["-b:v", bk, "-maxrate", maxbk, "-bufsize", bufk, "-g", str(gop), "-an"]
 
         protocol = cfg.get("protocol", "srt")
         port = cfg.get("port", 9000)
@@ -266,24 +286,25 @@ class StreamManager:
             passphrase=passphrase,
             mode="listener",
             latency_ms=latency_ms,
-            zerolatency=zerolatency
+            zerolatency=zerolatency,
         )
 
         if zerolatency:
             cmd += [
-                "-bsf:v", "dump_extra",
-                "-f", "mpegts",
-                "-muxdelay", "0",
-                "-muxpreload", "0",
-                "-flush_packets", "1",
-                raw_url
+                "-bsf:v",
+                "dump_extra",
+                "-f",
+                "mpegts",
+                "-muxdelay",
+                "0",
+                "-muxpreload",
+                "0",
+                "-flush_packets",
+                "1",
+                raw_url,
             ]
         else:
-            cmd += [
-                "-bsf:v", "dump_extra",
-                "-f", "mpegts",
-                raw_url
-            ]
+            cmd += ["-bsf:v", "dump_extra", "-f", "mpegts", raw_url]
 
         # Seguridad: Nunca retornar URL con credenciales en claro para APIs ni configs
         sanitized_url = sanitize_url(raw_url)
@@ -326,10 +347,13 @@ class StreamManager:
         # Revalidación de puerto en tiempo de inicio para prevenir colisiones
         cfg_port = proc.config.get("port")
         if cfg_port and not port_manager.revalidate_port(int(cfg_port)):
-            logger.warning(f"Puerto {cfg_port} ocupado en el sistema antes de iniciar {proc.device_path}. Reasignando...")
+            logger.warning(
+                f"Puerto {cfg_port} ocupado en el sistema antes de iniciar {proc.device_path}. Reasignando..."
+            )
             new_port = port_manager.reallocate_if_collided(int(cfg_port))
             proc.config["port"] = new_port
-            from .config_mgr import save_config, load_config
+            from .config_mgr import load_config, save_config
+
             c_all = load_config()
             if proc.device_path in c_all.get("cameras", {}):
                 c_all["cameras"][proc.device_path]["port"] = new_port
@@ -355,7 +379,7 @@ class StreamManager:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.PIPE,
-                creationflags=_WIN_FLAGS
+                creationflags=_WIN_FLAGS,
             )
         except Exception as exc:
             proc.state = State.ERROR
@@ -400,7 +424,7 @@ class StreamManager:
             # 1. Intento limpio: Enviar comando 'q' a stdin para cierre de socket SRT y MPEG-TS
             try:
                 if proc.process.stdin:
-                    proc.process.stdin.write(b'q\n')
+                    proc.process.stdin.write(b"q\n")
                     await proc.process.stdin.drain()
             except Exception as e:
                 logger.debug(f"Aviso al enviar 'q' a {proc.device_path}: {e}")
@@ -456,11 +480,13 @@ class StreamManager:
         # Invalidar tickets de preview asociados a esta cámara
         try:
             from api.routes import preview_ticket_mgr
+
             preview_ticket_mgr.invalidate_for_device(device_path)
         except Exception:
             pass
 
         from .config_mgr import remove_camera_config
+
         return remove_camera_config(device_path)
 
     async def _fallback_to_cpu(self, device_path: str):
@@ -506,7 +532,9 @@ class StreamManager:
                     # 1. Reseteo de errores tras período de estabilidad
                     if proc.is_alive and proc.started_at:
                         uptime = (now - proc.started_at).total_seconds()
-                        if uptime >= self.STABILITY_THRESHOLD_SECONDS and (proc.error_count > 0 or proc.permanent_failure):
+                        if uptime >= self.STABILITY_THRESHOLD_SECONDS and (
+                            proc.error_count > 0 or proc.permanent_failure
+                        ):
                             logger.info(f"Flujo {dp} estable por {int(uptime)}s. Reseteando contadores de error.")
                             proc.clear_failure()
                         continue
@@ -517,14 +545,20 @@ class StreamManager:
                         is_srt_disconnect = False
                         if proc.config.get("protocol") == "srt":
                             recent_logs = "".join(proc.get_logs(5)).lower()
-                            if "i/o error" in recent_logs or "muxer" in recent_logs or "conversion failed" in recent_logs:
+                            if (
+                                "i/o error" in recent_logs
+                                or "muxer" in recent_logs
+                                or "conversion failed" in recent_logs
+                            ):
                                 is_srt_disconnect = True
 
                         if is_srt_disconnect:
                             logger.info(f"[{dp}] Cliente SRT desconectado. Reiniciando listener inmediatamente...")
                             proc.log("Cliente SRT desconectado. Reiniciando listener a la espera de nueva conexión...")
                             proc.transition_to(State.STARTING)
-                            proc.recovery_task = asyncio.create_task(self.start_stream(dp, force_cpu=proc.using_fallback_cpu))
+                            proc.recovery_task = asyncio.create_task(
+                                self.start_stream(dp, force_cpu=proc.using_fallback_cpu)
+                            )
                             continue
 
                         logger.warning(f"Flujo {dp} caído inesperadamente (error #{proc.error_count + 1}).")
@@ -543,7 +577,9 @@ class StreamManager:
 
                         if proc.error_count <= self.MAX_ERRORS:
                             if proc.next_retry_at and now >= proc.next_retry_at:
-                                logger.info(f"Watchdog recuperando {dp} (intento {proc.error_count}/{self.MAX_ERRORS})...")
+                                logger.info(
+                                    f"Watchdog recuperando {dp} (intento {proc.error_count}/{self.MAX_ERRORS})..."
+                                )
                                 proc.transition_to(State.RECOVERING)
                                 proc.next_retry_at = None
                                 force_cpu = proc.error_count >= 2
@@ -554,8 +590,12 @@ class StreamManager:
                             if not proc.manual_intervention_required:
                                 proc.manual_intervention_required = True
                                 proc.transition_to(State.MANUAL_INTERVENTION_REQUIRED)
-                                logger.error(f"Flujo {dp} superó el límite de {self.MAX_ERRORS} errores. Pausado esperando intervención manual.")
-                                proc.log(f"CRÍTICO: Superado límite de {self.MAX_ERRORS} errores consecutivos. Pausado esperando intervención manual.")
+                                logger.error(
+                                    f"Flujo {dp} superó el límite de {self.MAX_ERRORS} errores. Pausado esperando intervención manual."
+                                )
+                                proc.log(
+                                    f"CRÍTICO: Superado límite de {self.MAX_ERRORS} errores consecutivos. Pausado esperando intervención manual."
+                                )
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -567,7 +607,8 @@ class StreamManager:
         cfg_port = proc.config.get("port", 9000)
         new_port = port_manager.reallocate_if_collided(int(cfg_port))
         proc.config["port"] = new_port
-        from .config_mgr import save_config, load_config
+        from .config_mgr import load_config, save_config
+
         c_all = load_config()
         dp = proc.device_path
         if dp in c_all.get("cameras", {}):
@@ -590,7 +631,7 @@ class StreamManager:
             "dshow: could not",
             "error while opening encoder",
             "bind failed",
-            "address already in use"
+            "address already in use",
         ]
 
         stats_pattern = re.compile(r"fps=\s*([0-9.]+).*bitrate=\s*([0-9.]+)kbits/s.*speed=\s*([0-9.x]+)")
@@ -619,14 +660,20 @@ class StreamManager:
 
                 # Detección de colisión de socket en tiempo de ejecución
                 if "bind failed" in line_lower or "address already in use" in line_lower:
-                    logger.warning(f"[{device_path}] Colisión de socket detectada en FFmpeg: {clean_line}. Reasignando puerto...")
+                    logger.warning(
+                        f"[{device_path}] Colisión de socket detectada en FFmpeg: {clean_line}. Reasignando puerto..."
+                    )
                     await self.reallocate_if_collided(proc)
 
                 if any(pat in line_lower for pat in FATAL_PATTERNS):
                     logger.warning(f"[{device_path}] Error en FFmpeg: {clean_line}")
 
                     # Clasificación de categoría de error según diagnóstico de FFmpeg
-                    if "could not find video device" in line_lower or "device not found" in line_lower or "dshow: could not" in line_lower:
+                    if (
+                        "could not find video device" in line_lower
+                        or "device not found" in line_lower
+                        or "dshow: could not" in line_lower
+                    ):
                         proc.last_error_category = ErrorCategory.DEVICE
                     elif "error while opening encoder" in line_lower:
                         proc.last_error_category = ErrorCategory.ENCODER
@@ -680,6 +727,7 @@ class StreamManager:
 
         # 2. Registrar y actualizar dispositivos presentes (omitiendo dispositivos en ignored_devices)
         from .config_mgr import load_config
+
         active_cfg = load_config()
         ignored_devs = set(active_cfg.get("ignored_devices", []))
 
@@ -712,47 +760,54 @@ class StreamManager:
             cfg = proc.config or {}
             raw_pass = cfg.get("srt_passphrase", "")
             raw_url = cfg.get("_url", "")
-            statuses.append({
-                "id": cfg.get("id", ""),
-                "device_path": dp,
-                "friendly_name": cfg.get("friendly_name", dp),
-                "resolution": cfg.get("resolution", "720p"),
-                "fps": cfg.get("fps", 30),
-                "bitrate": cfg.get("bitrate", 3000),
-                "protocol": cfg.get("protocol", "srt"),
-                "port": cfg.get("port", 9000),
-                "encoder": cfg.get("encoder", "auto"),
-                "actual_encoder": cfg.get("_actual_encoder", proc.per_stream_encoder or "auto"),
-                "srt_latency": cfg.get("srt_latency", 120),
-                "srt_passphrase": "••••••••" if raw_pass else "",
-                "has_passphrase": bool(raw_pass),
-                "decryption_failed": bool(cfg.get("decryption_failed", False)),
-                "url": sanitize_url(raw_url),
-                "auto_start": cfg.get("auto_start", True),
-                "zerolatency": cfg.get("zerolatency", True),
-                "is_virtual": cfg.get("is_virtual", False),
-                "is_connected": proc.is_connected,
-                "permanent_failure": proc.permanent_failure,
-                "last_error_category": proc.last_error_category.value,
-                "status": {
-                    "state": proc.state.value if isinstance(proc.state, State) else str(proc.state),
-                    "current_fps": proc.current_fps,
-                    "current_bitrate_kbps": proc.current_bitrate_kbps,
-                    "current_speed": proc.current_speed,
-                    "error_count": proc.error_count,
-                    "using_fallback_cpu": proc.using_fallback_cpu,
-                    "manual_intervention_required": proc.permanent_failure,
-                    "started_at": proc.started_at.isoformat() if proc.started_at else None,
-                    "uptime_seconds": (datetime.now() - proc.started_at).total_seconds() if proc.is_alive and proc.started_at else None
+            statuses.append(
+                {
+                    "id": cfg.get("id", ""),
+                    "device_path": dp,
+                    "friendly_name": cfg.get("friendly_name", dp),
+                    "resolution": cfg.get("resolution", "720p"),
+                    "fps": cfg.get("fps", 30),
+                    "bitrate": cfg.get("bitrate", 3000),
+                    "protocol": cfg.get("protocol", "srt"),
+                    "port": cfg.get("port", 9000),
+                    "encoder": cfg.get("encoder", "auto"),
+                    "actual_encoder": cfg.get("_actual_encoder", proc.per_stream_encoder or "auto"),
+                    "srt_latency": cfg.get("srt_latency", 120),
+                    "srt_passphrase": "••••••••" if raw_pass else "",
+                    "has_passphrase": bool(raw_pass),
+                    "decryption_failed": bool(cfg.get("decryption_failed", False)),
+                    "url": sanitize_url(raw_url),
+                    "auto_start": cfg.get("auto_start", True),
+                    "zerolatency": cfg.get("zerolatency", True),
+                    "is_virtual": cfg.get("is_virtual", False),
+                    "is_connected": proc.is_connected,
+                    "permanent_failure": proc.permanent_failure,
+                    "last_error_category": proc.last_error_category.value,
+                    "status": {
+                        "state": proc.state.value if isinstance(proc.state, State) else str(proc.state),
+                        "current_fps": proc.current_fps,
+                        "current_bitrate_kbps": proc.current_bitrate_kbps,
+                        "current_speed": proc.current_speed,
+                        "error_count": proc.error_count,
+                        "using_fallback_cpu": proc.using_fallback_cpu,
+                        "manual_intervention_required": proc.permanent_failure,
+                        "started_at": proc.started_at.isoformat() if proc.started_at else None,
+                        "uptime_seconds": (datetime.now() - proc.started_at).total_seconds()
+                        if proc.is_alive and proc.started_at
+                        else None,
+                    },
                 }
-            })
+            )
         return statuses
+
 
 # Instancia global única
 stream_manager = StreamManager()
 
+
 async def sync_streams_with_hardware():
     await stream_manager.sync_streams_with_hardware()
+
 
 def get_all_stream_statuses() -> List[Dict[str, Any]]:
     return stream_manager.get_all_statuses()

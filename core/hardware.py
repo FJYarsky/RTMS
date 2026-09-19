@@ -7,21 +7,22 @@
 """Detección de dispositivos DirectShow y aceleración por hardware."""
 
 import asyncio
-import re
-import os
-import sys
 import logging
+import os
+import re
 import shutil
-from typing import List, Dict, Optional
+import sys
+from typing import Dict, List, Optional
 
 logger = logging.getLogger("rtms.hardware")
 
 _WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     _BASE_DIR = os.path.dirname(sys.executable)
 else:
     _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # rtms_app/
 _FFMPEG_BIN = os.path.join(_BASE_DIR, "bin", "ffmpeg.exe")
+
 
 def get_ffmpeg_bin() -> str:
     """
@@ -37,9 +38,11 @@ def get_ffmpeg_bin() -> str:
         return system_bin
     return _FFMPEG_BIN
 
+
 def has_ffmpeg_binary() -> bool:
     """Verifica si el binario FFmpeg está físicamente disponible en disco o en PATH."""
     return os.path.exists(_FFMPEG_BIN) or (shutil.which("ffmpeg") is not None)
+
 
 async def get_directshow_devices() -> List[Dict[str, str]]:
     """
@@ -55,19 +58,26 @@ async def get_directshow_devices() -> List[Dict[str, str]]:
     logger.info("Sondeando dispositivos DirectShow...")
     try:
         process = await asyncio.create_subprocess_exec(
-            ffmpeg_bin, "-list_devices", "true", "-f", "dshow", "-i", "dummy",
+            ffmpeg_bin,
+            "-list_devices",
+            "true",
+            "-f",
+            "dshow",
+            "-i",
+            "dummy",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            creationflags=_WIN_FLAGS
+            creationflags=_WIN_FLAGS,
         )
 
         _, stderr = await process.communicate()
-        output = stderr.decode('utf-8', errors='ignore')
+        output = stderr.decode("utf-8", errors="ignore")
 
         return parse_dshow_output(output)
     except Exception as e:
         logger.exception(f"Error consultando dispositivos DirectShow: {e}")
         return []
+
 
 def parse_dshow_output(output: str) -> List[Dict[str, str]]:
     r"""
@@ -75,7 +85,7 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
     Soporta formatos antiguos y el nuevo formato de FFmpeg 7.x.
     """
     devices = []
-    lines = output.split('\n')
+    lines = output.split("\n")
 
     # 1. Intentar el formato moderno de FFmpeg 7.x:
     # [in#0 @ 0000...] "Name" (video)
@@ -84,20 +94,17 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
     has_modern_format = False
 
     for line in lines:
-        if '(video)' in line and ']' in line:
+        if "(video)" in line and "]" in line:
             has_modern_format = True
             m = re.search(r'"([^"]+)"\s*\(video\)', line)
             if m:
                 current_video_device = m.group(1)
-        elif 'Alternative name' in line and current_video_device:
+        elif "Alternative name" in line and current_video_device:
             m = re.search(r'Alternative name\s+"([^"]+)"', line)
             if m:
-                devices.append({
-                    "friendly_name": current_video_device,
-                    "device_path": m.group(1)
-                })
+                devices.append({"friendly_name": current_video_device, "device_path": m.group(1)})
             current_video_device = None
-        elif '(audio)' in line or '(none)' in line:
+        elif "(audio)" in line or "(none)" in line:
             current_video_device = None
 
     if has_modern_format:
@@ -111,16 +118,13 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
         video_part = output
 
     current_device = None
-    for line in video_part.split('\n'):
+    for line in video_part.split("\n"):
         if "DirectShow video devices" in line:
             continue
         if "Alternative name" in line and current_device:
             m = re.search(r'Alternative name\s+"([^"]+)"', line)
             if m:
-                devices.append({
-                    "friendly_name": current_device,
-                    "device_path": m.group(1)
-                })
+                devices.append({"friendly_name": current_device, "device_path": m.group(1)})
             current_device = None
         elif "]" in line and '"' in line:
             m = re.search(r'"([^"]+)"', line)
@@ -130,11 +134,13 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
     logger.info(f"Se encontraron {len(devices)} dispositivos de video.")
     return devices
 
+
 class HardwareCapabilityDetector:
     """
     Detector y caché singleton global de capacidades de aceleración por hardware.
     Elimina la ejecución redundante de subprocesos de prueba de encoders mediante caché compartida.
     """
+
     _instance = None
 
     def __init__(self):
@@ -185,15 +191,24 @@ class HardwareCapabilityDetector:
         for enc in encoders_to_test:
             try:
                 p = await asyncio.create_subprocess_exec(
-                    ffmpeg_bin, "-f", "lavfi", "-i", "color=c=black:s=640x360:d=0.1",
-                    "-pix_fmt", "yuv420p",
-                    "-c:v", enc, "-f", "null", "-",
+                    ffmpeg_bin,
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "color=c=black:s=640x360:d=0.1",
+                    "-pix_fmt",
+                    "yuv420p",
+                    "-c:v",
+                    enc,
+                    "-f",
+                    "null",
+                    "-",
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,
-                    creationflags=_WIN_FLAGS
+                    creationflags=_WIN_FLAGS,
                 )
                 await p.wait()
-                is_supported = (p.returncode == 0)
+                is_supported = p.returncode == 0
                 self._capabilities[enc] = is_supported
                 if is_supported:
                     logger.info(f"Codificador por hardware validado y disponible en el sistema: {enc}")
@@ -203,5 +218,6 @@ class HardwareCapabilityDetector:
 
         self._capabilities["libx264"] = True
         self._tested = True
+
 
 hardware_detector = HardwareCapabilityDetector.get_instance()

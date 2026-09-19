@@ -7,23 +7,24 @@
 """Gestión, validación, migración y persistencia atómica de la configuración del sistema."""
 
 import json
-import os
-import sys
-import re
-import uuid
-import secrets
 import logging
+import os
+import re
+import secrets
+import sys
 import threading
-from typing import Dict, Any, Optional
+import uuid
+from typing import Any, Dict, Optional
 
 from core.__version__ import __version__
-from core.secrets_mgr import protect_secret, unprotect_secret
 from core.port_mgr import port_manager
+from core.secrets_mgr import protect_secret, unprotect_secret
 
 logger = logging.getLogger("rtms.config_mgr")
 
 _CONFIG_LOCK = threading.Lock()
 _LAST_SAVED_CONFIG: Optional[str] = None
+
 
 def get_base_dir() -> str:
     r"""
@@ -31,7 +32,11 @@ def get_base_dir() -> str:
     Verifica que el directorio sea escribible; si no lo es (ej. C:\Program Files\),
     cae a %LOCALAPPDATA%\RTMS\.
     """
-    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base = (
+        os.path.dirname(sys.executable)
+        if getattr(sys, "frozen", False)
+        else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
     test_file = os.path.join(base, ".rtms_perm_check")
     try:
         with open(test_file, "w", encoding="utf-8") as f:
@@ -47,17 +52,29 @@ def get_base_dir() -> str:
             pass
         return fallback
 
+
 CONFIG_DIR = os.path.join(get_base_dir(), "config")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 CONFIG_BAK_FILE = os.path.join(CONFIG_DIR, "config.json.bak")
+CONFIG_LEGACY_BAK_FILE = os.path.join(CONFIG_DIR, "config.json.legacy_v2_bak")
 CONFIG_TMP_FILE = os.path.join(CONFIG_DIR, "config.json.tmp")
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 VIRTUAL_DEVICE_KEYWORDS = [
-    "virtual", "obs virtual", "elgato virtual", "vmix", "unity",
-    "manycam", "droidcam", "splitcam", "snap camera", "ndi", "iriun",
-    "nvidia broadcast", "broadcast"
+    "virtual",
+    "obs virtual",
+    "elgato virtual",
+    "vmix",
+    "unity",
+    "manycam",
+    "droidcam",
+    "splitcam",
+    "snap camera",
+    "ndi",
+    "iriun",
+    "nvidia broadcast",
+    "broadcast",
 ]
 
 # Perfiles de cámara predefinidos (Presets)
@@ -69,7 +86,7 @@ CAMERA_PRESETS: Dict[str, Dict[str, Any]] = {
         "bitrate": 2500,
         "srt_latency": 100,
         "zerolatency": True,
-        "protocol": "srt"
+        "protocol": "srt",
     },
     "broadcast_1080p": {
         "name": "Broadcast HD (1080p @ 60fps)",
@@ -78,7 +95,7 @@ CAMERA_PRESETS: Dict[str, Dict[str, Any]] = {
         "bitrate": 6000,
         "srt_latency": 200,
         "zerolatency": False,
-        "protocol": "srt"
+        "protocol": "srt",
     },
     "high_quality_4k": {
         "name": "Alta Calidad 4K (4K @ 30fps)",
@@ -87,7 +104,7 @@ CAMERA_PRESETS: Dict[str, Dict[str, Any]] = {
         "bitrate": 18000,
         "srt_latency": 300,
         "zerolatency": False,
-        "protocol": "srt"
+        "protocol": "srt",
     },
     "cpu_compatible": {
         "name": "Compatibilidad Universal CPU (720p @ 30fps)",
@@ -97,21 +114,33 @@ CAMERA_PRESETS: Dict[str, Dict[str, Any]] = {
         "encoder": "libx264",
         "srt_latency": 150,
         "zerolatency": True,
-        "protocol": "srt"
-    }
+        "protocol": "srt",
+    },
 }
+
 
 def is_virtual_device(friendly_name: str) -> bool:
     name_lower = friendly_name.lower()
     return any(kw in name_lower for kw in VIRTUAL_DEVICE_KEYWORDS)
 
+
 class UnsupportedConfigSchemaError(ValueError):
     """Excepción levantada cuando un archivo de configuración posee una versión de esquema posterior no soportada."""
+
     pass
+
+
+class LegacyConfigSchemaError(ValueError):
+    """Excepción levantada cuando un archivo de configuración posee una versión de esquema previa no soportada (< 4)."""
+
+    pass
+
 
 class ConfigPersistenceError(RuntimeError):
     """Excepción levantada cuando ocurre un error al persistir la configuración en disco."""
+
     pass
+
 
 def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
     """
@@ -122,17 +151,18 @@ def generate_stable_camera_id(device_path: str, friendly_name: str = "") -> str:
     seed = device_path.lower().strip()
     if not seed and friendly_name:
         seed = friendly_name.lower().strip()
-    match = re.search(r'vid_([0-9a-fA-F]{4})&pid_([0-9a-fA-F]{4})', seed)
+    match = re.search(r"vid_([0-9a-fA-F]{4})&pid_([0-9a-fA-F]{4})", seed)
     if match:
         vid, pid = match.groups()
         return f"cam_{vid.lower()}_{pid.lower()}_{uuid.uuid5(uuid.NAMESPACE_DNS, seed).hex[:8]}"
     return f"cam_{uuid.uuid5(uuid.NAMESPACE_DNS, seed).hex[:12]}"
 
+
 def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Migra configuraciones heredadas hacia el esquema más reciente de forma incremental
-    (soporte de esquemas v1, v2 y v3 con camera_id y credenciales protegidas).
-    Rechaza esquemas futuros con UnsupportedConfigSchemaError.
+    Valida la configuración contra el esquema v4 oficial de RTMS v3.0.0.
+    Rechaza esquemas heredados incompatibles (< 4) con LegacyConfigSchemaError
+    y esquemas futuros desconocidos (> 4) con UnsupportedConfigSchemaError.
     """
     schema_ver = data.get("config_schema_version", 1)
 
@@ -141,39 +171,33 @@ def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
             f"Versión de esquema {schema_ver} no soportada por RTMS v{__version__} (máxima soportada: {CURRENT_SCHEMA_VERSION})."
         )
 
-    if schema_ver < 2:
-        logger.info("Migrando configuración v1 -> v2...")
-        data["unattended_autostart"] = data.get("unattended_autostart", True)
-        data["next_port"] = data.get("next_port", 9000)
-        for dp, cam in data.get("cameras", {}).items():
-            cam.setdefault("protocol", "srt")
-            cam.setdefault("zerolatency", True)
-            cam.setdefault("srt_latency", 120)
-            if not cam.get("srt_passphrase"):
-                cam["srt_passphrase"] = secrets.token_hex(6)
-        schema_ver = 2
+    if schema_ver < CURRENT_SCHEMA_VERSION:
+        raise LegacyConfigSchemaError(
+            f"Versión de esquema heredada ({schema_ver} < {CURRENT_SCHEMA_VERSION}) no compatible con RTMS v3.0.0+. "
+            "La retrocompatibilidad para versiones previas ha sido descontinuada para garantizar la estabilidad."
+        )
 
-    if schema_ver < 3:
-        logger.info("Migrando configuración v2 -> v3 (Identidad estable y protección de credenciales)...")
-        for dp, cam in data.get("cameras", {}).items():
+    for dp, cam in data.get("cameras", {}).items():
+        if isinstance(cam, dict):
             if "id" not in cam:
-                cam["id"] = generate_stable_camera_id(dp)
-            # Asegurar que el puerto quede registrado
+                cam["id"] = generate_stable_camera_id(dp, cam.get("friendly_name", ""))
             port = cam.get("port")
             if port:
                 try:
                     port_manager.register_port(int(port))
                 except Exception:
                     pass
-        data["config_schema_version"] = 3
 
     data.setdefault("ignored_devices", [])
     data["version"] = __version__
     return data
 
+
 def load_config() -> Dict[str, Any]:
     """
     Carga la configuración desde disco de forma protegida contra concurrencia y corrupción.
+    Si detecta una versión heredada previa a v3.0.0 (< 4), crea un respaldo en
+    'config.json.legacy_v2_bak' y reinicializa la configuración limpia para v3.0.0.
     Si el archivo está dañado, intenta recuperar desde .bak automáticamente.
     """
     with _CONFIG_LOCK:
@@ -189,7 +213,7 @@ def load_config() -> Dict[str, Any]:
             "cameras": {},
             "ignored_devices": [],
             "next_port": 9000,
-            "unattended_autostart": True
+            "unattended_autostart": True,
         }
 
         if not os.path.exists(CONFIG_FILE):
@@ -201,6 +225,8 @@ def load_config() -> Dict[str, Any]:
                         logger.warning("Restaurando configuración principal desde backup (.bak)...")
                         _atomic_save_unlocked(data)
                         return _unprotect_config_cameras(migrate_config(data))
+                except LegacyConfigSchemaError as lce:
+                    logger.warning(f"Backup heredado (< 4) detectado: {lce}. Reinicializando configuración limpia.")
                 except Exception as e:
                     logger.error(f"Error restaurando desde backup: {e}")
 
@@ -210,7 +236,22 @@ def load_config() -> Dict[str, Any]:
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                migrated = migrate_config(data)
+                try:
+                    migrated = migrate_config(data)
+                except LegacyConfigSchemaError as lce:
+                    logger.warning(
+                        f"Configuración heredada detectada: {lce}. "
+                        f"Creando respaldo en {CONFIG_LEGACY_BAK_FILE} y reinicializando configuración limpia para v3.0.0."
+                    )
+                    try:
+                        import shutil
+
+                        shutil.copy2(CONFIG_FILE, CONFIG_LEGACY_BAK_FILE)
+                    except Exception as be:
+                        logger.error(f"Error creando respaldo de configuración heredada: {be}")
+                    _atomic_save_unlocked(default_config)
+                    return default_config
+
                 # Registrar puertos ya configurados en el PortManager
                 for cam in migrated.get("cameras", {}).values():
                     p = cam.get("port")
@@ -229,12 +270,17 @@ def load_config() -> Dict[str, Any]:
                         migrated = migrate_config(data)
                         _atomic_save_unlocked(migrated)
                         return _unprotect_config_cameras(migrated)
+                except LegacyConfigSchemaError as lce_bak:
+                    logger.warning(
+                        f"Backup heredado detectado: {lce_bak}. Descartando y regenerando configuración por defecto."
+                    )
                 except Exception as eb:
                     logger.error(f"Fallo también la lectura del backup: {eb}")
 
             # Fallback seguro
             _atomic_save_unlocked(default_config)
             return default_config
+
 
 def _unprotect_config_cameras(config_data: Dict[str, Any]) -> Dict[str, Any]:
     """Descifra las passphrases de las cámaras en memoria para que el sistema las use en claro."""
@@ -246,11 +292,14 @@ def _unprotect_config_cameras(config_data: Dict[str, Any]) -> Dict[str, Any]:
                 cam["srt_passphrase"] = unprotect_secret(raw_pass, raise_on_error=True)
                 cam["decryption_failed"] = False
             except Exception as e:
-                logger.warning(f"Error descifrando credencial de cámara {cam.get('friendly_name', '')}: {e}. Marcando como irrecuperable.")
+                logger.warning(
+                    f"Error descifrando credencial de cámara {cam.get('friendly_name', '')}: {e}. Marcando como irrecuperable."
+                )
                 cam["srt_passphrase"] = ""
                 cam["decryption_failed"] = True
                 cam["credential_unavailable"] = True
     return config_data
+
 
 def _prepare_config_for_disk(config_data: Dict[str, Any]) -> Dict[str, Any]:
     """Copia la configuración y protege las credenciales antes de persistir en disco."""
@@ -266,6 +315,7 @@ def _prepare_config_for_disk(config_data: Dict[str, Any]) -> Dict[str, Any]:
         cam.pop("_actual_encoder", None)
         cam.pop("decryption_failed", None)
     return disk_copy
+
 
 def _atomic_save_unlocked(config_data: Dict[str, Any]):
     """
@@ -303,6 +353,7 @@ def _atomic_save_unlocked(config_data: Dict[str, Any]):
     os.replace(CONFIG_TMP_FILE, CONFIG_FILE)
     _LAST_SAVED_CONFIG = current_serialized
 
+
 def save_config(config_data: Dict[str, Any], raise_on_error: bool = False) -> bool:
     """Persiste la configuración de forma atómica y protegida por cerrojo. Retorna True si tuvo éxito."""
     with _CONFIG_LOCK:
@@ -314,6 +365,7 @@ def save_config(config_data: Dict[str, Any], raise_on_error: bool = False) -> bo
             if raise_on_error:
                 raise ConfigPersistenceError(f"Fallo de persistencia en disco: {e}") from e
             return False
+
 
 def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[str, Any]:
     """Retorna la configuración de una cámara, asignando ID estable, puerto libre verificado y passphrase segura."""
@@ -366,7 +418,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         "srt_passphrase": default_passphrase,
         "zerolatency": True,
         "auto_start": not virtual_flag,
-        "is_virtual": virtual_flag
+        "is_virtual": virtual_flag,
     }
 
     cameras[device_path] = new_cam_config
@@ -374,6 +426,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
     save_config(config)
 
     return new_cam_config
+
 
 def find_camera_by_id_or_path(identifier: str) -> Optional[Dict[str, Any]]:
     """Busca una cámara por su camera_id (UUID), clave de diccionario o device_path."""
@@ -386,11 +439,20 @@ def find_camera_by_id_or_path(identifier: str) -> Optional[Dict[str, Any]]:
             return cam
     return None
 
-def update_camera_config(device_path: str, resolution: str, fps: int, bitrate: int,
-                          protocol: str = "srt", encoder: str = "auto",
-                          srt_latency: int = 120, srt_passphrase: str = "",
-                          auto_start: bool = True, zerolatency: bool = True,
-                          is_virtual: bool = False):
+
+def update_camera_config(
+    device_path: str,
+    resolution: str,
+    fps: int,
+    bitrate: int,
+    protocol: str = "srt",
+    encoder: str = "auto",
+    srt_latency: int = 120,
+    srt_passphrase: str = "",
+    auto_start: bool = True,
+    zerolatency: bool = True,
+    is_virtual: bool = False,
+):
     config = load_config()
     cameras = config.get("cameras", {})
     if device_path in cameras:
@@ -409,6 +471,7 @@ def update_camera_config(device_path: str, resolution: str, fps: int, bitrate: i
         return save_config(config)
     return False
 
+
 def set_camera_autostart(device_path: str, auto_start: bool) -> bool:
     config = load_config()
     cameras = config.get("cameras", {})
@@ -416,6 +479,7 @@ def set_camera_autostart(device_path: str, auto_start: bool) -> bool:
         cameras[device_path]["auto_start"] = auto_start
         return save_config(config)
     return False
+
 
 def apply_camera_preset(device_path: str, preset_key: str) -> Optional[Dict[str, Any]]:
     """Aplica un perfil predeterminado a una cámara existente."""
@@ -433,6 +497,7 @@ def apply_camera_preset(device_path: str, preset_key: str) -> Optional[Dict[str,
             return cam
         return None
     return None
+
 
 def export_config(safe_mode: bool = True, include_secrets: bool = False) -> Dict[str, Any]:
     """
@@ -454,6 +519,7 @@ def export_config(safe_mode: bool = True, include_secrets: bool = False) -> Dict
 
     return export_data
 
+
 def import_config(new_config: Dict[str, Any]) -> bool:
     """Importa y valida una configuración externa, aplicando migraciones de esquema necesarias."""
     if not isinstance(new_config, dict):
@@ -470,6 +536,7 @@ def import_config(new_config: Dict[str, Any]) -> bool:
     except Exception as e:
         logger.error(f"Fallo durante la importación y migración de configuración: {e}")
         return False
+
 
 def remove_camera_config(identifier: str) -> bool:
     """
@@ -502,6 +569,7 @@ def remove_camera_config(identifier: str) -> bool:
         return save_config(config)
     return False
 
+
 def unignore_device(device_path: str) -> bool:
     """Permite readmitir un dispositivo DirectShow previamente descartado o ignorado."""
     config = load_config()
@@ -510,6 +578,7 @@ def unignore_device(device_path: str) -> bool:
         ignored.remove(device_path)
         return save_config(config)
     return False
+
 
 def is_device_ignored(device_path: str) -> bool:
     """Verifica si un dispositivo se encuentra en la lista de ignorados."""

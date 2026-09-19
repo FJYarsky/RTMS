@@ -6,12 +6,14 @@
 
 """Terminación ordenada y limpieza de procesos del sistema."""
 
-import os
-import logging
 import asyncio
+import logging
+import os
+
 import psutil
 
 logger = logging.getLogger("rtms.cleanup")
+
 
 def terminate_all_processes(force: bool = True):
     """
@@ -31,31 +33,31 @@ def terminate_all_processes(force: bool = True):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
+        async def _async_cleanup():
+            await asyncio.gather(stream_manager.stop_all(), preview_manager.stop_all(), return_exceptions=True)
+
         if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(
-                asyncio.gather(stream_manager.stop_all(), preview_manager.stop_all(), return_exceptions=True),
-                loop
-            )
+            future = asyncio.run_coroutine_threadsafe(_async_cleanup(), loop)
             try:
-                future.result(timeout=2.0)
-            except Exception:
-                pass
+                future.result(timeout=2.5)
+            except Exception as ex:
+                logger.debug(f"Aviso esperando parada asíncrona: {ex}")
         else:
-            loop.run_until_complete(
-                asyncio.gather(stream_manager.stop_all(), preview_manager.stop_all(), return_exceptions=True)
-            )
+            loop.run_until_complete(_async_cleanup())
     except Exception as e:
         logger.debug(f"Aviso deteniendo managers de streaming: {e}")
 
     # 2. Apagar telemetría y suspender stay_awake
     try:
         from core.telemetry import telemetry_service
+
         telemetry_service.shutdown()
     except Exception:
         pass
 
     try:
         from core.system_env import release_stay_awake
+
         release_stay_awake()
     except Exception:
         pass
@@ -79,14 +81,24 @@ def terminate_all_processes(force: bool = True):
     except Exception as e:
         logger.debug(f"Aviso al limpiar procesos secundarios vía psutil: {e}")
 
-    # 4. Matar cualquier proceso huérfano ffmpeg/ffplay remanente si force=True
+    # 4. Matar cualquier proceso huérfano ffmpeg/ffplay remanente si force=True, EXCLUSIVAMENTE de RTMS
     if force:
         try:
-            for p in psutil.process_iter(['pid', 'name']):
+            my_pid = os.getpid()
+            from core.system_env import get_base_dir
+
+            base_bin = os.path.normpath(os.path.join(get_base_dir(), "bin")).lower()
+
+            for p in psutil.process_iter(["pid", "name", "ppid", "exe", "cmdline"]):
                 try:
-                    name = (p.info.get('name') or '').lower()
-                    if name in ('ffmpeg.exe', 'ffplay.exe'):
-                        p.kill()
+                    name = (p.info.get("name") or "").lower()
+                    if name in ("ffmpeg.exe", "ffplay.exe"):
+                        ppid = p.info.get("ppid")
+                        exe = os.path.normpath(p.info.get("exe") or "").lower()
+                        cmdline = " ".join(p.info.get("cmdline") or []).lower()
+                        # Solo matar si es hijo de RTMS, si el ejecutable está en el directorio bin de RTMS, o si tiene marcas RTMS
+                        if ppid == my_pid or (base_bin and base_bin in exe) or "rtms" in cmdline:
+                            p.kill()
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
         except Exception:
@@ -95,6 +107,7 @@ def terminate_all_processes(force: bool = True):
     # 5. Liberar Mutex de instancia única
     try:
         from core.single_instance import release_single_instance_lock
+
         release_single_instance_lock()
     except Exception:
         pass

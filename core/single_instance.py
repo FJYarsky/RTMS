@@ -6,16 +6,17 @@
 
 """Control de instancia única de la aplicación en Windows mediante Mutex del sistema."""
 
-import sys
 import ctypes
-from ctypes import wintypes
 import logging
+import sys
+from ctypes import wintypes
 
 logger = logging.getLogger("rtms.single_instance")
 
 _GLOBAL_MUTEX = "Global\\RTMS_Multicam_v2_SingleInstance_Mutex"
 _LOCAL_MUTEX = "Local\\RTMS_Multicam_v2_SingleInstance_Mutex"
 _mutex_handle = None
+
 
 def acquire_single_instance_lock() -> bool:
     """
@@ -32,7 +33,7 @@ def acquire_single_instance_lock() -> bool:
     ERROR_ACCESS_DENIED = 5
 
     try:
-        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
         kernel32.CreateMutexW.restype = wintypes.HANDLE
 
@@ -62,12 +63,13 @@ def acquire_single_instance_lock() -> bool:
         logger.warning(f"Error comprobando instancia única: {e}")
         return True
 
+
 def release_single_instance_lock():
     """Libera el handle del Mutex al cerrar la aplicación."""
     global _mutex_handle
     if _mutex_handle and sys.platform == "win32":
         try:
-            kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
             kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
             kernel32.CloseHandle.restype = wintypes.BOOL
             kernel32.CloseHandle(_mutex_handle)
