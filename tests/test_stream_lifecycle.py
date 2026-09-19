@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas del ciclo de vida y estados de procesos de transmisión."""
+
 import asyncio
 from core.ffmpeg_mgr import StreamProc, State
 

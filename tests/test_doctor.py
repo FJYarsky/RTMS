@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas del diagnóstico de entorno y dependencias del sistema."""
+
 from core.doctor import (
     check_os,
     check_ffmpeg_binary,

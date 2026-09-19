@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de autenticación y seguridad en endpoints de la API."""
+
 from fastapi.testclient import TestClient
 from main import create_app
 

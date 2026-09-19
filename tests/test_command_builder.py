@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas del generador de comandos de transmisión FFmpeg."""
+
 import asyncio
 from core.ffmpeg_mgr import StreamManager
 

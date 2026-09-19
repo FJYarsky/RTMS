@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de integración para flujos de transmisión FFmpeg."""
+
 import asyncio
 import pytest
 from core.ffmpeg_tester import FFmpegDiagnosticSuite

@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de prevención de instancias múltiples de la aplicación."""
+
 from core.single_instance import (
     acquire_single_instance_lock,
     release_single_instance_lock

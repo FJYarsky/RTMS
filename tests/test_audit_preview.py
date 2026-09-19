@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de límites y concurrencia del servicio de previsualización."""
+
 import asyncio
 from core.preview_mgr import PreviewManager
 

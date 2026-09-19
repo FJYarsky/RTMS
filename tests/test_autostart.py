@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de configuración del inicio automático en Windows."""
+
 from core.autostart import (
     get_startup_path,
     get_launch_command,

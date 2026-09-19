@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de detección y parseo de dispositivos de captura."""
+
 from core.hardware import parse_dshow_output
 
 def test_parse_dshow_modern_format():

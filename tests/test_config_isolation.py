@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de aislamiento y entorno seguro para configuraciones."""
+
 import os
 import asyncio
 import core.config_mgr

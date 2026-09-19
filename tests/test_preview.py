@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas del servicio y control de acceso a previsualizaciones."""
+
 import pytest
 from unittest.mock import patch
 from fastapi.testclient import TestClient

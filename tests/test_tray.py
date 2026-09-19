@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas del icono y menú contextual en la bandeja del sistema."""
+
 from unittest.mock import MagicMock, patch
 from core.tray_icon import SystemTrayManager
 from PIL import Image

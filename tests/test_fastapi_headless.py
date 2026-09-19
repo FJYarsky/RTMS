@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas del servidor API en modo sin interfaz gráfica."""
+
 import sys
 import uvicorn
 from main import _NullWriter, create_app, get_free_port

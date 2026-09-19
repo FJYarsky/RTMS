@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de funciones de seguridad, tickets y control."""
+
 import logging
 import pytest
 from unittest.mock import patch, MagicMock

@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de recolección de telemetría y métricas del sistema."""
+
 from unittest.mock import MagicMock, patch
 from starlette.testclient import TestClient
 

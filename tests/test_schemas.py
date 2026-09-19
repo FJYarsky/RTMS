@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de validación de modelos y esquemas de datos."""
+
 import pytest
 from pydantic import ValidationError
 from api.schemas import (

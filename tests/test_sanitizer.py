@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de sanitización de credenciales y registros del sistema."""
+
 from core.sanitizer import sanitize_command_for_log, sanitize_log_line
 from core.ffmpeg_mgr import StreamProc
 

@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de cifrado y protección de credenciales con DPAPI."""
+
 import sys
 import pytest
 from core.secrets_mgr import (

@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de persistencia en disco y migraciones de configuración."""
+
 import os
 import core.config_mgr
 from core.config_mgr import (

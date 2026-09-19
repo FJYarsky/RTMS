@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de gestión y validación de configuraciones."""
+
 from core.config_mgr import is_virtual_device, get_or_allocate_camera_config, import_config, load_config
 
 def test_is_virtual_device_detection():

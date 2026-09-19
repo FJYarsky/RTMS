@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas del ciclo de vida de transmisiones y cámaras."""
+
 import asyncio
 from core.config_mgr import generate_stable_camera_id, save_config, load_config
 from core.ffmpeg_mgr import StreamManager, StreamProc, State, ErrorCategory

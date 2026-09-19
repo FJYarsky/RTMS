@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de seguridad, cifrado DPAPI y protección de datos."""
+
 import sys
 import time
 import logging

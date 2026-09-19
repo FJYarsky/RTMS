@@ -4,6 +4,8 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+"""Pruebas de asignación y gestión de puertos de red."""
+
 import socket
 from core.port_mgr import PortManager
 
