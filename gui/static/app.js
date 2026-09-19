@@ -17,9 +17,10 @@ function getApiToken() {
     return document.querySelector('meta[name="rtms-token"]')?.content || '';
 }
 
-// FETCH HELPER SEGURO CON TOKEN X-RTMS-Token
+// FETCH HELPER SEGURO CON TOKEN X-RTMS-Token Y COOKIES DE SESIÓN
 async function apiFetch(url, options = {}) {
     options.headers = options.headers || {};
+    options.credentials = options.credentials || 'same-origin';
     const token = getApiToken();
     if (token) {
         options.headers['X-RTMS-Token'] = token;
@@ -112,6 +113,20 @@ function copyServerIp() {
 async function copyUrlByIndex(index) {
     const stream = _streams[index];
     if (!stream) return;
+    const urlInput = document.getElementById(`url-input-${index}`);
+    
+    // Si ya tenemos la URL completa descifrada cargada
+    if (urlInput && urlInput.dataset.fullUrl) {
+        copyText(urlInput.dataset.fullUrl);
+        showToast(`URL copiada (${stream.protocol.toUpperCase()}) lista para OBS / vMix`);
+        return;
+    }
+    if (urlInput && urlInput.value) {
+        copyText(urlInput.value);
+        showToast(`URL copiada (${stream.protocol.toUpperCase()}) lista para OBS / vMix`);
+        return;
+    }
+
     try {
         const res = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/connect_url`);
         if (res.ok) {
@@ -119,18 +134,57 @@ async function copyUrlByIndex(index) {
             if (data.connect_url) {
                 copyText(data.connect_url);
                 showToast(`URL copiada (${stream.protocol.toUpperCase()}) lista para OBS / vMix`);
-                const urlInput = document.getElementById(`url-input-${index}`);
-                if (urlInput) urlInput.value = data.connect_url;
+                if (urlInput) {
+                    urlInput.value = data.connect_url;
+                    urlInput.dataset.fullUrl = data.connect_url;
+                }
                 return;
             }
         }
     } catch (e) {
         console.warn('Fallo obteniendo connect_url, usando fallback local:', e);
     }
-    const urlInput = document.getElementById(`url-input-${index}`);
     if (urlInput) {
         copyText(urlInput.value);
         showToast('URL de transmisión copiada al portapapeles');
+    }
+}
+
+async function loadConnectUrlForStream(stream, globalIndex) {
+    if (stream.protocol !== 'srt') return;
+    try {
+        const res = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/connect_url`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.connect_url) {
+                stream.connect_url = data.connect_url;
+                const urlInput = document.getElementById(`url-input-${globalIndex}`);
+                if (urlInput) {
+                    urlInput.value = data.connect_url;
+                    urlInput.dataset.fullUrl = data.connect_url;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Fallo cargando connect_url para stream:', e);
+    }
+}
+
+function toggleUrlPassphrase(index) {
+    const input = document.getElementById(`url-input-${index}`);
+    const btn = document.getElementById(`toggle-pass-btn-${index}`);
+    if (!input) return;
+    const fullUrl = input.dataset.fullUrl || input.value;
+    input.dataset.fullUrl = fullUrl;
+
+    if (input.dataset.masked === 'true') {
+        input.value = fullUrl;
+        input.dataset.masked = 'false';
+        if (btn) btn.textContent = '👁️';
+    } else {
+        input.value = fullUrl.replace(/passphrase=[^&]+/, 'passphrase=••••••••');
+        input.dataset.masked = 'true';
+        if (btn) btn.textContent = '🔒';
     }
 }
 
@@ -315,10 +369,14 @@ function renderConnectPage() {
             </div>
             <div class="copy-input-grp">
                 <input type="text" id="url-input-${globalIndex}" value="${escapeHtml(clientUrl)}" readonly>
+                ${stream.protocol === 'srt' ? `<button class="btn btn-ghost btn-sm" id="toggle-pass-btn-${globalIndex}" title="Mostrar/Ocultar contraseña" onclick="toggleUrlPassphrase(${globalIndex})" style="padding: 4px 10px; margin-right: 4px; border: 1px solid var(--border-color);">👁️</button>` : ''}
                 <button class="copy-icon-btn" onclick="copyUrlByIndex(${globalIndex})">Copiar URL</button>
             </div>
         `;
         container.appendChild(row);
+        if (stream.protocol === 'srt') {
+            loadConnectUrlForStream(stream, globalIndex);
+        }
     });
 }
 
