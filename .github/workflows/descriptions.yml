@@ -1,0 +1,54 @@
+# ==============================================================================
+# RTMS — Auditoría y preservación automatizada de descripciones en GitHub
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
+# ==============================================================================
+
+name: RTMS Descriptions Preserver
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Acción a ejecutar"
+        required: true
+        default: "check"
+        type: choice
+        options:
+          - "check"
+          - "restore"
+  schedule:
+    # Auditoría semanal los domingos a las 04:00 UTC
+    - cron: "0 4 * * 0"
+
+permissions:
+  contents: write
+
+jobs:
+  audit-and-restore:
+    name: Preservar Descripciones de GitHub
+    runs-on: windows-latest
+
+    steps:
+      - name: Clonar Repositorio con Historial Completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Entorno Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Auditar Estado de Descripciones
+        id: audit
+        run: |
+          python scripts/manage_descriptions.py --check
+        continue-on-error: ${{ github.event.inputs.action == 'restore' }}
+
+      - name: Restaurar Descripciones Canónicas (si fue solicitado)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'restore' }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          python scripts/manage_descriptions.py --restore
+          git push origin main
