@@ -4,4 +4,4 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""RTMS core engine - multicam streaming, SRT pipeline, and telemetry."""
+"""Motor principal de streaming multicámara, pipeline SRT y telemetría."""

@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Gestión, supervisión de procesos FFmpeg, watchdog de reconexión y pipeline de streaming SRT/UDP."""
+"""Gestión de procesos FFmpeg, pipeline de streaming y watchdog."""
 
 import asyncio
 import sys

@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Terminación ordenada y limpieza de subprocesos y recursos del sistema."""
+"""Terminación ordenada y limpieza de procesos del sistema."""
 
 import os
 import logging

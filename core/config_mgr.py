@@ -515,5 +515,3 @@ def is_device_ignored(device_path: str) -> bool:
     """Verifica si un dispositivo se encuentra en la lista de ignorados."""
     config = load_config()
     return device_path in config.get("ignored_devices", [])
-
-

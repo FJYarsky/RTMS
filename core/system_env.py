@@ -535,4 +535,3 @@ def get_platform_details() -> Dict[str, Any]:
     build_tag = f" — Compilación {info['build']}.{info['ubr']}" if (info["build"] and info["ubr"]) else (f" — Compilación {info['build']}" if info["build"] else "")
     info["summary"] = f"{info['edition']}{ver_tag}{build_tag} [{info['arch']}]"
     return info
-

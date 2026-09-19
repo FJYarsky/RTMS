@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Sanitización y enmascaramiento de datos confidenciales en URLs, comandos y registros de log."""
+"""Sanitización y enmascaramiento de datos confidenciales en logs."""
 
 import re
 import logging

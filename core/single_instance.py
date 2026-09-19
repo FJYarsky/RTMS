@@ -76,4 +76,3 @@ def release_single_instance_lock():
             logger.warning(f"Error liberando mutex: {e}")
         finally:
             _mutex_handle = None
-

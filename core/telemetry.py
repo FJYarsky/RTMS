@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Recolección y monitorización en tiempo real de telemetría de CPU, RAM, GPU NVENC y red."""
+"""Monitorización en tiempo real de telemetría y rendimiento."""
 
 import ctypes
 import logging

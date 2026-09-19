@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Detección y sondeo de dispositivos de captura DirectShow y encoders por hardware."""
+"""Detección de dispositivos DirectShow y aceleración por hardware."""
 
 import asyncio
 import re

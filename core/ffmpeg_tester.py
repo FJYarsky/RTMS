@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Diagnóstico y pruebas de rendimiento para flujos FFmpeg.
+# Pruebas de rendimiento y diagnóstico para flujos FFmpeg.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 

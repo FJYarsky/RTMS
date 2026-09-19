@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Generación y visualización bajo demanda de previsualizaciones de video en vivo (MJPEG y FFplay)."""
+"""Generación y control de previsualizaciones de video en vivo."""
 
 import os
 import sys

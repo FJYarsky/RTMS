@@ -4,7 +4,7 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
-"""Asignación, validación y administración de puertos de red para transmisiones multimedia."""
+"""Asignación y validación de puertos de red para streaming."""
 
 import socket
 import logging

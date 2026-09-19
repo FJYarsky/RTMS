@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Diagnóstico del entorno de ejecución y dependencias del sistema.
+# Diagnóstico del entorno de ejecución y dependencias.
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
