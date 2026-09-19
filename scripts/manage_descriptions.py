@@ -43,7 +43,6 @@ DESCRIPTIONS_CATALOG: Dict[str, str] = {
     "requirements.txt": "deps: dependencias de produccion",
     "rtms.exe.config": "config: manifiesto de ejecucion CLR .NET",
     "run.bat": "tools: lanzador rapido para Windows",
-    "run_silent.vbs": "tools: lanzador en segundo plano",
 }
 
 
@@ -124,7 +123,9 @@ def run_check() -> int:
             print(f"  Actual:     '{actual}'")
             print("-" * 80)
         if is_shallow_repo():
-            print("\n[NOTA] El repositorio es un clon superficial (shallow clone); ejecute 'git fetch --unshallow' para cargar el historial completo.")
+            print(
+                "\n[NOTA] El repositorio es un clon superficial (shallow clone); ejecute 'git fetch --unshallow' para cargar el historial completo."
+            )
         print("\nPara corregirlos ejecuta: python scripts/manage_descriptions.py --restore")
         return 1
 
@@ -217,7 +218,16 @@ def run_restore(targets: List[str]) -> int:
         if item_path.is_dir():
             # Buscar archivo representativo dentro del directorio
             for child in item_path.rglob("*"):
-                if child.is_file() and child.suffix.lower() in [".py", ".md", ".yml", ".js", ".css", ".html", ".json", ".ps1"]:
+                if child.is_file() and child.suffix.lower() in [
+                    ".py",
+                    ".md",
+                    ".yml",
+                    ".js",
+                    ".css",
+                    ".html",
+                    ".json",
+                    ".ps1",
+                ]:
                     _touch_file_cleanly(child)
                     subprocess.run(["git", "add", str(child)], check=False)
                     touched = True

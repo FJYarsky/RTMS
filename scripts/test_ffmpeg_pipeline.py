@@ -5,10 +5,10 @@
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
+import argparse
+import asyncio
 import os
 import sys
-import asyncio
-import argparse
 import time
 
 # Asegurar raíz del proyecto en sys.path
@@ -17,11 +17,8 @@ if _BASE_DIR not in sys.path:
     sys.path.insert(0, _BASE_DIR)
 
 from core.__version__ import __version__
+from core.ffmpeg_tester import FFmpegDiagnosticSuite, VirtualCameraSource
 from core.hardware import get_directshow_devices
-from core.ffmpeg_tester import (
-    FFmpegDiagnosticSuite,
-    VirtualCameraSource
-)
 
 if sys.platform == "win32":
     try:
@@ -173,12 +170,7 @@ async def run_srt_tests(suite: FFmpegDiagnosticSuite, base_port: int = 9970):
     port = base_port
     info_mark(f"Prueba 4.1: Emisor Listener <-> Receptor Caller (SIN contraseña) en puerto {port}...")
     digest = await suite.test_srt_connection(
-        port=port,
-        resolution="1080p",
-        fps=60,
-        passphrase_sender="",
-        passphrase_receiver="",
-        duration_seconds=3.0
+        port=port, resolution="1080p", fps=60, passphrase_sender="", passphrase_receiver="", duration_seconds=3.0
     )
     if digest.is_success and digest.real_fps >= 50.0:
         ok_mark(
@@ -193,12 +185,7 @@ async def run_srt_tests(suite: FFmpegDiagnosticSuite, base_port: int = 9970):
     pwd = "ClaveSegura12345"
     info_mark(f"Prueba 4.2: Emisor Listener <-> Receptor Caller (CON contraseña configurada) en puerto {port}...")
     digest = await suite.test_srt_connection(
-        port=port,
-        resolution="1080p",
-        fps=60,
-        passphrase_sender=pwd,
-        passphrase_receiver=pwd,
-        duration_seconds=3.0
+        port=port, resolution="1080p", fps=60, passphrase_sender=pwd, passphrase_receiver=pwd, duration_seconds=3.0
     )
     if digest.is_success and digest.real_fps >= 50.0:
         ok_mark(
@@ -216,9 +203,12 @@ async def run_srt_tests(suite: FFmpegDiagnosticSuite, base_port: int = 9970):
         fps=30,
         passphrase_sender="ClaveOculta123",
         passphrase_receiver="",
-        duration_seconds=2.0
+        duration_seconds=2.0,
     )
-    expected_error = any("password required" in e.lower() or "error:unsecure" in e.lower() or "i/o error" in e.lower() for e in digest.errors)
+    expected_error = any(
+        "password required" in e.lower() or "error:unsecure" in e.lower() or "i/o error" in e.lower()
+        for e in digest.errors
+    )
     if not digest.is_connected and expected_error:
         ok_mark(
             "COMPORTAMIENTO CONFIRMADO: La conexión fue rechazada de inmediato como se esperaba. "
@@ -247,7 +237,7 @@ async def run_srt_tests(suite: FFmpegDiagnosticSuite, base_port: int = 9970):
         await asyncio.sleep(0.5)
 
         # En FFmpeg puro como emisor listener, al desconectar el receptor el emisor termina con I/O error.
-        is_sender_alive = (cam.process is not None and cam.process.returncode is None)
+        is_sender_alive = cam.process is not None and cam.process.returncode is None
         if not is_sender_alive:
             info_mark(
                 "FFmpeg Listener nativo terminó al desconectar el cliente (I/O error -5). "
@@ -262,7 +252,15 @@ async def run_udp_tests(suite: FFmpegDiagnosticSuite, base_port: int = 9980):
     # Prueba 5.1: UDP Multicast a 720p@30fps
     port = base_port
     info_mark(f"Prueba 5.1: UDP Multicast a 720p @ 30 FPS en puerto {port}...")
-    d1 = await suite.test_udp_connection(port=port, multicast=True, resolution="720p", fps=30, buffer_size=4194304, repeat_headers=True, duration_seconds=3.0)
+    d1 = await suite.test_udp_connection(
+        port=port,
+        multicast=True,
+        resolution="720p",
+        fps=30,
+        buffer_size=4194304,
+        repeat_headers=True,
+        duration_seconds=3.0,
+    )
     if d1.is_success and d1.real_fps >= 25.0:
         ok_mark(f"UDP 720p@30fps exitoso: {d1.frames_decoded} cuadros a {d1.real_fps:.2f} FPS.")
     else:
@@ -271,12 +269,30 @@ async def run_udp_tests(suite: FFmpegDiagnosticSuite, base_port: int = 9980):
     # Prueba 5.2: UDP 1080p@60fps con buffer pequeño (64 KB) vs buffer optimizado (4 MB)
     port += 1
     info_mark("Prueba 5.2: UDP a 1080p @ 60 FPS con BUFFER PEQUEÑO (65535 bytes = 64KB)...")
-    d_small = await suite.test_udp_connection(port=port, multicast=False, resolution="1080p", fps=60, buffer_size=65535, repeat_headers=False, duration_seconds=3.0)
-    info_mark(f"Resultado con 64KB: {d_small.frames_decoded} cuadros, FPS real: {d_small.real_fps:.2f}, Errores: {len(d_small.errors)}")
+    d_small = await suite.test_udp_connection(
+        port=port,
+        multicast=False,
+        resolution="1080p",
+        fps=60,
+        buffer_size=65535,
+        repeat_headers=False,
+        duration_seconds=3.0,
+    )
+    info_mark(
+        f"Resultado con 64KB: {d_small.frames_decoded} cuadros, FPS real: {d_small.real_fps:.2f}, Errores: {len(d_small.errors)}"
+    )
 
     port += 1
     info_mark("Prueba 5.3: UDP a 1080p @ 60 FPS con BUFFER OPTIMIZADO (4194304 bytes = 4MB) y repeat-headers...")
-    d_opt = await suite.test_udp_connection(port=port, multicast=False, resolution="1080p", fps=60, buffer_size=4194304, repeat_headers=True, duration_seconds=3.0)
+    d_opt = await suite.test_udp_connection(
+        port=port,
+        multicast=False,
+        resolution="1080p",
+        fps=60,
+        buffer_size=4194304,
+        repeat_headers=True,
+        duration_seconds=3.0,
+    )
     if d_opt.is_success and d_opt.real_fps >= 55.0:
         ok_mark(
             f"UDP 1080p@60fps OPTIMIZADO: {d_opt.frames_decoded} cuadros a {d_opt.real_fps:.2f} FPS continuos "
@@ -325,7 +341,7 @@ async def run_virtual_camera_server(args):
         encoder=args.encoder,
         bitrate=args.bitrate,
         zerolatency=True,
-        repeat_headers=True
+        repeat_headers=True,
     )
     if not started:
         fail_mark("No se pudo iniciar la cámara virtual.")
@@ -350,7 +366,9 @@ async def main_async():
     parser.add_argument("--bench", action="store_true", help="Benchmark de codificadores 1080p60")
     parser.add_argument("--srt", action="store_true", help="Pruebas de entablado y digestión SRT")
     parser.add_argument("--udp", action="store_true", help="Pruebas de entablado y digestión UDP a 1080p60")
-    parser.add_argument("--virtual-cam", action="store_true", help="Lanza una cámara virtual en vivo para conectar con OBS/vMix")
+    parser.add_argument(
+        "--virtual-cam", action="store_true", help="Lanza una cámara virtual en vivo para conectar con OBS/vMix"
+    )
     parser.add_argument("--proto", default="srt", choices=["srt", "udp"], help="Protocolo para la cámara virtual")
     parser.add_argument("--port", type=int, default=9000, help="Puerto de transmisión")
     parser.add_argument("--res", default="1080p", help="Resolución (720p, 1080p, 4K)")
