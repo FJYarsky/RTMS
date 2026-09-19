@@ -61,6 +61,19 @@ def get_repo_root() -> Path:
         return Path(__file__).resolve().parent.parent
 
 
+def is_shallow_repo() -> bool:
+    """Verifica si el repositorio local es un clon superficial (shallow clone)."""
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--is-shallow-repository"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        return out.lower() == "true"
+    except Exception:
+        return False
+
+
 def get_latest_commit_subject(item_path: str) -> str:
     """Obtiene el asunto del último commit que modificó la ruta especificada."""
     try:
@@ -110,6 +123,8 @@ def run_check() -> int:
             print(f"  Esperado:   '{canonical}'")
             print(f"  Actual:     '{actual}'")
             print("-" * 80)
+        if is_shallow_repo():
+            print("\n[NOTA] El repositorio es un clon superficial (shallow clone); ejecute 'git fetch --unshallow' para cargar el historial completo.")
         print("\nPara corregirlos ejecuta: python scripts/manage_descriptions.py --restore")
         return 1
 
