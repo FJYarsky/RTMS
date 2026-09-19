@@ -1,6 +1,6 @@
 # Guía de Contribución — RTMS
 
-¡Gracias por tu interés en contribuir a **RTMS (Real-Time Multicam System)**!
+¡Gracias por tu interés en contribuir a **RTMS**!
 
 ## Flujo de Trabajo para Contribuciones
 
