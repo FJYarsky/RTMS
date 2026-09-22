@@ -59,6 +59,7 @@ from api.routes import router as api_router
 from core.__version__ import __version__
 from core.config_mgr import get_base_dir
 from core.hardware_sync import sync_streams_with_hardware
+from core.mediamtx_mgr import mediamtx_manager
 from core.preview_mgr import preview_manager
 from core.process_cleanup import terminate_all_processes
 from core.sanitizer import SecretFilter
@@ -71,6 +72,7 @@ from core.system_env import (
     setup_firewall_rules,
     unblock_app_binaries,
 )
+from core.task_registry import task_registry
 from core.telemetry import telemetry_service
 from core.tray_icon import SystemTrayManager
 
@@ -108,11 +110,21 @@ async def lifespan(app: FastAPI):
     setup_firewall_rules()
     acquire_stay_awake()
 
+    # Iniciar Media Server (MediaMTX) antes de sincronizar hardware
+    try:
+        mediamtx_ok = await mediamtx_manager.start()
+        if mediamtx_ok:
+            logger.info("MediaMTX iniciado exitosamente.")
+        else:
+            logger.warning("MediaMTX no se pudo iniciar automáticamente.")
+    except Exception as e:
+        logger.error(f"Error iniciando MediaMTX en lifespan: {e}")
+
     # Sincronización inicial y autoarranque desatendido
-    asyncio.create_task(sync_streams_with_hardware())
+    task_registry.create_task(sync_streams_with_hardware(), name="sync_hardware")
 
     # Tarea de fondo para detección continua de cámaras conectadas en caliente (hotplug)
-    asyncio.create_task(stream_manager.start_periodic_hardware_sync())
+    task_registry.create_task(stream_manager.start_periodic_hardware_sync(), name="periodic_hardware_sync")
 
     yield
 
@@ -125,6 +137,14 @@ async def lifespan(app: FastAPI):
         await preview_manager.stop_all()
     except Exception as e:
         logger.error(f"Error deteniendo previews durante el shutdown: {e}")
+    try:
+        mediamtx_manager.stop()
+    except Exception as e:
+        logger.error(f"Error deteniendo MediaMTX en shutdown: {e}")
+    try:
+        await task_registry.cancel_all(timeout=3.0)
+    except Exception as e:
+        logger.error(f"Error drenando tareas asíncronas en shutdown: {e}")
     try:
         telemetry_service.shutdown()
     except Exception as e:
