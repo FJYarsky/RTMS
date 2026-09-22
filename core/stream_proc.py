@@ -8,6 +8,7 @@
 
 import asyncio
 import logging
+import re
 import sys
 import urllib.parse
 from collections import deque
@@ -55,6 +56,12 @@ def build_multicast_url(port: int) -> str:
     return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=4194304&overrun_nonfatal=1&fifo_size=50000000"
 
 
+def build_unicast_url(port: int, host: str = "127.0.0.1") -> str:
+    """Calcula y retorna la URL unicast UDP local/remota con buffer optimizado (4MB)."""
+    clean_host = host.strip() or "127.0.0.1"
+    return f"udp://{clean_host}:{port}?pkt_size=1316&buffer_size=4194304&overrun_nonfatal=1&fifo_size=50000000"
+
+
 def build_stream_url(
     protocol: str,
     port: int,
@@ -63,8 +70,12 @@ def build_stream_url(
     latency_ms: int = 120,
     zerolatency: bool = True,
     streamid: Optional[str] = None,
+    udp_mode: str = "multicast",
+    udp_host: str = "127.0.0.1",
 ) -> str:
-    """Construye la URL normalizada de transmisión para SRT o UDP con parámetros seguros."""
+    """Construye la URL normalizada de transmisión para SRT o UDP con parámetros optimizados de baja latencia."""
+    if protocol == "udp_unicast" or (protocol == "udp" and udp_mode == "unicast"):
+        return build_unicast_url(port, host=udp_host)
     if protocol == "udp":
         return build_multicast_url(port)
 
@@ -76,17 +87,62 @@ def build_stream_url(
         "mode": mode,
         "latency": str(latency_us),
         "transtype": "live",
-        "smoother": "live",
         "tlpktdrop": drop_flag,
         "sndbuf": "262144",
         "rcvbuf": "262144",
+        "pkt_size": "1316",
+        "connect_timeout": "2000",
+        "lossmaxttl": "40",
     }
+    # En modo caller hacia MediaMTX se suprime smoother=live para erradicar el retardo artificial de pacing
+    if mode != "caller" and not zerolatency:
+        params["smoother"] = "live"
     if streamid:
         params["streamid"] = streamid
     if passphrase:
         params["passphrase"] = passphrase
     query = urllib.parse.urlencode(params, safe=":")
     return f"srt://{host}:{port}?{query}"
+
+
+def build_client_urls(
+    protocol: str,
+    host: str,
+    port: int,
+    cam_id: str,
+    passphrase: str = "",
+    mediamtx_port: int = 8890,
+    udp_mode: str = "multicast",
+) -> Dict[str, str]:
+    """
+    Construye las URLs canónicas y limpias para clientes (OBS/vMix) y reproductores como VLC.
+    Garantiza sintaxis RFC 3986 (/?...) para SRT y prefijo @ para UDP en VLC sin parámetros de FFmpeg.
+    """
+    clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
+    clean_host = host.strip() or "127.0.0.1"
+
+    if protocol == "srt":
+        query_parts = [f"streamid=read:{clean_cam_id}"]
+        if passphrase:
+            query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
+        query = "&".join(query_parts)
+        url = f"srt://{clean_host}:{mediamtx_port}/?{query}"
+        return {"connect_url": url, "vlc_url": url}
+
+    if protocol == "udp_unicast" or udp_mode == "unicast":
+        target = "127.0.0.1" if clean_host in ("127.0.0.1", "localhost") else clean_host
+        return {
+            "connect_url": f"udp://{target}:{port}",
+            "vlc_url": f"udp://@{target}:{port}",
+        }
+
+    # Default UDP Multicast
+    ip_last = (int(port) % 200) + 1
+    mcast_ip = f"239.255.0.{ip_last}"
+    return {
+        "connect_url": f"udp://{mcast_ip}:{port}",
+        "vlc_url": f"udp://@{mcast_ip}:{port}",
+    }
 
 
 class StreamProc:

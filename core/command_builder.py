@@ -37,9 +37,10 @@ async def build_ffmpeg_command(
     """
     video_size = RESOLUTION_MAP.get(cfg.get("resolution", "720p"), "1280x720")
     fps = cfg.get("fps", 30)
-    gop = fps * 2
-    bitrate = cfg.get("bitrate", 3000)
     zerolatency = cfg.get("zerolatency", True)
+    # En modo zerolatency el GOP es de 1 segundo para enganche IDR ultrarrápido en decodificadores
+    gop = fps if zerolatency else (fps * 2)
+    bitrate = cfg.get("bitrate", 3000)
 
     bk = f"{bitrate}k"
     maxbk = f"{int(bitrate * 1.15)}k"
@@ -162,6 +163,8 @@ async def build_ffmpeg_command(
             streamid=f"publish:{clean_cam_id}",
         )
     else:
+        udp_mode = cfg.get("udp_mode", "multicast")
+        udp_host = cfg.get("udp_host", "127.0.0.1")
         raw_url = build_stream_url(
             protocol=protocol,
             port=port,
@@ -169,6 +172,8 @@ async def build_ffmpeg_command(
             mode="listener",
             latency_ms=latency_ms,
             zerolatency=zerolatency,
+            udp_mode=udp_mode,
+            udp_host=udp_host,
         )
 
     if zerolatency:
@@ -181,6 +186,10 @@ async def build_ffmpeg_command(
             "0",
             "-muxpreload",
             "0",
+            "-pat_period",
+            "0.1",
+            "-pcr_period",
+            "20",
             "-flush_packets",
             "1",
             raw_url,

@@ -23,7 +23,8 @@ from core.stream_proc import ErrorCategory, State, StreamProc
 
 logger = logging.getLogger("rtms.stream_manager")
 
-_WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
+# CREATE_NO_WINDOW (0x08000000) | ABOVE_NORMAL_PRIORITY_CLASS (0x00008000) para FFmpeg prioritario
+_WIN_FLAGS = (0x08000000 | 0x00008000) if sys.platform == "win32" else 0
 
 
 class StreamManager:
@@ -622,6 +623,7 @@ class StreamManager:
                     "fps": cfg.get("fps", 30),
                     "bitrate": cfg.get("bitrate", 3000),
                     "protocol": cfg.get("protocol", "srt"),
+                    "udp_mode": cfg.get("udp_mode", "multicast"),
                     "port": cfg.get("port", 9000),
                     "mediamtx_port": mediamtx_port,
                     "encoder": cfg.get("encoder", "auto"),

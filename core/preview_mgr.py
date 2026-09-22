@@ -84,7 +84,9 @@ class PreviewManager:
         for key in dead_keys:
             self._active_ffplay.pop(key, None)
 
-    def launch_ffplay(self, url: str, title: str = "RTMS Preview", is_dshow: bool = False) -> bool:
+    def launch_ffplay(
+        self, url: str, title: str = "RTMS Preview", is_dshow: bool = False, is_virtual: bool = False
+    ) -> bool:
         self._reap_dead_processes()
         ffplay_bin = get_ffplay_bin()
         if not os.path.exists(ffplay_bin) and not shutil.which("ffplay"):
@@ -108,7 +110,26 @@ class PreviewManager:
                 except Exception:
                     pass
 
-        if is_dshow:
+        if is_virtual:
+            cmd = [
+                ffplay_bin,
+                "-window_title",
+                safe_title,
+                "-f",
+                "lavfi",
+                "-fflags",
+                "nobuffer",
+                "-flags",
+                "low_delay",
+                "-framedrop",
+                "-x",
+                "854",
+                "-y",
+                "480",
+                "-i",
+                "testsrc2=size=854x480:rate=30",
+            ]
+        elif is_dshow:
             clean_device = re.sub(r'[\r\n\t\0"]', "", str(url)).strip()
             if not clean_device or clean_device.startswith("-"):
                 logger.warning(f"Dispositivo DirectShow no válido para FFplay: {url}")
@@ -147,6 +168,10 @@ class PreviewManager:
                 ffplay_bin,
                 "-window_title",
                 safe_title,
+                "-probesize",
+                "100k",
+                "-analyzeduration",
+                "500k",
                 "-fflags",
                 "nobuffer",
                 "-flags",
@@ -177,28 +202,44 @@ class PreviewManager:
             return False
 
     async def get_snapshot_frame(self, device_path: str, timeout: float = 3.5) -> Optional[bytes]:
-        """Captura un único cuadro JPEG directamente desde DirectShow para encuadre."""
+        """Captura un único cuadro JPEG directamente desde DirectShow o generador virtual para encuadre."""
         if not has_ffmpeg_binary():
             return None
 
         ffmpeg_bin = get_ffmpeg_bin()
-        escaped_device = device_path.replace(":", "\\:")
+        is_virtual = device_path.startswith("virtual://") or device_path.startswith("testsrc")
 
-        cmd = [
-            ffmpeg_bin,
-            "-hide_banner",
-            "-f",
-            "dshow",
-            "-i",
-            f"video={escaped_device}",
-            "-vframes",
-            "1",
-            "-s",
-            "640x360",
-            "-f",
-            "image2",
-            "-",
-        ]
+        if is_virtual:
+            cmd = [
+                ffmpeg_bin,
+                "-hide_banner",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=size=640x360:rate=1",
+                "-vframes",
+                "1",
+                "-f",
+                "image2",
+                "-",
+            ]
+        else:
+            escaped_device = device_path.replace(":", "\\:")
+            cmd = [
+                ffmpeg_bin,
+                "-hide_banner",
+                "-f",
+                "dshow",
+                "-i",
+                f"video={escaped_device}",
+                "-vframes",
+                "1",
+                "-s",
+                "640x360",
+                "-f",
+                "image2",
+                "-",
+            ]
 
         p = None
         try:
@@ -225,7 +266,7 @@ class PreviewManager:
         return None
 
     async def generate_mjpeg_stream(
-        self, input_source: str, is_dshow: bool = False, identifier: Optional[str] = None
+        self, input_source: str, is_dshow: bool = False, is_virtual: bool = False, identifier: Optional[str] = None
     ) -> AsyncGenerator[bytes, None]:
         """
         Generador asíncrono que canaliza un flujo continuo de frames JPEG por HTTP (MJPEG).
@@ -235,7 +276,23 @@ class PreviewManager:
             return
 
         ffmpeg_bin = get_ffmpeg_bin()
-        if is_dshow:
+        if is_virtual:
+            cmd = [
+                ffmpeg_bin,
+                "-hide_banner",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=size=640x360:rate=10",
+                "-f",
+                "image2pipe",
+                "-vcodec",
+                "mjpeg",
+                "-q:v",
+                "5",
+                "-",
+            ]
+        elif is_dshow:
             escaped = input_source.replace(":", "\\:")
             cmd = [
                 ffmpeg_bin,
@@ -258,8 +315,12 @@ class PreviewManager:
             cmd = [
                 ffmpeg_bin,
                 "-hide_banner",
+                "-probesize",
+                "100k",
+                "-analyzeduration",
+                "500k",
                 "-fflags",
-                "nobuffer",
+                "nobuffer+flush_packets",
                 "-flags",
                 "low_delay",
                 "-i",

@@ -68,6 +68,7 @@ __all__ = [
     "remove_firewall_rules",
     "restore_original_power_settings",
     "set_active_scheme",
+    "set_high_resolution_timer",
     "setup_firewall_rules",
     "setup_windows_environment",
     "unblock_app_binaries",
@@ -78,6 +79,34 @@ logger = logging.getLogger("rtms.system_env")
 _WIN_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 
+def set_high_resolution_timer(enable: bool = True) -> bool:
+    """
+    Ajusta la resolución de temporizadores del sistema operativo a 1 ms (timeBeginPeriod)
+    para erradicar el jitter en temporizadores y sleeps de hilos durante la transmisión.
+    Llama a timeEndPeriod(1) al cerrar la aplicación para restaurar el reloj del sistema.
+    """
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        winmm = ctypes.windll.winmm
+        if enable:
+            res = winmm.timeBeginPeriod(1)
+            if res == 0:
+                logger.info("Resolución de temporizador del sistema fijada a 1 ms (timeBeginPeriod).")
+                return True
+        else:
+            res = winmm.timeEndPeriod(1)
+            if res == 0:
+                logger.info("Resolución de temporizador del sistema restaurada (timeEndPeriod).")
+                return True
+        return False
+    except Exception as e:
+        logger.debug(f"Aviso al configurar resolución de temporizador Windows: {e}")
+        return False
+
+
 def unblock_app_binaries() -> int:
     """
     Elimina los flujos de datos alternativos NTFS de Mark-of-the-Web (:Zone.Identifier)
@@ -85,7 +114,7 @@ def unblock_app_binaries() -> int:
     en el directorio de la aplicación en Windows.
 
     Previene bloqueos de seguridad de .NET Framework / CLR (como 'Failed to resolve Python.Runtime.Loader.Initialize')
-    al descomprimir el release zip descargado de la web. Retorna el número de archivos desbloqueados.
+    y avisos innecesarios de administrador al descomprimir el release zip descargado de la web.
     """
     if sys.platform != "win32":
         return 0
@@ -96,20 +125,23 @@ def unblock_app_binaries() -> int:
 
         kernel32 = ctypes.windll.kernel32
         base_dirs = []
+        bdir = get_base_dir()
+        base_dirs.append(bdir)
+        base_dirs.append(os.path.join(bdir, "bin"))
+
         if getattr(sys, "frozen", False):
             exe_dir = os.path.dirname(sys.executable)
             base_dirs.append(exe_dir)
             base_dirs.append(os.path.join(exe_dir, "_internal"))
+            base_dirs.append(os.path.join(exe_dir, "bin"))
             if hasattr(sys, "_MEIPASS"):
                 base_dirs.append(sys._MEIPASS)
-        else:
-            base_dirs.append(get_base_dir())
 
-        target_exts = (".dll", ".exe", ".pyd", ".json", ".config", ".ico", ".py")
-        for bdir in set(base_dirs):
-            if not os.path.exists(bdir):
+        target_exts = (".dll", ".exe", ".pyd", ".json", ".config", ".ico", ".py", ".yml", ".yaml")
+        for bd in set(base_dirs):
+            if not os.path.exists(bd):
                 continue
-            for root, _, files in os.walk(bdir):
+            for root, _, files in os.walk(bd):
                 for f in files:
                     if f.lower().endswith(target_exts):
                         fpath = os.path.join(root, f)
@@ -125,7 +157,7 @@ def unblock_app_binaries() -> int:
 
 
 def setup_firewall_rules(port_range: str = "8889-8990,9000-9200") -> bool:
-    """Agrega o actualiza reglas en el firewall para puertos SRT/UDP y WebRTC sin duplicación."""
+    """Agrega o actualiza reglas en el firewall para puertos SRT/UDP y binario MediaMTX sin duplicación."""
     if sys.platform != "win32":
         return False
 
@@ -135,10 +167,10 @@ def setup_firewall_rules(port_range: str = "8889-8990,9000-9200") -> bool:
 
     logger.info(f"Verificando y configurando regla de firewall RTMS_Media_Ports ({port_range})...")
     try:
-        # Verificar si la regla ya existe
+        # 1. Regla de puertos UDP para streaming SRT y UDP
         check_cmd = ["netsh", "advfirewall", "firewall", "show", "rule", "name=RTMS_Media_Ports"]
         check_res = subprocess.run(
-            check_cmd, check=False, capture_output=True, text=True, timeout=15, creationflags=_WIN_NO_WINDOW
+            check_cmd, check=False, capture_output=True, text=True, timeout=10, creationflags=_WIN_NO_WINDOW
         )
         if check_res.returncode == 0:
             logger.info("Regla RTMS_Media_Ports ya existente detectada; renovando...")
@@ -147,7 +179,7 @@ def setup_firewall_rules(port_range: str = "8889-8990,9000-9200") -> bool:
                 check=False,
                 capture_output=True,
                 text=True,
-                timeout=15,
+                timeout=10,
                 creationflags=_WIN_NO_WINDOW,
             )
 
@@ -165,8 +197,34 @@ def setup_firewall_rules(port_range: str = "8889-8990,9000-9200") -> bool:
             "profile=private",
         ]
         res = subprocess.run(
-            cmd_fw_srt, check=False, capture_output=True, text=True, timeout=15, creationflags=_WIN_NO_WINDOW
+            cmd_fw_srt, check=False, capture_output=True, text=True, timeout=10, creationflags=_WIN_NO_WINDOW
         )
+
+        # 2. Regla explícita por ruta para bin/mediamtx.exe para erradicar avisos de Windows Defender
+        base_dir = get_base_dir()
+        mediamtx_path = os.path.join(base_dir, "bin", "mediamtx.exe")
+        if os.path.exists(mediamtx_path):
+            check_app = ["netsh", "advfirewall", "firewall", "show", "rule", "name=RTMS_MediaMTX"]
+            check_app_res = subprocess.run(
+                check_app, check=False, capture_output=True, text=True, timeout=10, creationflags=_WIN_NO_WINDOW
+            )
+            if check_app_res.returncode != 0:
+                cmd_app = [
+                    "netsh",
+                    "advfirewall",
+                    "firewall",
+                    "add",
+                    "rule",
+                    "name=RTMS_MediaMTX",
+                    "dir=in",
+                    "action=allow",
+                    f"program={mediamtx_path}",
+                    "enable=yes",
+                    "profile=private,domain",
+                ]
+                subprocess.run(cmd_app, check=False, capture_output=True, timeout=10, creationflags=_WIN_NO_WINDOW)
+                logger.info("Regla de firewall explícita añadida para bin/mediamtx.exe.")
+
         if res.returncode == 0:
             logger.info("Reglas del Firewall de Windows configuradas exitosamente.")
             return True

@@ -469,6 +469,8 @@ def update_camera_config(
     auto_start: Optional[bool] = None,
     zerolatency: bool = True,
     is_virtual: bool = False,
+    udp_mode: str = "multicast",
+    udp_host: str = "127.0.0.1",
 ):
     config = load_config()
     cameras = config.get("cameras", {})
@@ -486,6 +488,8 @@ def update_camera_config(
             cam["auto_start"] = auto_start
         cam["zerolatency"] = zerolatency
         cam["is_virtual"] = is_virtual
+        cam["udp_mode"] = udp_mode
+        cam["udp_host"] = udp_host
         return save_config(config)
     return False
 
