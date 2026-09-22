@@ -12,37 +12,40 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# Catálogo canónico de descripciones para los 29 elementos raíz en GitHub.
+# Catálogo canónico de descripciones para los 31 elementos raíz en GitHub.
 # Longitud estrictamente menor a 45 caracteres para evitar truncamientos con '...'.
 DESCRIPTIONS_CATALOG: Dict[str, str] = {
     ".github": "ci: pipelines de integracion y release",
+    ".gitignore": "chore: reglas de exclusion de git",
+    ".pre-commit-config.yaml": "ci: hooks de pre-commit para linters",
     "api": "api: endpoints REST y validacion",
+    "build_portable.bat": "build: empaquetador portable Windows",
+    "CHANGELOG.md": "docs: historial de cambios del sistema",
+    "CODE_OF_CONDUCT.md": "docs: codigo de conducta de la comunidad",
     "config": "config: plantilla de configuracion",
+    "conftest.py": "tests: configuracion y fixtures globales",
+    "CONTRIBUTING.md": "docs: guia de contribucion al proyecto",
     "core": "core: motor de transmision y telemetria",
     "docs": "docs: manuales tecnicos y guias",
     "gui": "gui: interfaz web y panel de control",
-    "scripts": "scripts: utilidades de arranque y test",
-    "tests": "tests: suite de pruebas automatizadas",
-    ".gitignore": "chore: reglas de exclusion de git",
-    "CHANGELOG.md": "docs: historial de cambios del sistema",
-    "CODE_OF_CONDUCT.md": "docs: codigo de conducta de la comunidad",
-    "CONTRIBUTING.md": "docs: guia de contribucion al proyecto",
+    "icon.ico": "assets: icono de aplicacion y bandeja",
+    "justfile": "tools: recetas de automatizacion y build",
     "LATEST_RELEASE.md": "docs: notas de la version mas reciente",
     "LICENSE": "legal: terminos de la licencia MIT",
-    "README.md": "docs: guia general del sistema y uso",
-    "RELEASE_NOTES.md": "docs: notas oficiales de lanzamiento",
-    "SECURITY.md": "docs: politica de reporte de seguridad",
-    "THIRD_PARTY_NOTICES.md": "legal: licencias de librerias de terceros",
-    "build_portable.bat": "build: empaquetador portable Windows",
-    "conftest.py": "tests: configuracion y fixtures globales",
-    "icon.ico": "assets: icono de aplicacion y bandeja",
     "main.py": "app: punto de entrada y servidor principal",
     "pyproject.toml": "build: configuracion y metadatos",
+    "README.md": "docs: guia general del sistema y uso",
+    "RELEASE_NOTES.md": "docs: notas oficiales de lanzamiento",
     "requirements-dev.txt": "deps: dependencias de desarrollo y test",
     "requirements-lock.txt": "deps: versiones fijadas para despliegue",
     "requirements.txt": "deps: dependencias de produccion",
     "rtms.exe.config": "config: manifiesto de ejecucion CLR .NET",
     "run.bat": "tools: lanzador rapido para Windows",
+    "scripts": "scripts: utilidades de arranque y test",
+    "SECURITY.md": "docs: politica de reporte de seguridad",
+    "tests": "tests: suite de pruebas automatizadas",
+    "THIRD_PARTY_NOTICES.md": "legal: licencias de librerias de terceros",
+    "uv.lock": "deps: resolucion determinista de paquetes",
 }
 
 
