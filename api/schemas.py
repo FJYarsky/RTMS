@@ -37,6 +37,8 @@ class CameraConfigUpdate(BaseModel):
     auto_start: Optional[bool] = True
     zerolatency: Optional[bool] = True
     is_virtual: Optional[bool] = False
+    udp_mode: Optional[Literal["multicast", "unicast"]] = "multicast"
+    udp_host: Optional[str] = "127.0.0.1"
 
     @field_validator("srt_passphrase")
     @classmethod

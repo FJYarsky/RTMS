@@ -76,6 +76,14 @@ async def stream_preview(request: Request, device_path: str, ticket: Optional[st
     proc = stream_manager.get_proc(dp)
     cfg = proc.config if (proc and proc.config) else (cam or {})
 
+    raw_device = cfg.get("device_path", cfg.get("friendly_name", dp))
+    is_virtual = bool(
+        str(raw_device).startswith("virtual://")
+        or str(raw_device).startswith("testsrc")
+        or cfg.get("is_virtual_generator", False)
+        or cfg.get("is_virtual", False)
+    )
+
     is_running = proc.is_alive if proc else False
     if is_running:
         protocol = cfg.get("protocol", "srt")
@@ -103,6 +111,8 @@ async def stream_preview(request: Request, device_path: str, ticket: Optional[st
             )
         else:
             port = cfg.get("port", 9000)
+            udp_mode = cfg.get("udp_mode", "multicast")
+            udp_host = cfg.get("udp_host", "127.0.0.1")
             url = build_stream_url(
                 protocol=protocol,
                 port=port,
@@ -110,11 +120,16 @@ async def stream_preview(request: Request, device_path: str, ticket: Optional[st
                 mode="caller",
                 latency_ms=latency,
                 zerolatency=zerolatency,
+                udp_mode=udp_mode,
+                udp_host=udp_host,
             )
-        gen = preview_manager.generate_mjpeg_stream(url, is_dshow=False, identifier=dp)
+        gen = preview_manager.generate_mjpeg_stream(url, is_dshow=False, is_virtual=False, identifier=dp)
     else:
-        dshow_target = cfg.get("friendly_name", dp)
-        gen = preview_manager.generate_mjpeg_stream(dshow_target, is_dshow=True, identifier=dp)
+        if is_virtual:
+            gen = preview_manager.generate_mjpeg_stream("virtual", is_dshow=False, is_virtual=True, identifier=dp)
+        else:
+            dshow_target = cfg.get("friendly_name", dp)
+            gen = preview_manager.generate_mjpeg_stream(dshow_target, is_dshow=True, is_virtual=False, identifier=dp)
 
     async def stream_wrapper():
         try:
@@ -145,7 +160,15 @@ async def stream_preview_frame(device_path: str):
     proc = stream_manager.get_proc(dp)
     cfg = proc.config if (proc and proc.config) else (cam or {})
 
-    target = cfg.get("friendly_name", dp)
+    raw_device = cfg.get("device_path", cfg.get("friendly_name", dp))
+    is_virtual = bool(
+        str(raw_device).startswith("virtual://")
+        or str(raw_device).startswith("testsrc")
+        or cfg.get("is_virtual_generator", False)
+        or cfg.get("is_virtual", False)
+    )
+
+    target = "virtual://testsrc2" if is_virtual else cfg.get("friendly_name", dp)
     jpeg_bytes = await preview_manager.get_snapshot_frame(target)
     if not jpeg_bytes:
         raise HTTPException(status_code=503, detail="No se pudo capturar cuadro de previsualización")
@@ -165,6 +188,13 @@ async def launch_external_ffplay(device_path: str):
     cfg = proc.config if (proc and proc.config) else cam
 
     name = cfg.get("friendly_name", dp)
+    raw_device = cfg.get("device_path", name)
+    is_virtual = bool(
+        str(raw_device).startswith("virtual://")
+        or str(raw_device).startswith("testsrc")
+        or cfg.get("is_virtual_generator", False)
+        or cfg.get("is_virtual", False)
+    )
     is_running = proc.is_alive if proc else False
 
     if is_running:
@@ -194,6 +224,8 @@ async def launch_external_ffplay(device_path: str):
             title = f"RTMS Monitor — {name} (SRT :{mediamtx_port})"
         else:
             port = cfg.get("port", 9000)
+            udp_mode = cfg.get("udp_mode", "multicast")
+            udp_host = cfg.get("udp_host", "127.0.0.1")
             url = build_stream_url(
                 protocol=protocol,
                 port=port,
@@ -201,11 +233,20 @@ async def launch_external_ffplay(device_path: str):
                 mode="caller",
                 latency_ms=latency,
                 zerolatency=zerolatency,
+                udp_mode=udp_mode,
+                udp_host=udp_host,
             )
             title = f"RTMS Monitor — {name} (UDP :{port})"
-        ok = preview_manager.launch_ffplay(url, title=title, is_dshow=False)
+        ok = preview_manager.launch_ffplay(url, title=title, is_dshow=False, is_virtual=False)
     else:
-        ok = preview_manager.launch_ffplay(name, title=f"RTMS Encuadre DirectShow — {name}", is_dshow=True)
+        if is_virtual:
+            ok = preview_manager.launch_ffplay(
+                "virtual", title=f"RTMS Generador Virtual — {name}", is_dshow=False, is_virtual=True
+            )
+        else:
+            ok = preview_manager.launch_ffplay(
+                name, title=f"RTMS Encuadre DirectShow — {name}", is_dshow=True, is_virtual=False
+            )
 
     if not ok:
         raise HTTPException(

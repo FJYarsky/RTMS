@@ -7,7 +7,6 @@
 """Rutas REST para inicio, parada, configuración y estado de streams de video."""
 
 import logging
-import urllib.parse
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -121,6 +120,8 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         auto_start=config.auto_start,
         zerolatency=config.zerolatency if config.zerolatency is not None else True,
         is_virtual=config.is_virtual if config.is_virtual is not None else False,
+        udp_mode=config.udp_mode or "multicast",
+        udp_host=config.udp_host or "127.0.0.1",
     )
     if not saved:
         raise HTTPException(status_code=500, detail="Error al persistir la configuración de la cámara en disco.")
@@ -133,6 +134,8 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         proc.config["encoder"] = config.encoder or "auto"
         proc.config["srt_latency"] = config.srt_latency or 120
         proc.config["srt_passphrase"] = passphrase_to_set or ""
+        proc.config["udp_mode"] = config.udp_mode or "multicast"
+        proc.config["udp_host"] = config.udp_host or "127.0.0.1"
         if config.auto_start is not None:
             proc.config["auto_start"] = config.auto_start
         if config.zerolatency is not None:
@@ -325,30 +328,31 @@ async def get_stream_connect_url(device_path: str):
 
         passphrase = unprotect_secret(raw_pass)
     local_ip = get_local_ip()
+    from core.mediamtx_mgr import mediamtx_manager
+    from core.stream_proc import build_client_urls
 
-    if protocol == "srt":
-        from core.mediamtx_mgr import clean_camera_id, mediamtx_manager
+    mediamtx_port = mediamtx_manager.get_srt_port()
+    cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
+    udp_mode = cfg.get("udp_mode", "multicast")
 
-        mediamtx_port = mediamtx_manager.get_srt_port()
-        cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
-        clean_cam_id = clean_camera_id(cam_id)
-        query_parts = [
-            f"streamid=read:{clean_cam_id}",
-        ]
-        if passphrase:
-            query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
-        query = "&".join(query_parts)
-        url = f"srt://{local_ip}:{mediamtx_port}/?{query}"
-    else:
-        ip_last = (int(port) % 200) + 1
-        url = f"udp://239.255.0.{ip_last}:{port}?pkt_size=1316"
+    urls = build_client_urls(
+        protocol=protocol,
+        host=local_ip,
+        port=port,
+        cam_id=cam_id,
+        passphrase=passphrase,
+        mediamtx_port=mediamtx_port,
+        udp_mode=udp_mode,
+    )
 
     return JSONResponse(
         content={
             "status": "ok",
             "device_path": dp,
             "protocol": protocol,
-            "connect_url": url,
+            "udp_mode": udp_mode,
+            "connect_url": urls["connect_url"],
+            "vlc_url": urls["vlc_url"],
             "has_passphrase": bool(passphrase),
         },
         headers={
