@@ -85,7 +85,7 @@ def build_stream_url(
         params["streamid"] = streamid
     if passphrase:
         params["passphrase"] = passphrase
-    query = urllib.parse.urlencode(params)
+    query = urllib.parse.urlencode(params, safe=":")
     return f"srt://{host}:{port}?{query}"
 
 

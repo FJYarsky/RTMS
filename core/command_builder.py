@@ -148,10 +148,14 @@ async def build_ffmpeg_command(
         from core.mediamtx_mgr import mediamtx_manager
 
         mediamtx_port = mediamtx_manager.get_srt_port()
+        # En arquitectura desacoplada con MediaMTX (Fase 2), FFmpeg publica localmente
+        # por loopback (127.0.0.1) sin frase de paso para evitar rechazo BADSECRET.
+        # La protección de contraseña se aplica a los lectores externos (OBS/vMix)
+        # mediante srtReadPassphrase en MediaMTX.
         raw_url = build_stream_url(
             protocol="srt",
             port=mediamtx_port,
-            passphrase=passphrase,
+            passphrase="",
             mode="caller",
             latency_ms=latency_ms,
             zerolatency=zerolatency,

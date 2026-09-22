@@ -124,9 +124,13 @@ def unblock_app_binaries() -> int:
     return cleaned
 
 
-def setup_firewall_rules(port_range: str = "9000-9200") -> bool:
-    """Agrega o actualiza reglas en el firewall para puertos SRT/UDP sin duplicación."""
+def setup_firewall_rules(port_range: str = "8889-8990,9000-9200") -> bool:
+    """Agrega o actualiza reglas en el firewall para puertos SRT/UDP y WebRTC sin duplicación."""
     if sys.platform != "win32":
+        return False
+
+    if not is_admin():
+        logger.debug("Privilegios de administrador no detectados; omitiendo configuración automática de Firewall.")
         return False
 
     logger.info(f"Verificando y configurando regla de firewall RTMS_Media_Ports ({port_range})...")
@@ -166,7 +170,8 @@ def setup_firewall_rules(port_range: str = "9000-9200") -> bool:
         if res.returncode == 0:
             logger.info("Reglas del Firewall de Windows configuradas exitosamente.")
             return True
-        logger.warning(f"netsh retornó código {res.returncode}: {res.stderr}")
+        err_msg = (res.stderr or res.stdout or "").strip()
+        logger.warning(f"netsh retornó código {res.returncode}: {err_msg}")
         return False
     except Exception as e:
         logger.error(f"Error al configurar firewall: {e}")

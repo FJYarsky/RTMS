@@ -35,6 +35,12 @@ def terminate_all_processes(force: bool = True):
 
         async def _async_cleanup():
             await asyncio.gather(stream_manager.stop_all(), preview_manager.stop_all(), return_exceptions=True)
+            try:
+                from core.mediamtx_mgr import mediamtx_manager
+
+                mediamtx_manager.stop()
+            except Exception as ex:
+                logger.debug(f"Aviso deteniendo MediaMTX en cleanup: {ex}")
 
         if loop.is_running():
             future = asyncio.run_coroutine_threadsafe(_async_cleanup(), loop)

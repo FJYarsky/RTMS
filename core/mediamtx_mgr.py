@@ -27,6 +27,13 @@ DEFAULT_MEDIAMTX_WEBRTC_PORT = 8889
 _WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
 
 
+def clean_camera_id(cam_id: Any) -> str:
+    """Sanitiza el ID de cámara para rutas seguras en MediaMTX y URLs."""
+    import re
+
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id)) if cam_id else ""
+
+
 class MediaMTXManager:
     """
     Gestor del ciclo de vida del subproceso MediaMTX.
@@ -76,12 +83,45 @@ class MediaMTXManager:
     def generate_config(self, srt_port: Optional[int] = None) -> str:
         """
         Genera el archivo config/mediamtx.yml en caliente con los puertos configurados.
-        Garantiza que el servidor no active protocolos no requeridos.
+        Garantiza que el servidor no active protocolos no requeridos y aplica srtReadPassphrase
+        para cámaras con contraseña configurada.
         """
         if srt_port:
             self.srt_port = srt_port
 
         os.makedirs(os.path.dirname(self.config_active_path), exist_ok=True)
+
+        paths_section = ""
+        try:
+            from core.secrets_mgr import unprotect_secret
+
+            cameras = {}
+            try:
+                from core.repository import config_repository
+
+                cameras = config_repository.get_all_cameras_sync()
+            except Exception:
+                pass
+
+            if not cameras:
+                try:
+                    from core.config_mgr import load_config
+
+                    cfg = load_config()
+                    cameras = cfg.get("cameras", {})
+                except Exception:
+                    pass
+
+            for cam in cameras.values():
+                c_id = cam.get("id") or cam.get("camera_id") or cam.get("port")
+                clean_id = clean_camera_id(c_id)
+                raw_pass = cam.get("srt_passphrase", "")
+                if clean_id and raw_pass:
+                    plain_pass = unprotect_secret(raw_pass)
+                    if plain_pass:
+                        paths_section += f"  {clean_id}:\n    srtReadPassphrase: {plain_pass}\n"
+        except Exception as ex:
+            logger.debug(f"Aviso leyendo rutas de cámaras para MediaMTX: {ex}")
 
         config_content = (
             "# RTMS — Configuración Dinámica de MediaMTX (Autogenerada)\n"
@@ -95,11 +135,17 @@ class MediaMTXManager:
             "srt: yes\n"
             f"srtAddress: :{self.srt_port}\n\n"
             "paths:\n"
+            f"{paths_section}"
             "  all_others:\n"
         )
 
-        with open(self.config_active_path, "w", encoding="utf-8") as f:
+        tmp_path = self.config_active_path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             f.write(config_content)
+        try:
+            os.replace(tmp_path, self.config_active_path)
+        except OSError:
+            shutil.move(tmp_path, self.config_active_path)
 
         logger.info(f"Configuración de MediaMTX generada en {self.config_active_path} (SRT :{self.srt_port})")
         return self.config_active_path
@@ -194,6 +240,8 @@ class MediaMTXManager:
                 if self._is_shutting_down:
                     break
                 if not self.is_running():
+                    if self._is_shutting_down:
+                        break
                     logger.warning("Subproceso MediaMTX finalizado inesperadamente. Reiniciando...")
                     await self.start(self.srt_port)
             except asyncio.CancelledError:

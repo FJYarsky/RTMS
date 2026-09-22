@@ -11,11 +11,12 @@ import logging
 import re
 import sys
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from core.command_builder import build_ffmpeg_command
 from core.config_mgr import get_or_allocate_camera_config
 from core.hardware import _FFMPEG_BIN, get_directshow_devices, hardware_detector, has_ffmpeg_binary
+from core.mediamtx_mgr import clean_camera_id, mediamtx_manager
 from core.port_mgr import port_manager
 from core.sanitizer import sanitize_command_for_log, sanitize_log_line, sanitize_url
 from core.stream_proc import ErrorCategory, State, StreamProc
@@ -35,6 +36,7 @@ class StreamManager:
     def __init__(self):
         self._procs: Dict[str, StreamProc] = {}
         self._watchdog_task: Optional[asyncio.Task] = None
+        self._handling_device_lost: Set[str] = set()
 
     def get_proc(self, device_path: str) -> StreamProc:
         if device_path not in self._procs:
@@ -280,19 +282,25 @@ class StreamManager:
         await self.emergency_stop_all()
 
     async def _handle_device_lost(self, device_path: str):
-        """Maneja la desconexión física o apagado (F5/USB) de un dispositivo de captura."""
-        proc = self.get_proc(device_path)
-        devices = await get_directshow_devices()
-        detected_paths = {d["device_path"] for d in devices}
-        if device_path not in detected_paths:
-            logger.warning(f"Cámara {device_path} desconectada físicamente (hotplug/F5). Marcando DISCONNECTED.")
-            proc.is_connected = False
-            proc.transition_to(State.DISCONNECTED)
-            proc.error_count = 0
-            proc.manual_intervention_required = False
-            proc.zero_fps_since = None
-            if proc.is_alive:
-                await self.stop_stream(device_path, timeout=1.0)
+        """Maneja la desconexión física o apagado (F5/USB) de un dispositivo de captura con protección contra llamadas concurrentes redundantes."""
+        if device_path in self._handling_device_lost:
+            return
+        self._handling_device_lost.add(device_path)
+        try:
+            proc = self.get_proc(device_path)
+            devices = await get_directshow_devices()
+            detected_paths = {d["device_path"] for d in devices}
+            if device_path not in detected_paths:
+                logger.warning(f"Cámara {device_path} desconectada físicamente (hotplug/F5). Marcando DISCONNECTED.")
+                proc.is_connected = False
+                proc.transition_to(State.DISCONNECTED)
+                proc.error_count = 0
+                proc.manual_intervention_required = False
+                proc.zero_fps_since = None
+                if proc.is_alive:
+                    await self.stop_stream(device_path, timeout=1.0)
+        finally:
+            self._handling_device_lost.discard(device_path)
 
     async def watchdog(self):
         """
@@ -468,22 +476,42 @@ class StreamManager:
                     logger.warning(f"[{device_path}] Error en FFmpeg: {clean_line}")
 
                     # Clasificación de categoría de error según diagnóstico de FFmpeg
-                    if (
-                        "could not find video device" in line_lower
-                        or "device not found" in line_lower
-                        or "dshow: could not" in line_lower
-                        or "cannot find video device" in line_lower
-                        or "capture device was lost" in line_lower
-                        or "device removed" in line_lower
-                        or "error reading from input" in line_lower
-                        or "input/output error" in line_lower
-                        or "i/o error" in line_lower
-                    ):
+                    is_output_or_net = any(
+                        term in line_lower
+                        for term in [
+                            "out#",
+                            "error opening output",
+                            "connection to srt",
+                            "[srt @",
+                            "connection refused",
+                            "bind failed",
+                            "badsecret",
+                            "incorrect passphrase",
+                            "broken pipe",
+                            "destination unreachable",
+                            "connection reset",
+                        ]
+                    )
+
+                    is_dshow_input = any(
+                        term in line_lower
+                        for term in [
+                            "could not find video device",
+                            "cannot find video device",
+                            "device not found",
+                            "dshow: could not",
+                            "capture device was lost",
+                            "device removed",
+                            "error reading from input",
+                        ]
+                    ) or (("input/output error" in line_lower or "i/o error" in line_lower) and not is_output_or_net)
+
+                    if is_dshow_input:
                         proc.last_error_category = ErrorCategory.DEVICE
                         asyncio.create_task(self._handle_device_lost(device_path))
                     elif "error while opening encoder" in line_lower:
                         proc.last_error_category = ErrorCategory.ENCODER
-                    elif "connection refused" in line_lower or "bind failed" in line_lower:
+                    elif is_output_or_net:
                         proc.last_error_category = ErrorCategory.NETWORK
                     else:
                         proc.last_error_category = ErrorCategory.PROCESS
@@ -568,13 +596,18 @@ class StreamManager:
 
     def get_all_statuses(self) -> List[Dict[str, Any]]:
         statuses = []
+        mediamtx_port = mediamtx_manager.get_srt_port()
+
         for dp, proc in self._procs.items():
             cfg = proc.config or {}
             raw_pass = cfg.get("srt_passphrase", "")
             raw_url = cfg.get("_url", "")
+            cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{cfg.get('port', 9000)}"
+            clean_cam_id = clean_camera_id(cam_id)
             statuses.append(
                 {
                     "id": cfg.get("id", ""),
+                    "clean_cam_id": clean_cam_id,
                     "device_path": dp,
                     "friendly_name": cfg.get("friendly_name", dp),
                     "resolution": cfg.get("resolution", "720p"),
@@ -582,6 +615,7 @@ class StreamManager:
                     "bitrate": cfg.get("bitrate", 3000),
                     "protocol": cfg.get("protocol", "srt"),
                     "port": cfg.get("port", 9000),
+                    "mediamtx_port": mediamtx_port,
                     "encoder": cfg.get("encoder", "auto"),
                     "actual_encoder": cfg.get("_actual_encoder", proc.per_stream_encoder or "auto"),
                     "srt_latency": cfg.get("srt_latency", 120),
