@@ -82,7 +82,6 @@ def test_security_md_supported_versions():
     assert re.search(rf"\|\s*<\s*{current_version}\s*\|\s*:x:\s*\|", content)
 
 
-
 def test_release_workflow_updates_security_md():
     """Valida que el pipeline de release contenga el paso de actualización de SECURITY.md."""
     root = get_repo_root()
