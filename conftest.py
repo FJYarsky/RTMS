@@ -46,8 +46,8 @@ def cleanup_stream_manager():
     yield
     import asyncio
 
-    from core.ffmpeg_mgr import stream_manager
     from core.preview_mgr import preview_manager
+    from core.stream_manager import stream_manager
 
     if stream_manager._watchdog_task and not stream_manager._watchdog_task.done():
         stream_manager._watchdog_task.cancel()
