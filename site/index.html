@@ -168,7 +168,7 @@
                             <span class="hud-tag">CPU</span>
                             <span class="hud-value">4.2%</span>
                         </div>
-                        <div class="mockup-hud-item">
+                        <div class="mockup-hud-item hud-wide">
                             <span class="hud-tag">GPU (NVML)</span>
                             <span class="hud-value">11% • RTX 3070</span>
                         </div>
@@ -569,7 +569,7 @@
                     <p class="step-desc" data-i18n="s1_desc">
                         Descarga el archivo portable y descomprime el contenido en cualquier carpeta de tu disco (por ejemplo en tu escritorio o disco secundario).
                     </p>
-                    <div class="code-box">
+                    <div class="code-box code-box-simple">
                         <span>C:\RTMS\</span>
                         <span style="color: var(--text-muted);" data-i18n="s1_box">Carpeta limpia</span>
                     </div>
@@ -582,7 +582,7 @@
                     <p class="step-desc" data-i18n="s2_desc">
                         Haz doble clic en <code>rtms.exe</code> para iniciar el servidor. Se abrirá automáticamente la ventana nativa de control y telemetría.
                     </p>
-                    <div class="code-box">
+                    <div class="code-box code-box-simple">
                         <span>rtms.exe</span>
                         <span style="color: var(--status-green);" data-i18n="s2_box">● Ejecutable nativo</span>
                     </div>
@@ -593,16 +593,25 @@
                     <div class="step-number">03</div>
                     <h3 class="step-title" data-i18n="s3_title">Conectar en OBS Studio o vMix</h3>
                     <p class="step-desc" data-i18n="s3_desc">
-                        Agrega una <strong>Fuente multimedia</strong>, desmarca <em>Archivo local</em> y pega la URL en modo <em>Caller</em> con formato <code>mpegts</code>:
+                        En OBS Studio o vMix, agrega una <strong>Fuente multimedia</strong> (desmarcando <em>Archivo local</em>). Cada cámara en RTMS genera su URL directa, o puedes guiarte con la siguiente <strong>plantilla de conexión</strong>:
                     </p>
-                    <div class="code-box">
-                        <span id="obs-srt-sample">srt://127.0.0.1:8890?streamid=read:cam_1&latency=120000</span>
-                        <button class="btn-copy" data-copy-target="obs-srt-sample" title="Copiar URL al portapapeles">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                        </button>
+                    <div class="code-box code-box-template">
+                        <div class="code-box-header">
+                            <span class="code-box-tag" data-i18n="s3_tag">Plantilla de Conexión (Ejemplo)</span>
+                        </div>
+                        <div class="code-box-content">
+                            <span id="obs-srt-sample" data-i18n="s3_sample_url">srt://127.0.0.1:8890?streamid=read:<span class="code-param">&lt;ID_CAMARA&gt;</span>&amp;latency=120000</span>
+                            <button class="btn-copy" data-copy-target="obs-srt-sample" title="Copiar plantilla de ejemplo">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span class="btn-copy-label" data-i18n="s3_copy_btn">Copiar plantilla</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="step-hint" data-i18n="s3_hint">
+                        💡 <strong>Tip:</strong> Dentro de RTMS puedes copiar el enlace exacto de cada cámara con un clic. Reemplaza <code>&lt;ID_CAMARA&gt;</code> por el identificador de tu cámara y <code>127.0.0.1</code> por la IP local si transmites hacia otra PC en tu red.
                     </div>
                 </div>
             </div>

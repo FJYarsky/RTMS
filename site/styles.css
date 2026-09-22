@@ -924,30 +924,100 @@ body::before {
     font-family: var(--font-mono);
     font-size: 0.8rem;
     color: var(--cyan);
+    word-break: break-all;
+}
+
+.code-box.code-box-simple {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+}
+
+.code-box.code-box-template {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-color: rgba(56, 189, 248, 0.25);
+}
+
+.code-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.code-box-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--teal);
+}
+
+.code-box-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     word-break: break-all;
 }
 
+.code-param {
+    color: #f59e0b;
+    font-weight: 700;
+}
+
 .btn-copy {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
     flex-shrink: 0;
+    font-family: var(--font-sans);
+    font-size: 0.76rem;
+    font-weight: 600;
 }
 
 .btn-copy:hover {
-    color: var(--text-primary);
+    color: #ffffff;
+    background: rgba(20, 184, 166, 0.18);
+    border-color: var(--teal);
+}
+
+.btn-copy.copied {
+    border-color: var(--status-green);
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--status-green);
+}
+
+.step-hint {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: rgba(56, 189, 248, 0.06);
+    border-left: 3px solid var(--cyan);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+.step-hint code {
     background: rgba(255, 255, 255, 0.08);
+    color: var(--cyan);
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 0.85em;
 }
 
 /* TECH STACK BADGES */
@@ -1109,11 +1179,92 @@ body::before {
         font-size: 1rem;
         padding: 14px 20px;
     }
+    .system-specs-bar {
+        gap: 8px;
+    }
+    .spec-badge {
+        font-size: 0.78rem;
+        padding: 5px 10px;
+    }
     .security-banner {
         padding: 24px 18px;
     }
+    .bento-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* MOCKUP & MÉTRICAS EN MODO TELÉFONO */
     .mockup-header {
         flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 10px 14px;
+    }
+
+    .mockup-dots {
+        align-self: flex-start;
+    }
+
+    .mockup-hud {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 12px;
+        padding: 8px 12px;
+        width: 100%;
+        font-size: 0.72rem;
+    }
+
+    .mockup-hud-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        white-space: nowrap;
+        gap: 6px;
+    }
+
+    .mockup-hud-item.hud-wide {
+        grid-column: span 2;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 3px 0;
+    }
+
+    .mockup-body {
+        padding: 14px 12px;
+    }
+
+    .camera-card {
+        padding: 12px 14px;
+    }
+
+    /* Evitar desbordes de metadatos y URL SRT en cámaras */
+    .stream-meta-row {
+        flex-direction: column;
         align-items: flex-start;
+        gap: 3px;
+        padding: 6px 0;
+    }
+
+    .stream-meta-row .meta-code {
+        font-size: 0.75rem;
+        word-break: break-all;
+        background: rgba(0, 0, 0, 0.35);
+        padding: 4px 8px;
+        border-radius: var(--radius-sm);
+        display: block;
+        width: 100%;
+    }
+
+    /* Paso 3 de conexión en modo teléfono */
+    .code-box-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .code-box-content .btn-copy {
+        width: 100%;
+        justify-content: center;
+        padding: 8px 12px;
     }
 }

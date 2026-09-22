@@ -34,17 +34,21 @@ const TRANSLATIONS = {
         spec_dpapi: "Cifrado DPAPI Nativo",
         spec_latency: "MediaMTX Ingestion (&lt;100 ms)",
         hud_streams: "2 Activos",
+        cam1_name: "Logitech C920 Pro HD",
         cam1_type: "Dispositivo Físico DirectShow",
         cam_live: "● EN VIVO",
         cam_stopped: "DETENIDO",
         cam_encoder_label: "Codificador:",
         cam_res_label: "Resolución & FPS:",
         cam_dest_label: "Destino SRT:",
+        cam2_name: "Elgato Cam Link 4K",
         cam2_type: "Capturadora HDMI Externa",
+        cam3_name: "NVIDIA Broadcast",
         cam3_type: "Cámara Virtual IA (Aislada)",
         cam3_status_label: "Estado:",
         cam3_status_val: "Reposo (0% CPU/GPU)",
         cam3_port_label: "Puerto asignado:",
+        cam3_port_val: "Puerto 8890",
         cam3_policy_label: "Política:",
         cam3_policy_val: "Sin autoinicio forzado",
         resolve_tag: "Desafíos del DirectShow en Windows",
@@ -102,7 +106,11 @@ const TRANSLATIONS = {
         s2_desc: "Haz doble clic en <code>rtms.exe</code> para iniciar el servidor. Se abrirá automáticamente la ventana nativa de control y telemetría.",
         s2_box: "Ejecutable nativo",
         s3_title: "Conectar en OBS Studio o vMix",
-        s3_desc: "Agrega una <strong>Fuente multimedia</strong>, desmarca <em>Archivo local</em> y pega la URL en modo <em>Caller</em> con formato <code>mpegts</code>:",
+        s3_desc: "En OBS Studio o vMix, agrega una <strong>Fuente multimedia</strong> (desmarcando <em>Archivo local</em>). Cada cámara en RTMS genera su URL directa, o puedes guiarte con la siguiente <strong>plantilla de conexión</strong>:",
+        s3_tag: "Plantilla de Conexión (Ejemplo)",
+        s3_sample_url: "srt://127.0.0.1:8890?streamid=read:<span class=\"code-param\">&lt;ID_CAMARA&gt;</span>&amp;latency=120000",
+        s3_copy_btn: "Copiar plantilla",
+        s3_hint: "💡 <strong>Tip:</strong> Dentro de RTMS puedes copiar el enlace exacto de cada cámara con un clic. Reemplaza <code>&lt;ID_CAMARA&gt;</code> por el identificador de tu cámara y <code>127.0.0.1</code> por la IP local si transmites hacia otra PC en tu red.",
         tech_tag: "Ecosistema & Silicio",
         tech_title: "Tecnologías que Incluye",
         tech_desc: "Construido sobre estándares industriales de video, telecomunicaciones y seguridad de bajo nivel.",
@@ -147,17 +155,21 @@ const TRANSLATIONS = {
         spec_dpapi: "Native DPAPI Encryption",
         spec_latency: "MediaMTX Ingestion (&lt;100 ms)",
         hud_streams: "2 Active",
+        cam1_name: "Logitech C920 Pro HD",
         cam1_type: "DirectShow Physical Device",
         cam_live: "● LIVE",
         cam_stopped: "STOPPED",
         cam_encoder_label: "Encoder:",
         cam_res_label: "Resolution & FPS:",
         cam_dest_label: "SRT Destination:",
+        cam2_name: "Elgato Cam Link 4K",
         cam2_type: "External HDMI Capture Card",
+        cam3_name: "NVIDIA Broadcast",
         cam3_type: "AI Virtual Camera (Isolated)",
         cam3_status_label: "Status:",
         cam3_status_val: "Idle (0% CPU/GPU)",
         cam3_port_label: "Assigned port:",
+        cam3_port_val: "Port 8890",
         cam3_policy_label: "Policy:",
         cam3_policy_val: "No forced autostart",
         resolve_tag: "DirectShow Challenges on Windows",
@@ -215,7 +227,11 @@ const TRANSLATIONS = {
         s2_desc: "Double-click <code>rtms.exe</code> to start the server. The native control window and telemetry dashboard will open automatically.",
         s2_box: "Native executable",
         s3_title: "Connect in OBS Studio or vMix",
-        s3_desc: "Add a <strong>Media Source</strong>, uncheck <em>Local File</em>, and paste the URL in <em>Caller</em> mode with <code>mpegts</code> format:",
+        s3_desc: "In OBS Studio or vMix, add a <strong>Media Source</strong> (unchecking <em>Local File</em>). Each active camera inside RTMS generates its own direct link, or you can reference this <strong>connection template</strong>:",
+        s3_tag: "Connection Template (Example)",
+        s3_sample_url: "srt://127.0.0.1:8890?streamid=read:<span class=\"code-param\">&lt;CAMERA_ID&gt;</span>&amp;latency=120000",
+        s3_copy_btn: "Copy template",
+        s3_hint: "💡 <strong>Tip:</strong> Inside RTMS, each active camera displays its exact link ready to copy with a single click. Replace <code>&lt;CAMERA_ID&gt;</code> with your camera identifier and <code>127.0.0.1</code> with your server's local IP if streaming to another PC.",
         tech_tag: "Ecosystem & Silicon",
         tech_title: "Included Technologies",
         tech_desc: "Built on top of industry-standard video, telecom, and low-level system security protocols.",
@@ -427,17 +443,19 @@ function initCopyButtons() {
                 await navigator.clipboard.writeText(textToCopy);
                 
                 const originalHtml = button.innerHTML;
+                const feedbackText = currentLang === 'es' ? '¡Plantilla copiada!' : 'Template copied!';
+                button.classList.add('copied');
                 button.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
+                    <span class="btn-copy-label">${feedbackText}</span>
                 `;
-                button.style.color = '#10b981';
 
                 setTimeout(() => {
+                    button.classList.remove('copied');
                     button.innerHTML = originalHtml;
-                    button.style.color = '';
-                }, 2000);
+                }, 2200);
             } catch (err) {
                 console.error('Fallo al copiar al portapapeles:', err);
             }
