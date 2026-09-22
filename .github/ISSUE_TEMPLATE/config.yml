@@ -1,0 +1,12 @@
+# RTMS — Configuración del selector de Issues en GitHub
+blank_issues_enabled: false
+contact_links:
+  - name: "🔒 Reporte Confidencial de Seguridad"
+    url: https://github.com/FJYarsky/RTMS/blob/main/SECURITY.md
+    about: "Por favor NO abras un issue público para vulnerabilidades. Consulta nuestra política de seguridad y canal privado."
+  - name: "💬 Preguntas y Discusiones de la Comunidad"
+    url: https://github.com/FJYarsky/RTMS/discussions
+    about: "¿Tienes dudas de uso, configuración de streaming o ideas generales? Consulta con la comunidad aquí."
+  - name: "📖 Documentación y Guías de RTMS"
+    url: https://github.com/FJYarsky/RTMS/tree/main/docs
+    about: "Explora la documentación técnica, guías de arquitectura y resolución de problemas frecuentes."

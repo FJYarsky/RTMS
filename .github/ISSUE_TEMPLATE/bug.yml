@@ -1,43 +1,111 @@
-# RTMS — Plantilla de reporte de errores
-name: Reporte de Error (Bug)
-description: Reporta un fallo o comportamiento inesperado en RTMS.
+# RTMS — Plantilla interactiva de reporte de errores (GitHub Issue Form)
+name: "Reporte de Error (Bug)"
+description: "Reporta un fallo, cuelgue o comportamiento inesperado en RTMS."
 title: "[BUG]: "
-labels: ["bug"]
+labels: ["bug", "triage"]
 body:
   - type: markdown
     attributes:
-      value: Gracias por tomarte el tiempo de reportar este problema en RTMS.
+      value: |
+        Gracias por tomarte el tiempo de reportar este problema.
+        > [!IMPORTANT]
+        > Si se trata de una vulnerabilidad de seguridad que expone datos o equipos, por favor **NO** abras este formulario público. Revisa nuestra [Política de Seguridad](https://github.com/FJYarsky/RTMS/blob/main/SECURITY.md).
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Verificaciones Previas
+      description: Por favor confirma los siguientes puntos antes de enviar el reporte.
+      options:
+        - label: He buscado en los issues abiertos y cerrados para asegurarme de que este problema no haya sido reportado previamente.
+          required: true
+        - label: He comprobado que estoy ejecutando la versión más reciente liberada de RTMS (o la rama main oficial).
+          required: true
+        - label: He verificado que los logs adjuntos no contengan contraseñas, tokens SRT ni información personal sensible.
+          required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente Afectado
+      description: Selecciona el subsistema donde se manifiesta el fallo.
+      options:
+        - "Detección de Cámaras / DirectShow / Hotplug"
+        - "Motor de Transmisión (FFmpeg / SRT Publisher)"
+        - "Media Server Central (MediaMTX / Puertos 8890)"
+        - "Base de Datos y Persistencia (SQLite / WAL)"
+        - "Interfaz de Usuario (PySide6 / Web GUI)"
+        - "API REST / WebSockets (FastAPI)"
+        - "Gestor de Procesos de Kernel (Win32 Job Objects)"
+        - "Gestor de Energía / Rendimiento de Windows"
+        - "Empaquetado Portable (.exe)"
+        - "Otro"
+    validations:
+      required: true
+
   - type: input
     id: version
     attributes:
       label: Versión de RTMS
-      description: ¿Qué versión de RTMS estás ejecutando? (ej. v2.2.1)
+      description: ¿Qué versión de RTMS estás ejecutando?
+      placeholder: ej. v2.5.0
     validations:
       required: true
+
   - type: input
-    id: os
+    id: os_version
     attributes:
-      label: Versión de Windows
-      description: Ejemplo Windows 11 Pro 23H2 (Build 22631)
+      label: Entorno de Windows
+      description: Especifica la edición y build de Windows.
+      placeholder: ej. Windows 11 Pro 23H2 (Build 22631.3880)
     validations:
       required: true
+
+  - type: input
+    id: hardware_info
+    attributes:
+      label: Hardware Involucrado (Opcional)
+      description: Modelo de GPU, CPU y modelo de cámara / capturadora.
+      placeholder: ej. NVIDIA RTX 3070 (Driver 555.85), Intel i7-12700K, Logitech Brio 4K
+    validations:
+      required: false
+
   - type: textarea
     id: description
     attributes:
-      label: Descripción del problema
-      description: Explica qué ocurrió y qué esperabas que sucediera.
+      label: Descripción del Problema
+      description: Explica claramente qué ocurrió y qué esperabas que sucediera.
     validations:
       required: true
+
   - type: textarea
     id: steps
     attributes:
-      label: Pasos para reproducir
-      description: 1. Iniciar cámara X... 2. Cambiar resolución...
+      label: Pasos para Reproducir
+      description: Describe los pasos exactos y secuenciales para reproducir el fallo.
+      placeholder: |
+        1. Iniciar RTMS v2.5.0...
+        2. Seleccionar cámara DirectShow 'Logitech Brio'...
+        3. Configurar codificador 'h264_nvenc' e iniciar transmisión...
+        4. Abrir cliente OBS Studio apuntando a srt://127.0.0.1:8890?streamid=read:cam_1...
+        5. Desconectar físicamente la cámara USB durante la transmisión...
+        6. Observar el comportamiento inesperado...
     validations:
       required: true
+
   - type: textarea
     id: logs
     attributes:
-      label: Registros de FFmpeg / Consola (Sanitizados)
-      description: Pega aquí los fragmentos relevantes del log (no incluyas contraseñas personales).
+      label: Registros de Consola / FFmpeg (Sanitizados)
+      description: Pega aquí los fragmentos relevantes de logs generados por RTMS o salida de consola de FFmpeg.
       render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Capturas o Información Adicional
+      description: Arrastra y suelta imágenes, capturas de pantalla o proporciona cualquier detalle técnico complementario.
+    validations:
+      required: false

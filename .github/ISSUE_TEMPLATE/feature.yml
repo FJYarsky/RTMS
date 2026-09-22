@@ -1,20 +1,74 @@
-# RTMS — Plantilla de solicitud de funcionalidades
-name: Solicitud de Función (Feature Request)
-description: Propón una nueva funcionalidad o mejora arquitectónica para RTMS.
+# RTMS — Plantilla interactiva de solicitud de funciones (GitHub Issue Form)
+name: "Solicitud de Función (Feature Request)"
+description: "Propón una nueva funcionalidad, optimización o soporte de hardware para RTMS."
 title: "[FEAT]: "
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por querer mejorar RTMS! Por favor detalla tu propuesta para que la comunidad y el equipo de desarrollo puedan analizar su viabilidad arquitectónica.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Verificación Previa
+      options:
+        - label: He revisado las solicitudes existentes y no existe una propuesta similar o duplicada en discusión.
+          required: true
+
+  - type: dropdown
+    id: feature_type
+    attributes:
+      label: Tipo de Propuesta
+      description: Categoriza el alcance principal de tu propuesta.
+      options:
+        - "Nueva Funcionalidad Principal"
+        - "Mejora de Funcionalidad Existente"
+        - "Optimización de Rendimiento / Reducción de Latencia"
+        - "Soporte de Nuevo Protocolo, Códec o Dispositivo"
+        - "Mejora de Interfaz Gráfica o Experiencia de Usuario (UI/UX)"
+        - "Documentación / Automatización / Herramientas de Desarrollo"
+    validations:
+      required: true
+
   - type: textarea
     id: problem
     attributes:
-      label: ¿Qué problema resuelve esta propuesta?
-      description: Describe claramente la motivación o caso de uso.
+      label: ¿Qué problema o necesidad resuelve esta propuesta?
+      description: Describe claramente la motivación, limitación actual o caso de uso en producción.
+      placeholder: "Actualmente cuando se utiliza RTMS en escenarios con N cámaras..."
     validations:
       required: true
+
   - type: textarea
     id: solution
     attributes:
-      label: Solución o comportamiento propuesto
-      description: Explica cómo debería funcionar la nueva característica.
+      label: Solución o Comportamiento Propuesto
+      description: Explica cómo debería funcionar la nueva característica, qué configuración requeriría y cómo interactuaría con el sistema.
     validations:
       required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas Consideradas
+      description: Describe cualquier solución alternativa, software de terceros o soluciones temporales que hayas evaluado.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Contexto Adicional, Diagramas o Mockups
+      description: Agrega bocetos, enlaces a RFCs, especificaciones de protocolos o cualquier referencia técnica complementaria.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: Disposición a Colaborar
+      options:
+        - label: Estoy dispuesto/a a colaborar con la implementación (Pull Request) o participar activamente en las pruebas de validación.
+          required: false

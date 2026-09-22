@@ -1,0 +1,57 @@
+# RTMS — Plantilla interactiva de documentación (GitHub Issue Form)
+name: "Corrección o Mejora de Documentación"
+description: "Reporta enlaces rotos, guías desactualizadas o documentación técnica faltante en RTMS."
+title: "[DOC]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Una documentación clara y precisa es fundamental para RTMS. Gracias por reportar errores o sugerir mejoras en nuestros manuales, especificaciones y guías.
+
+  - type: dropdown
+    id: doc_category
+    attributes:
+      label: Tipo de Problema Detectado
+      description: Selecciona la categoría que mejor describe el problema en la documentación.
+      options:
+        - "Enlace roto o recurso no disponible"
+        - "Comandos o instrucciones de instalación desactualizadas"
+        - "Error tipográfico, gramatical o de redacción"
+        - "Documentación técnica faltante para una función o endpoint"
+        - "Propuesta de nuevo tutorial, diagrama o ejemplo de arquitectura"
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Archivo o Sección Afectada
+      description: Indica el archivo, enlace web o sección específica donde se encuentra el problema.
+      placeholder: ej. README.md (Sección 'Parámetros SRT'), docs/architecture.md, o API /docs
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem_description
+    attributes:
+      label: Descripción del Problema
+      description: Explica qué información es incorrecta, confusa o se encuentra desactualizada.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested_fix
+    attributes:
+      label: Corrección Sugerida o Texto Propuesto (Opcional)
+      description: Proporciona la redacción o código corregido si tienes una sugerencia clara.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribución
+      options:
+        - label: Estoy dispuesto/a a enviar un Pull Request con la corrección propuesta.
+          required: false

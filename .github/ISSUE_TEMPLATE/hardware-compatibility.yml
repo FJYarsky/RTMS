@@ -1,45 +1,123 @@
-# RTMS — Plantilla de compatibilidad de hardware
-name: Compatibilidad de Hardware / Cámara
-description: Reporta resultados de pruebas con modelos específicos de cámaras, capturadoras o GPUs.
+# RTMS — Plantilla interactiva de compatibilidad de hardware (GitHub Issue Form)
+name: "Compatibilidad de Hardware / Cámara"
+description: "Reporta resultados de pruebas de compatibilidad y rendimiento con cámaras, capturadoras o GPUs en RTMS."
 title: "[HW]: "
 labels: ["hardware", "compatibility"]
 body:
-  - type: input
-    id: camera_model
+  - type: markdown
     attributes:
-      label: Modelo de Cámara / Capturadora
-      description: Ejemplo Logitech Brio 4K, Cam Link 4K, Elgato Facecam
-    validations:
-      required: true
-  - type: input
-    id: gpu_model
-    attributes:
-      label: Modelo de Tarjeta Gráfica (GPU) y Driver
-      description: Ejemplo NVIDIA GeForce RTX 3070 (Driver 555.85)
-    validations:
-      required: true
+      value: |
+        Este formulario permite alimentar la matriz comunitaria de compatibilidad de hardware de RTMS. Tus datos ayudan a otros usuarios a elegir dispositivos probados y estables.
+
   - type: dropdown
-    id: encoder_used
+    id: device_type
     attributes:
-      label: Codificador Utilizado
+      label: Tipo de Dispositivo
+      description: Selecciona la categoría principal del equipo evaluado.
       options:
-        - h264_nvenc (NVIDIA)
-        - h264_qsv (Intel)
-        - h264_amf (AMD)
-        - libx264 (CPU)
+        - "Cámara Web USB (DirectShow / UVC)"
+        - "Cámara Profesional / PTZ / Camcorder (HDMI/USB/DirectShow)"
+        - "Placa de Captura de Video (PCIe / USB 3.0)"
+        - "Cámara IP de Red (RTSP / RTMP / ONVIF)"
+        - "Tarjeta Gráfica / GPU (Acelerador de Codificación)"
+        - "Conmutador / Switcher de Video (Atem, Roland, etc.)"
+        - "Otro Dispositivo Multimedia"
     validations:
       required: true
+
   - type: input
-    id: resolution_fps
+    id: device_model
     attributes:
-      label: Resolución y Tasa de Cuadros
-      description: Ejemplo 1080p @ 60 FPS o 4K @ 30 FPS
+      label: Fabricante y Modelo Exacto
+      description: Marca comercial y número de modelo exacto del dispositivo probado.
+      placeholder: ej. Logitech Brio 4K / Elgato Cam Link 4K / Magewell Pro Capture Quad HDMI
     validations:
       required: true
+
+  - type: input
+    id: interface_driver
+    attributes:
+      label: Interfaz de Conexión y Driver / Firmware
+      description: Tipo de bus físico (USB 3.0 directo, Hub, PCIe x4, Ethernet Gigabit) y versión de controlador.
+      placeholder: ej. USB 3.2 Gen 1 (Conexión trasera directa a placa madre), Firmware v2.0.46
+    validations:
+      required: true
+
+  - type: input
+    id: host_specs
+    attributes:
+      label: Especificaciones del Sistema Host
+      description: CPU, memoria RAM, GPU dedicada y versión de Windows.
+      placeholder: ej. Windows 11 Pro 23H2, Intel Core i7-13700K, 32GB RAM, NVIDIA RTX 4070 (Driver 560.81)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: encoder_tested
+    attributes:
+      label: Codificador Utilizado en las Pruebas
+      description: Motor de aceleración por hardware o software configurado en RTMS.
+      options:
+        - "h264_nvenc (NVIDIA NVENC H.264)"
+        - "hevc_nvenc (NVIDIA NVENC HEVC/H.265)"
+        - "h264_qsv (Intel Quick Sync H.264)"
+        - "hevc_qsv (Intel Quick Sync HEVC/H.265)"
+        - "h264_amf (AMD AMF H.264)"
+        - "hevc_amf (AMD AMF HEVC/H.265)"
+        - "libx264 (Software CPU H.264)"
+        - "libx265 (Software CPU HEVC/H.265)"
+    validations:
+      required: true
+
+  - type: input
+    id: stream_profile
+    attributes:
+      label: Perfil de Transmisión (Resolución, FPS y Bitrate)
+      description: Configuración exacta utilizada durante el test.
+      placeholder: ej. 1920x1080 @ 60 FPS — 6000 kbps (o 3840x2160 @ 30 FPS — 15000 kbps)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: test_duration
+    attributes:
+      label: Duración Continua de la Prueba
+      description: ¿Durante cuánto tiempo consecutivo se mantuvo la transmisión activa?
+      options:
+        - "Menos de 30 minutos"
+        - "30 minutos a 2 horas"
+        - "2 a 6 horas continuas"
+        - "Más de 6 horas continuas (prueba de estrés y estabilidad prolongada)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: Veredicto de Compatibilidad y Estabilidad
+      description: Evaluación general del comportamiento del dispositivo con RTMS.
+      options:
+        - "✅ Totalmente Compatible (Excelente estabilidad, sincronía perfecta y 0 frames descartados)"
+        - "⚠️ Compatible con Advertencias (Funciona correctamente pero requiere parámetros manuales específicos)"
+        - "⚠️ Inestable (Desconexiones esporádicas, fluctuaciones severas de FPS o problemas de sincronía A/V)"
+        - "❌ Incompatible (Falla al inicializar en FFmpeg / DirectShow, causa freeze o reinicio de driver)"
+    validations:
+      required: true
+
   - type: textarea
-    id: observation
+    id: observations
     attributes:
-      label: Observaciones de Rendimiento y Estabilidad
-      description: Describa la latencia percibida, consumo de GPU y estabilidad durante transmisiones prolongadas.
+      label: Observaciones de Telemetría, Latencia y Comportamiento Hotplug
+      description: Indica uso promedio de CPU/GPU, temperatura, latencia percibida en SRT/WebRTC y cómo responde ante desconexión y reconexión física de la cámara.
+      placeholder: "Temperatura GPU estable en 52°C, uso de CPU < 8%. Al desconectar el cable USB, el sistema transiciona a DISCONNECTED y al reconectar retoma el stream en 3 segundos..."
     validations:
       required: true
+
+  - type: textarea
+    id: custom_flags
+    attributes:
+      label: Parámetros o Flags Especiales Requeridos (Opcional)
+      description: Si tuviste que ajustar opciones de DirectShow, buffer de entrada o banderas de FFmpeg para lograr estabilidad, compártelas aquí.
+      render: shell
+    validations:
+      required: false
