@@ -16,11 +16,23 @@ RTMS distribuye e interactúa con componentes de software de terceros. Este docu
 
 ---
 
-## 2. Paquetes y Frameworks Python
+## 2. MediaMTX (bluenviron/mediamtx)
+
+- **Proyecto**: MediaMTX (https://github.com/bluenviron/mediamtx)
+- **Binario Incluido**: `bin/mediamtx.exe`
+- **Licencia**: MIT License (Copyright (c) 2020-2024 MediaMTX authors)
+- **Texto de Licencia**:
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+---
+
+## 3. Paquetes y Frameworks Python
 
 - **FastAPI**: MIT License (Copyright (c) Sebastián Ramírez)
 - **Starlette**: BSD 3-Clause License (Copyright (c) Encode OSS Ltd.)
 - **Uvicorn**: BSD 3-Clause License (Copyright (c) Encode OSS Ltd.)
+- **aiosqlite**: MIT License (Copyright (c) Amethyst Reese)
 - **pywebview**: BSD 3-Clause License (Copyright (c) Roman Sakno)
 - **pystray**: LGPLv3 / GPLv3 License (Copyright (c) Moses Palmér)
 - **Pillow (PIL)**: Historical Permission Notice and Disclaimer (HPND) (Copyright (c) Jeffrey A. Clark and contributors)
@@ -30,6 +42,6 @@ RTMS distribuye e interactúa con componentes de software de terceros. Este docu
 
 ---
 
-## 3. Tipografía y Recursos
+## 4. Tipografía y Recursos
 
 - **Familia Tipográfica Inter**: SIL Open Font License, Version 1.1 (Copyright (c) Rasmus Andersson)
