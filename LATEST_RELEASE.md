@@ -1,39 +1,56 @@
-# RTMS v2.5.1 — Compatibilidad de Reproducción SRT (VLC), Parches de Seguridad CodeQL y Sincronización en Memoria
+# RTMS v2.5.2 — Optimización de Latencia Extrema en SRT/UDP, Soporte UDP Unicast/Multicast, Códigos QR Offline y Aceleración de Arranque
 
-**Fecha:** 22 de Septiembre de 2026 | **Versión:** `v2.5.1`
-
----
-
-### 🎬 Compatibilidad Total de Reproducción SRT (VLC Media Player, ffplay, OBS)
-- **Sintaxis Canónica RFC 3986**:
-  - Inclusión de barra delimitadora (`/`) antes de los parámetros query en las URLs SRT generadas (`srt://IP:PORT/?streamid=read:{cam_id}`).
-  - Resuelve la incompatibilidad en VLC 3.0 donde el parser de red descartaba el `streamid` al omitir la barra de ruta, impidiendo la reproducción.
-- **Normalización de Latencia y Prevención de Retardo**:
-  - Eliminado el parámetro `latency` de la URL cliente entregada por la API y GUI.
-  - Corrige el problema de congelamiento/buffering de 2 minutos (120 s) provocado por la discrepancia de unidades (microsegundos en FFmpeg vs milisegundos en el módulo `access_srt` de VLC).
-  - La latencia se negocia de forma óptima a nivel de servidor (120 ms por defecto).
-- **Contraseña SRT Limpia por Defecto**:
-  - Las cámaras recién añadidas o detectadas se configuran sin contraseña (`srt_passphrase: ""`), permitiendo la reproducción inmediata en clientes SRT estándar sin autenticación (`ERROR:BADSECRET`).
-  - La protección criptográfica por contraseña se mantiene disponible de forma opcional mediante el modal de ajustes de cada cámara.
+**Fecha:** 22 de Septiembre de 2026 | **Versión:** `v2.5.2`
 
 ---
 
-### 🛡️ Parches de Seguridad CodeQL (Alertas #11 y #12)
-- **Alerta #11 (CWE-116 - Incomplete string escaping or encoding)**:
-  - Corregido en `gui/static/app.js`: se reemplazó la concatenación insegura de JavaScript en atributos `onclick` por enlace declarativo `data-device-path="${escapeHtml(dev.device_path)}"` consumido de manera segura mediante `this.dataset.devicePath`.
-- **Alerta #12 (CWE-312 - Clear-text storage of sensitive information)**:
-  - Corregido en `core/mediamtx_mgr.py`: se eliminó el almacenamiento en texto claro de contraseñas SRT en el archivo `config/mediamtx.yml` en disco.
-  - La configuración de rutas protegidas y contraseñas de lectura (`srtReadPassphrase`) se gestiona ahora exclusivamente en memoria a través de la API REST local de MediaMTX (`/v3/config/paths/add` y `/v3/config/paths/patch`).
+### 🚀 Optimización de Latencia Extrema en SRT y UDP (VLC Media Player, OBS)
+- **Modos UDP Unicast y Multicast**:
+  - Soporte explícito para UDP Unicast (`udp_unicast`, por defecto a `127.0.0.1` o IP destino específica) para enlaces directos locales, y UDP Multicast (`udp_multicast`, grupo `239.255.0.X`) para distribución en red de área local (LAN).
+  - Formato MRL canónico para VLC: `udp://@<ip>:<port>` sin parámetros de consulta query (`?pkt_size`), garantizando reconocimiento inmediato del analizador de red de VLC.
+  - Comprobado en decodificación dummy en tiempo real de VLC con cero pérdida de paquetes y retardo inferior a 80 ms.
+- **Reducción Drástica de Retardo en SRT**:
+  - Eliminado `smoother=live` en publicaciones caller hacia MediaMTX, suprimiendo esperas de pacing innecesarias en tráfico de loopback local.
+  - Fijación de GOP a 1 segundo (`gop = fps` en modo zerolatency), asegurando llegada continua de paquetes IDR/SPS/PPS para enganche de reproducción instantáneo (<100 ms).
+  - Parámetros de multiplexión MPEG-TS optimizados: `-pat_period 0.1 -pcr_period 20` para sincronización ultrarrápida de reloj y demuxing.
 
 ---
 
-### ⚡ Sincronización Dinámica de Rutas en MediaMTX
-- Nuevos métodos asíncronos `sync_paths_api()` y `sync_path_api()` para actualización en caliente de credenciales y rutas en el Media Server.
-- Sincronización automática invocada al iniciar MediaMTX, al actualizar o eliminar configuraciones de cámaras en la API REST y durante el ciclo de sincronización con hardware.
+### 📱 Códigos QR Offline para Conexión Móvil en VLC
+- **Integración Autónoma sin Dependencias de Internet**:
+  - Biblioteca `qrcode.min.js` empaquetada localmente (100% offline, sin llamadas externas a CDN).
+  - Generación dinámica de código QR accesible con un clic desde las tarjetas de cámara y desde la vista de conexión universal OBS/VLC.
+  - Permite a cámaras de control, directores de escena y operadores en smartphones/tablets apuntar la cámara de su dispositivo y abrir el stream al instante en VLC Mobile (iOS/Android).
+  - Incluye botón de copiado directo al portapapeles y guía paso a paso de uso en VLC para móviles.
+
+---
+
+### ⚡ Arranque Instantáneo y Prevención de Diálogos UAC / Administrador
+- **Desbloqueo Automático de Binarios Windows**:
+  - Función `unblock_app_binaries` para eliminar flujos alternativos NTFS (`Zone.Identifier`) en `ffmpeg.exe`, `ffplay.exe` y `mediamtx.exe`.
+- **Reglas Asíncronas de Firewall de Windows**:
+  - Creación y verificación de reglas para `mediamtx.exe` ejecutadas en segundo plano (`asyncio.to_thread`) sin bloquear la apertura de la ventana de WebView2 (<1 segundo).
+- **Temporizador Multimedia de Alta Precisión**:
+  - Llamada a `timeBeginPeriod(1)` en Windows para asegurar resolución de reloj de 1 ms en el planificador de hilos, reduciendo el jitter de streaming.
+- **Prioridad de Proceso para FFmpeg**:
+  - Asignación de `ABOVE_NORMAL_PRIORITY_CLASS` (0x00008000) a los procesos de captura y codificación para evitar caídas de cuadros ante picos de uso del sistema.
+
+---
+
+### 👁️ Monitores de Vista Previa Instantáneos y Confiables
+- **Inicialización de Latencia Cero**:
+  - Parámetros `-probesize 100k -analyzeduration 500k -fflags nobuffer+flush_packets -flags low_delay` en flujos MJPEG y visores FFplay, abriendo la previsualización en menos de 200 ms.
+  - Detección y generación virtual (`lavfi testsrc2`) para cámaras virtuales y estados inactivos, evitando excepciones en el demuxer DirectShow de Windows.
+
+---
+
+### 🎨 Refinamiento Estético y Consistencia Visual
+- Corrección del diseño y estilos en el campo de entrada de puerto MediaMTX en el modal de Ajustes Generales (`form-ctrl`, fondo oscuro y borde unificado).
+- Realineación geométrica del encabezado y badge de estado en el modal de vista previa.
 
 ---
 
 ### 🧪 Calidad, Verificación y Suite de Pruebas
-- Suite completa de 145 pruebas automatizadas (140 aprobadas, 5 omitidas de hardware físico).
+- Suite completa de 155 pruebas automatizadas (150 aprobadas, 5 omitidas de hardware físico).
 - Linters y formateador `ruff` validados sin advertencias.
-- Catálogo canónico de GitHub preservado en 31/31 elementos raíz (`scripts/manage_descriptions.py --check`).
+- Catálogo canónico de GitHub preservado en 32/32 elementos raíz (`scripts/manage_descriptions.py --check`).
