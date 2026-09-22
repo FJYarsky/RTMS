@@ -353,7 +353,7 @@ function renderConnectPage() {
             protocolLabel = 'SRT Media Server (Reconexión Instantánea)';
             const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
             const cleanCamId = stream.clean_cam_id || stream.id;
-            clientUrl = `srt://${_localIp}:${srtPort}?streamid=read:${cleanCamId}`;
+            clientUrl = `srt://${_localIp}:${srtPort}/?streamid=read:${cleanCamId}`;
         } else {
             protocolLabel = 'UDP Multicast (Multipreceptor)';
             const ipLastOctet = (stream.port % 200) + 1;
@@ -592,7 +592,7 @@ async function loadIgnoredDevices() {
                     Estado: Cámara oculta o eliminada. No transmitirá hasta que sea restaurada.
                 </div>
                 <div class="actions-row">
-                    <button class="btn btn-primary btn-sm" onclick="unignoreCamera('${escapeHtml(dev.device_path).replace(/'/g, "\\'")}')">
+                    <button class="btn btn-primary btn-sm" data-device-path="${escapeHtml(dev.device_path)}" onclick="unignoreCamera(this.dataset.devicePath)">
                         🔄 Restaurar Cámara
                     </button>
                 </div>
