@@ -4,6 +4,26 @@ Historial completo y notas oficiales de lanzamiento organizadas cronológicament
 
 ---
 
+## RTMS v2.4.0 — Arquitectura Limpia, Descomposición Modular sin Fachadas, Tooling Determinista y Cierre de Fase 1
+*(2026-09-22)*
+
+### 🏗️ Arquitectura Limpia y Descomposición Modular
+- **Eliminación Total de Monolitos**:
+  - `core/ffmpeg_mgr.py` (813 líneas) descompuesto y reemplazado en su totalidad por 4 módulos de responsabilidad única: `stream_proc.py`, `command_builder.py`, `hardware_sync.py` y `stream_manager.py`.
+  - `api/routes.py` (797 líneas) descompuesto y transformado en el paquete canónico de FastAPI `api/routes/` (`health.py`, `streams.py`, `preview.py`, `config.py`, `system.py`, `power.py`) y `api/deps.py`.
+- **Cero Fachadas Residuales**: Prescindido de intermediarios y aliases artificiales. Los módulos se resuelven directamente sin capas superfluas ni wrappers.
+
+### 🛡️ Erradicación Total de "Mock Drift" en Tests
+- Actualización integral de la suite de pruebas automatizadas: cada test importa y mockea directamente el módulo real donde se ejecuta la lógica (`core.stream_proc`, `core.stream_manager`, `api.routes.preview`, `api.routes.streams`, `api.deps`), eliminando cualquier falso positivo.
+
+### 📦 Tooling Determinista y Catálogo Oficial
+- **`justfile`**: Recetas estándar de automatización de desarrollo (`install`, `test`, `lint`, `format`, `build`).
+- **`.pre-commit-config.yaml`**: Hooks locales para validación de linters y formato con Ruff.
+- **`uv.lock`**: Resolución determinista de dependencias del proyecto.
+- **Catálogo Canónico GitHub**: Dimensionamiento y preservación estricta de 31 elementos raíz oficiales sin truncamiento ni drift.
+
+---
+
 ## RTMS v2.3.0 — Seguridad Crítica, Gobernador Energético Win32 y Estandarización de Arquitectura
 *(2026-09-19)*
 
