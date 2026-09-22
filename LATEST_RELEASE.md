@@ -1,33 +1,48 @@
-# RTMS v2.4.1 — Corrección de Detección de Dispositivos, Desconexión Hotplug y Control de Inicio
+# RTMS v2.5.0 — Core Media Server, Pipeline Desacoplado, Blindaje de Kernel y Persistencia ACID
 
-**Fecha:** 22 de Septiembre de 2026 | **Versión:** `v2.4.1`
-
----
-
-### 🎥 Corrección Forense de Detección DirectShow (Micrófonos vs Video)
-- **Aislamiento Estricto de Cámaras de Video (`core/hardware.py`)**:
-  - Detección precisa de salida moderna de FFmpeg 7.x+ mediante marcadores `(video)`, `(audio)`, `(none)` y corchetes `[in#`.
-  - Eliminado por completo el falso positivo al desactivar la webcam de la laptop con la tecla F5 o interruptor físico: en lugar de caer al parser heredado y capturar erróneamente los micrófonos del sistema, el sistema identifica correctamente 0 dispositivos de video y retorna `[]`.
-  - Filtro canónico por GUIDs de DirectShow: exclusión automática e incondicional de dispositivos bajo la categoría `KSCATEGORY_AUDIO` (`33D9A762-90C8-11D0-BD43-00A0C911CE86` / `4DF0A701-02CD-11CF-8356-0080C73DF13A`) y rutas DirectShow con prefijo `@device_cm_`.
+**Fecha:** 22 de Septiembre de 2026 | **Versión:** `v2.5.0`
 
 ---
 
-### 🔌 Manejo Reactivo de Desconexión Física (Hotplug)
-- **Transición Inmediata a `DISCONNECTED` (`core/stream_manager.py`)**:
-  - Al desenchufar una cámara USB o apagarla por hardware, los errores `ErrorCategory.DEVICE` son interceptados al instante. El proceso de FFmpeg se detiene ordenadamente, pasando el stream a `State.DISCONNECTED` sin penalizar contadores de error de software ni entrar en ciclos de reintentos innecesarios con backoff.
-  - **Detección de Congelamiento a 0 FPS**: Watchdog optimizado que detecta streams activos sin entrega de cuadros por más de 8 segundos continuos. Si el hardware desapareció de DirectShow, se detiene el proceso y se marca `DISCONNECTED`.
-  - **Reconexión Automática Limpia**: Al volver a enchufar la cámara o reactivarla por teclado, el sistema limpia estados de falla anteriores y, si la cámara posee `auto_start = True`, reanuda la transmisión automáticamente en menos de 5 segundos.
-  - **Sondeo Acelerado**: Intervalo de sondeo periódico de hardware reducido a 5 segundos (anteriormente 20 segundos).
+### 🌐 Ingesta Desacoplada con MediaMTX (Opción A Estándar Broadcast)
+- **Media Server Local (`bin/mediamtx.exe` v1.9.3)**:
+  - FFmpeg publica localmente de forma ininterrumpida como caller (`srt://127.0.0.1:8890?streamid=publish:{cam_id}&mode=caller`).
+  - MediaMTX expone el servicio en la red LAN a través de un puerto central SRT (por defecto `8890`, configurable en Ajustes en los rangos recomendados `8890-8990` o `9000-9200`).
+  - Formato universal de conexión para OBS Studio y vMix:
+    `srt://{ip}:{mediamtx_port}?streamid=read:{cam_id}&latency={latency}`.
+  - **Inmunidad Total ante Desconexiones de Clientes**: Las aperturas, cierres o reconexiones de OBS Studio jamás detienen a FFmpeg ni causan reinicios de hardware ni parpadeos en las cámaras físicas.
+  - Múltiples receptores pueden conectarse a la misma cámara simultáneamente sin sobrecargar la CPU del emisor.
 
 ---
 
-### ⚙️ Control de Inicio y Política de Carga Inicial
-- **Desactivación de Transmisión Masiva al Iniciar (`core/config_mgr.py`)**:
-  - Las cámaras recién descubiertas en el sistema se registran con `auto_start = False` por defecto. Al iniciar RTMS por primera vez, las cámaras permanecen en reposo (`STOPPED`), permitiendo al usuario decidir individualmente cuáles iniciar o activar para inicio automático.
-  - Plantillas de configuración por defecto actualizadas con `unattended_autostart: false`.
+### 🛡️ Blindaje de Procesos por Kernel (Win32 Job Objects)
+- **Cero Procesos Huérfanos (`core/job_object.py`)**:
+  - Implementación nativa con `kernel32.dll` del flag `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` (0x2000).
+  - Todas las instancias de FFmpeg, MediaMTX y visores FFplay quedan asociadas al Job Object de Windows.
+  - Si RTMS es cerrado o finalizado desde el Administrador de Tareas, el kernel de Windows liquida atómica e instantáneamente todos los procesos secundarios.
+- **Registro Centralizado de Tareas (`core/task_registry.py`)**:
+  - Supervisión, drenaje y cancelación limpia de corrutinas asíncronas en el shutdown.
 
 ---
 
-### 🧹 Limpieza de Ramas y Catálogo GitHub Oficial
-- Eliminación de branches y worktrees temporales huérfanos. Rama `main` establecida como única rama activa.
-- Catálogo oficial de 31 elementos raíz verificado y sincronizado al 100%.
+### 💾 Persistencia Transaccional ACID (SQLite WAL)
+- **Capa de Repositorio (`core/repository/`)**:
+  - Reemplazo de JSON monolítico por base de datos SQLite en modo `WAL` (`Write-Ahead Logging`) con `busy_timeout=5000` y transacciones inmediatas.
+  - **Migración Automática Reversible**: Detección transparente de `config.json`, migración atómica a `config/rtms.db`, creación de copia de seguridad inmutable `config.json.v2.4.1.bak` y réplica exportada sincronizada.
+
+---
+
+### 🔄 Papelera y Recuperación de Cámaras Eliminadas (Bugfix Hallazgo #20)
+- **Sección de Dispositivos Ocultados / Eliminados**:
+  - Nuevos endpoints API: `GET /api/devices/ignored`, `POST /api/devices/unignore`, `POST /api/devices/unignore_all`.
+  - Nueva sección colapsable en la interfaz Web con contador badge y botón interactivo `🔄 Restaurar Cámara` individual y masivo, devolviendo las cámaras a estado `STOPPED` con reasignación dinámica de puertos ante colisiones.
+
+---
+
+### 🧪 Calidad, CI/CD y Gobernanza GitHub
+- Suite completa de 139 pruebas automatizadas (100% aprobadas).
+- Tipado estricto `mypy` verificado en `core/` y `api/`.
+- Linters y formato `ruff` validados sin advertencias.
+- Catálogo canónico de GitHub preservado en 31/31 elementos raíz (`scripts/manage_descriptions.py --check`).
+- Empaquetado portable con PyInstaller actualizado (`build_portable.bat`) con inclusión de `mediamtx.exe`, `mediamtx.example.yml` y soporte de `aiosqlite`.
+- Avisos de licencias de terceros actualizados con la licencia MIT de MediaMTX (`THIRD_PARTY_NOTICES.md`).
