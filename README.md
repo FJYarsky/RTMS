@@ -6,11 +6,11 @@
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Seguridad-DPAPI%20%7C%20Token-10b981)](#-seguridad)
 [![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Pruebas-113%20Aprobadas-10b981)](tests/)
+[![Tests](https://img.shields.io/badge/Pruebas-139%20Aprobadas-10b981)](tests/)
 [![License](https://img.shields.io/badge/Licencia-MIT-gray.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Autor-Joaqu%C3%ADn%20Yarsky-f59e0b)](mailto:joaquinyarsky@gmail.com)
 
-**Servidor de video multicámara de baja latencia para Windows vía SRT y UDP.**
+**Servidor de video multicámara de baja latencia para Windows con ingesta desacoplada vía MediaMTX, SRT y UDP.**
 
 [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Estructura](#-estructura-del-proyecto) • [Contacto](#-contacto-y-soporte)
 
@@ -20,7 +20,7 @@
 
 ## 📌 Descripción
 
-**RTMS (Real-Time Multicam System)** es una estación de streaming para Windows que captura dispositivos DirectShow (cámaras web, capturadoras HDMI y cámaras virtuales) y los transmite de forma individual por red local mediante **SRT** o **UDP Multicast** hacia OBS Studio, vMix o VLC con latencia mínima (<100ms) y telemetría en tiempo real.
+**RTMS (Real-Time Multicam System)** es una estación de streaming para Windows que captura dispositivos DirectShow (cámaras web, capturadoras HDMI y cámaras virtuales) y centraliza su transmisión de ultra baja latencia (<100ms) mediante **MediaMTX** y **SRT** / **UDP Multicast** hacia OBS Studio, vMix o VLC con telemetría en tiempo real, persistencia transaccional ACID en SQLite WAL y blindaje de procesos por Kernel (Win32 Job Objects).
 
 ---
 
@@ -32,7 +32,7 @@ git clone https://github.com/FJYarsky/RTMS.git
 cd RTMS
 pip install -r requirements.txt
 
-# 2. Descargar binarios de FFmpeg (PowerShell)
+# 2. Descargar binarios de FFmpeg y MediaMTX (PowerShell)
 powershell -ExecutionPolicy Bypass -File scripts/setup_binaries.ps1
 
 # 3. Iniciar la aplicación
@@ -48,11 +48,11 @@ python main.py
 
 1. Agrega una **Fuente multimedia** (`Media Source`) en OBS.
 2. **Desmarca** la opción `Archivo local`.
-3. En **Entrada** (`Input`), ingresa la URL de la cámara:
+3. En **Entrada** (`Input`), ingresa la URL de la cámara (multiplexada en el puerto central MediaMTX):
    ```text
-   srt://192.168.1.X:9000?mode=caller&latency=120000
+   srt://192.168.1.X:8890?streamid=read:CAM_ID&latency=120000
    ```
-   *(Si configuraste contraseña, añade `&passphrase=TU_CLAVE`)*.
+   *(Copia la dirección directamente con un clic desde el botón "Copiar URL" en RTMS)*.
 4. En **Formato de entrada** (`Input Format`), escribe:
    ```text
    mpegts
@@ -63,6 +63,10 @@ python main.py
 
 ## 🚀 Características
 
+- **Ingesta Desacoplada (MediaMTX)**: Ingesta continua en localhost. Las desconexiones de OBS o vMix no reinician FFmpeg ni provocan parpadeos en las cámaras físicas.
+- **Blindaje a Nivel Kernel**: Subprocesos asignados a un Win32 Job Object con `KILL_ON_JOB_CLOSE`. Cero procesos huérfanos.
+- **Persistencia ACID (SQLite WAL)**: Base de datos transaccional con Write-Ahead Logging y migración automática y transparente desde configuraciones previas.
+- **Papelera de Restauración de Cámaras**: Recuperación instantánea con un clic de cámaras eliminadas u ocultadas sin requerir reseteos de fábrica.
 - **Telemetría en Vivo**: Monitor de CPU, GPU (NVML nativo <1ms), RAM, tráfico de red y bitrate.
 - **Ultra Baja Latencia**: Modo `zerolatency` sobre SRT con recuperación ante pérdida de paquetes.
 - **Aceleración por GPU**: Compatible con NVIDIA NVENC, Intel QSV y AMD AMF, con fallback automático a CPU (`libx264`).
