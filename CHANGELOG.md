@@ -1,7 +1,20 @@
 # Changelog — RTMS (Real-Time Multicam System)
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
-El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
+## [2.5.1] — 2026-09-22
+
+### Compatibilidad de Reproducción SRT (VLC), Parches de Seguridad CodeQL y Sincronización en Memoria
+- **Corrección de Compatibilidad SRT para Clientes y Reproductores (VLC, OBS, FFplay)**:
+  - Sintaxis RFC 3986 corregida en URLs de reproducción SRT con inclusión de barra delimitadora (`srt://IP:PORT/?streamid=read:{cam_id}`). Corrige el error en VLC 3.0 donde el analizador de MRL ignoraba los parámetros de consulta tras los dos puntos del puerto.
+  - Normalización de unidades de latencia: supresión del parámetro `latency` en microsegundos en la URL cliente entregada por la API y GUI. Corrige la congelación de 2 minutos (120 s) en VLC debida a la interpretación en milisegundos por parte de `access_srt`.
+  - Contraseña SRT opcional y limpia por defecto: nuevas cámaras se inicializan con `srt_passphrase: ""` (sin contraseña), evitando rechazos por `ERROR:BADSECRET` en clientes estándar sin credenciales.
+- **Remediación de Seguridad CodeQL (Alertas #11 y #12)**:
+  - **Alerta #11 (CWE-116 - Incomplete string escaping en `gui/static/app.js`)**: Eliminación de concatenación de cadenas propensa a escape insuficiente en atributos `onclick`. Reemplazo por enlace declarativo mediante `data-device-path` y lectura segura mediante `this.dataset.devicePath`.
+  - **Alerta #12 (CWE-312 - Clear-text storage of sensitive information en `core/mediamtx_mgr.py`)**: Eliminada la escritura de contraseñas SRT en texto plano en `config/mediamtx.yml`.
+- **Sincronización de Rutas en Memoria vía API MediaMTX (`core/mediamtx_mgr.py`)**:
+  - Implementados métodos asíncronos `sync_paths_api()` y `sync_path_api()` para inyectar configuraciones de rutas y contraseñas de lectura (`srtReadPassphrase`) directamente en la API de control local (`127.0.0.1:{api_port}/v3/config/paths/...`).
+  - Sincronización automática de credenciales al iniciar MediaMTX, al actualizar o eliminar cámaras en la API REST y al sincronizar dispositivos en caliente.
+
 ## [2.5.0] — 2026-09-22
 
 ### Core Media Server, Pipeline Desacoplado, Blindaje de Kernel y Persistencia ACID (Fase 2)
