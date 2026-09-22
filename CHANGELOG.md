@@ -2,6 +2,32 @@
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
+## [2.4.0] — 2026-09-22
+
+### Arquitectura Limpia y Descomposición Modular (Cierre de Fase 1)
+- **Eliminación Total de Monolitos Históricos**:
+  - `core/ffmpeg_mgr.py` descompuesto en 4 submódulos con responsabilidades bien delimitadas:
+    - `core/stream_proc.py`: Estados (`State`), categorías de error (`ErrorCategory`), URLs y proceso individual `StreamProc`.
+    - `core/command_builder.py`: Constructor puro de comandos FFmpeg, mapeo de resoluciones y flags zerolatency.
+    - `core/hardware_sync.py`: Detección periódica y sincronización de hardware DirectShow con inventario de streams.
+    - `core/stream_manager.py`: Orquestador `StreamManager`, watchdog asíncrono y singleton central.
+  - `api/routes.py` descompuesto en el paquete canónico de FastAPI `api/routes/` y `api/deps.py`:
+    - `api/deps.py`: Dependencias compartidas de autenticación (`verify_api_token`), IP local y `PreviewTicketManager`.
+    - `api/routes/health.py`: Endpoints de probes `/healthz` y `/readyz`.
+    - `api/routes/streams.py`: Control de flujos, acciones, configuración, presets y escaneo.
+    - `api/routes/preview.py`: Vistas previas MJPEG de ultra baja latencia, tickets y monitor FFplay.
+    - `api/routes/config.py`: Importación y exportación segura con enmascaramiento y directivas no-store.
+    - `api/routes/system.py`: Telemetría del sistema, parada de emergencia, reinicio y autostart.
+    - `api/routes/power.py`: Auditoría y control de directivas de energía Win32 nativas.
+- **Cero Fachadas Residuales**: Eliminadas las fachadas intermedias para garantizar una arquitectura transparente, sin ambigüedad y con resolución directa de módulos.
+- **Modernización Antidrift de Tests**:
+  - 100% de la suite de pruebas adaptada para importar y mockear directamente los submódulos reales en ejecución, erradicando cualquier falso positivo o desviación de mocks (*Mock Drift*).
+- **Tooling Determinista y Estandarización**:
+  - Incorporado `justfile` con recetas de automatización y build para desarrolladores.
+  - Incorporado `.pre-commit-config.yaml` con hooks locales para linters (`ruff`, `ruff-format`).
+  - Incorporado `uv.lock` para resolución determinista de dependencias multiplataforma.
+  - Catálogo canónico en `scripts/manage_descriptions.py` redimensionado a 31 elementos raíz oficiales en GitHub.
+
 ## [2.3.0] — 2026-09-19
 
 ### Seguridad Crítica y Protección de Sesión (Hotfixes P0)
