@@ -16,7 +16,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.deps import verify_api_token
-from api.schemas import AutostartToggle, FactoryResetRequest, SystemShutdownRequest
+from api.schemas import AutostartToggle, FactoryResetRequest, SystemSettingsUpdate, SystemShutdownRequest
 from core.__version__ import __version__
 from core.hardware_sync import get_all_stream_statuses
 from core.preview_mgr import preview_manager
@@ -96,7 +96,16 @@ async def system_factory_reset(payload: FactoryResetRequest):
 
     base_dir = get_base_dir()
 
-    for fname in [CONFIG_FILE, CONFIG_BAK_FILE, os.path.join(CONFIG_DIR, "power_backup.json")]:
+    purge_files = [
+        CONFIG_FILE,
+        CONFIG_BAK_FILE,
+        os.path.join(CONFIG_DIR, "power_backup.json"),
+        os.path.join(CONFIG_DIR, "rtms.db"),
+        os.path.join(CONFIG_DIR, "rtms.db-wal"),
+        os.path.join(CONFIG_DIR, "rtms.db-shm"),
+        os.path.join(CONFIG_DIR, "mediamtx.yml"),
+    ]
+    for fname in purge_files:
         try:
             if os.path.exists(fname):
                 os.remove(fname)
@@ -125,7 +134,8 @@ async def system_factory_reset(payload: FactoryResetRequest):
             "cameras": {},
             "ignored_devices": [],
             "next_port": 9000,
-            "unattended_autostart": True,
+            "unattended_autostart": False,
+            "mediamtx_srt_port": 8890,
         }
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(clean_config, f, indent=4)
@@ -147,3 +157,64 @@ async def set_autostart(toggle: AutostartToggle):
 
     enable_autostart(toggle.enable)
     return {"status": "ok", "autostart": toggle.enable}
+
+
+@router.get("/api/system/settings", dependencies=[Depends(verify_api_token)])
+async def get_system_settings():
+    """Retorna la configuración general del sistema (puerto central MediaMTX, autostart, etc)."""
+    from core.config_mgr import load_config
+    from core.mediamtx_mgr import mediamtx_manager
+
+    cfg = load_config()
+    return {
+        "status": "ok",
+        "mediamtx_srt_port": cfg.get("mediamtx_srt_port", mediamtx_manager.get_srt_port()),
+        "unattended_autostart": cfg.get("unattended_autostart", False),
+        "next_port": cfg.get("next_port", 9000),
+    }
+
+
+@router.post("/api/system/settings", dependencies=[Depends(verify_api_token)])
+async def update_system_settings(payload: SystemSettingsUpdate):
+    """Actualiza los ajustes generales del sistema. Valida el socket y reinicia MediaMTX si cambia el puerto."""
+    from core.config_mgr import load_config, save_config
+    from core.mediamtx_mgr import mediamtx_manager
+    from core.port_mgr import port_manager
+
+    cfg = load_config()
+    restarted_mediamtx = False
+
+    if payload.mediamtx_srt_port is not None:
+        new_port = payload.mediamtx_srt_port
+        current_port = cfg.get("mediamtx_srt_port", 8890)
+        if new_port != current_port:
+            for c in cfg.get("cameras", {}).values():
+                if c.get("port") == new_port:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"El puerto {new_port} ya está asignado a la cámara '{c.get('friendly_name')}'.",
+                    )
+
+            if port_manager.is_port_in_use(new_port):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El puerto {new_port} se encuentra actualmente ocupado por otro proceso del sistema.",
+                )
+
+            cfg["mediamtx_srt_port"] = new_port
+            save_config(cfg)
+            success = await mediamtx_manager.restart(new_srt_port=new_port)
+            if not success:
+                logger.warning(f"MediaMTX no pudo reiniciar de inmediato en el puerto {new_port}.")
+            restarted_mediamtx = True
+
+    if payload.unattended_autostart is not None:
+        cfg["unattended_autostart"] = payload.unattended_autostart
+        save_config(cfg)
+
+    return {
+        "status": "ok",
+        "mediamtx_srt_port": cfg.get("mediamtx_srt_port", 8890),
+        "unattended_autostart": cfg.get("unattended_autostart", False),
+        "restarted_mediamtx": restarted_mediamtx,
+    }

@@ -17,6 +17,9 @@ from api.schemas import (
     ApplyPresetRequest,
     CameraAutostartToggle,
     CameraConfigUpdate,
+    DeviceUnignoreRequest,
+    IgnoredDeviceItem,
+    IgnoredDevicesResponse,
     StreamAction,
 )
 from core.__version__ import __version__
@@ -198,10 +201,78 @@ async def toggle_cam_autostart(payload: CameraAutostartToggle):
 
 
 @router.post("/api/hardware/scan", dependencies=[Depends(verify_api_token)])
-async def scan_hardware():
+async def scan_hardware(restore_ignored: bool = False):
     """Fuerza un sondeo completo de hardware DirectShow (Protegido por Token)."""
+    if restore_ignored:
+        from core.config_mgr import clear_ignored_devices
+
+        clear_ignored_devices()
     await sync_streams_with_hardware()
     return {"status": "ok", "message": "Escaneo de hardware completado"}
+
+
+@router.get("/api/devices/ignored", dependencies=[Depends(verify_api_token)], response_model=IgnoredDevicesResponse)
+async def get_ignored_devices_endpoint():
+    """Retorna la lista de dispositivos DirectShow actualmente ignorados/ocultos."""
+    from core.config_mgr import get_ignored_devices
+    from core.hardware import get_directshow_devices
+
+    raw_ignored = get_ignored_devices()
+    try:
+        cams = await get_directshow_devices()
+        connected_cams = {c["device_path"]: (c.get("friendly_name") or c["device_path"]) for c in cams}
+    except Exception:
+        connected_cams = {}
+
+    items = []
+    for entry in raw_ignored:
+        dp = entry["device_path"]
+        is_conn = dp in connected_cams
+        name = entry.get("friendly_name")
+        if not name or name == dp:
+            name = connected_cams.get(dp, dp)
+        items.append(
+            IgnoredDeviceItem(
+                device_path=dp,
+                friendly_name=name,
+                is_connected=is_conn,
+                ignored_at=entry.get("ignored_at"),
+            )
+        )
+    return IgnoredDevicesResponse(status="ok", ignored_devices=items)
+
+
+@router.post("/api/devices/unignore", dependencies=[Depends(verify_api_token)])
+async def unignore_device_endpoint(payload: DeviceUnignoreRequest):
+    """Restaura un dispositivo DirectShow ignorado/eliminado y sincroniza el hardware."""
+    from core.config_mgr import unignore_device
+
+    success = unignore_device(payload.device_path)
+    if not success:
+        # Intentar por si payload.device_path vino como ID
+        cam = find_camera_by_id_or_path(payload.device_path)
+        if cam and "device_path" in cam:
+            success = unignore_device(cam["device_path"])
+
+    if not success:
+        raise HTTPException(
+            status_code=404,
+            detail="El dispositivo especificado no se encuentra en la lista de ignorados.",
+        )
+
+    # Sincronizar inmediatamente con hardware para que reaparezca
+    await sync_streams_with_hardware()
+    return {"status": "ok", "message": f"Dispositivo {payload.device_path} restaurado exitosamente"}
+
+
+@router.post("/api/devices/unignore_all", dependencies=[Depends(verify_api_token)])
+async def unignore_all_devices_endpoint():
+    """Restaura masivamente todos los dispositivos ignorados y sincroniza el hardware."""
+    from core.config_mgr import clear_ignored_devices
+
+    clear_ignored_devices()
+    await sync_streams_with_hardware()
+    return {"status": "ok", "message": "Todos los dispositivos ignorados han sido restaurados exitosamente"}
 
 
 @router.get("/api/stream/logs", dependencies=[Depends(verify_api_token)])
@@ -239,11 +310,21 @@ async def get_stream_connect_url(device_path: str):
     local_ip = get_local_ip()
 
     if protocol == "srt":
-        params = {"mode": "caller", "latency": str(latency * 1000)}
+        import re
+
+        from core.mediamtx_mgr import mediamtx_manager
+
+        mediamtx_port = mediamtx_manager.get_srt_port()
+        cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
+        clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
+        params = {
+            "streamid": f"read:{clean_cam_id}",
+            "latency": str(latency * 1000),
+        }
         if passphrase:
             params["passphrase"] = passphrase
         query = urllib.parse.urlencode(params)
-        url = f"srt://{local_ip}:{port}?{query}"
+        url = f"srt://{local_ip}:{mediamtx_port}?{query}"
     else:
         ip_last = (int(port) % 200) + 1
         url = f"udp://239.255.0.{ip_last}:{port}?pkt_size=1316"

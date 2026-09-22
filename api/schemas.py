@@ -91,7 +91,13 @@ class RTMSConfigModel(BaseModel):
     config_schema_version: Optional[int] = Field(default=4, ge=1)
     cameras: Dict[str, Union[CameraPersistedConfig, Dict[str, Any]]] = Field(default_factory=dict)
     next_port: Optional[int] = Field(default=9000, ge=1024, le=65535)
-    unattended_autostart: Optional[bool] = True
+    unattended_autostart: Optional[bool] = False
+    mediamtx_srt_port: Optional[int] = Field(default=8890, ge=1024, le=65535)
+
+
+class SystemSettingsUpdate(BaseModel):
+    mediamtx_srt_port: Optional[int] = Field(default=None, ge=1024, le=65535)
+    unattended_autostart: Optional[bool] = None
 
 
 class ImportConfigRequest(BaseModel):
@@ -111,3 +117,19 @@ class ImportConfigRequest(BaseModel):
         except Exception as err:
             raise ValueError(f"Configuración inválida o campos fuera de rango: {err}") from err
         return v
+
+
+class DeviceUnignoreRequest(BaseModel):
+    device_path: str
+
+
+class IgnoredDeviceItem(BaseModel):
+    device_path: str
+    friendly_name: str
+    is_connected: bool = False
+    ignored_at: Optional[str] = None
+
+
+class IgnoredDevicesResponse(BaseModel):
+    status: str = "ok"
+    ignored_devices: list[IgnoredDeviceItem] = Field(default_factory=list)
