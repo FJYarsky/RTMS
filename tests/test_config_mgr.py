@@ -26,7 +26,7 @@ def test_is_virtual_device_detection():
 
 
 def test_get_or_allocate_camera_config():
-    """Valida asignación de puerto, protocolo SRT y generación de contraseña segura."""
+    """Valida asignación de puerto, protocolo SRT y configuración por defecto sin contraseña."""
     device_path = "@device_test_cam_123"
     friendly_name = "Camara de Estudio"
     cfg = get_or_allocate_camera_config(device_path, friendly_name)
@@ -34,7 +34,7 @@ def test_get_or_allocate_camera_config():
     assert cfg["friendly_name"] == friendly_name
     assert cfg["protocol"] == "srt"
     assert cfg["port"] >= 9000
-    assert len(cfg["srt_passphrase"]) >= 10  # Cumple requerimiento mínimo de longitud de SRT
+    assert cfg["srt_passphrase"] == ""  # Por defecto sin contraseña para compatibilidad directa
     assert cfg["auto_start"] is False
     assert cfg["zerolatency"] is True
     assert cfg["is_virtual"] is False

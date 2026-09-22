@@ -333,7 +333,7 @@ async def test_command_builder_srt_publisher_no_passphrase():
 
 
 def test_mediamtx_config_generation_with_srt_passphrase():
-    """Valida que MediaMTX configure srtReadPassphrase cuando la cámara tiene passphrase."""
+    """Valida mitigación CWE-312: no almacenar contraseñas en disco y sincronizarlas en memoria vía API."""
     from unittest.mock import patch
 
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -358,10 +358,17 @@ def test_mediamtx_config_generation_with_srt_passphrase():
         with open(cfg_path, "r", encoding="utf-8") as f:
             content = f.read()
 
+        # CWE-312: No exponer contraseñas en texto plano en archivo de configuración en disco
         assert "paths:" in content
-        assert "cam_enc_02:" in content
-        assert "srtReadPassphrase: ProtectedPass1234" in content
-        assert "srtPublishPassphrase" not in content
+        assert "all_others:" in content
+        assert "ProtectedPass1234" not in content
+
+        # Validar sincronización en memoria mediante API
+        with patch.object(mgr, "_apply_path_api_sync") as mock_apply:
+            with patch.object(mgr, "is_running", return_value=True):
+                with patch("core.repository.config_repository", repo):
+                    asyncio.run(mgr.sync_paths_api())
+            mock_apply.assert_called_once_with("cam_enc_02", "ProtectedPass1234")
 
 
 @pytest.mark.asyncio
