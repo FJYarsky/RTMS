@@ -18,4 +18,6 @@ pillow>=12.3.0
 
 # Telemetría de Sistema y Hardware
 psutil>=7.2.2
- 
+
+# Persistencia Transaccional ACID (SQLite WAL)
+aiosqlite>=0.20.0
