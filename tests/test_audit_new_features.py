@@ -113,6 +113,56 @@ def test_ignored_devices_persists_on_camera_delete():
     assert is_device_ignored(test_dp) is False
 
 
+def test_ignored_devices_api_endpoints(client):
+    """Valida los endpoints GET /api/devices/ignored, POST /api/devices/unignore y unignore_all."""
+    test_dp = "@device_api_ignored_test"
+    cam_cfg = get_or_allocate_camera_config(test_dp, "Cam API Ignored Test")
+    cam_id = cam_cfg["id"]
+
+    # 1. Eliminar cámara para que ingrese a ignored_devices
+    assert remove_camera_config(cam_id) is True
+    assert is_device_ignored(test_dp) is True
+
+    # 2. Consultar lista de ignorados por API
+    res = client.get("/api/devices/ignored", headers={"X-RTMS-Token": "test_audit_secret_token_123"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "ok"
+    ignored_list = data["ignored_devices"]
+    found = any(d["device_path"] == test_dp for d in ignored_list)
+    assert found is True
+
+    # 3. Restaurar dispositivo por API
+    res_unignore = client.post(
+        "/api/devices/unignore",
+        headers={"X-RTMS-Token": "test_audit_secret_token_123"},
+        json={"device_path": test_dp},
+    )
+    assert res_unignore.status_code == 200
+    assert is_device_ignored(test_dp) is False
+
+    # 4. Error 404 al intentar des-ignorar un dispositivo no ignorado
+    res_404 = client.post(
+        "/api/devices/unignore",
+        headers={"X-RTMS-Token": "test_audit_secret_token_123"},
+        json={"device_path": "@device_non_existent_123"},
+    )
+    assert res_404.status_code == 404
+
+    # 5. Probar unignore_all
+    test_dp2 = "@device_api_ignored_test_2"
+    get_or_allocate_camera_config(test_dp2, "Cam 2")
+    remove_camera_config(test_dp2)
+    assert is_device_ignored(test_dp2) is True
+
+    res_all = client.post(
+        "/api/devices/unignore_all",
+        headers={"X-RTMS-Token": "test_audit_secret_token_123"},
+    )
+    assert res_all.status_code == 200
+    assert is_device_ignored(test_dp2) is False
+
+
 def test_factory_reset_endpoint_requires_confirmation(client):
     """Valida que el endpoint de restablecimiento de fábrica exija confirmación explícita."""
     res = client.post(
@@ -224,7 +274,7 @@ def test_connect_url_endpoint_srt_and_udp(client):
     assert data["protocol"] == "srt"
     assert data["has_passphrase"] is True
     assert "srt://" in data["connect_url"]
-    assert "mode=caller" in data["connect_url"]
+    assert "streamid=read" in data["connect_url"]
     assert "passphrase=MySecretPassphrase123" in data["connect_url"]
 
     # 2. Cámara UDP
