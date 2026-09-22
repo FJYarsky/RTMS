@@ -113,7 +113,7 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         encoder=config.encoder or "auto",
         srt_latency=config.srt_latency or 120,
         srt_passphrase=passphrase_to_set or "",
-        auto_start=config.auto_start if config.auto_start is not None else True,
+        auto_start=config.auto_start,
         zerolatency=config.zerolatency if config.zerolatency is not None else True,
         is_virtual=config.is_virtual if config.is_virtual is not None else False,
     )
