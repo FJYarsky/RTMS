@@ -2,6 +2,34 @@
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
+## [2.5.0] — 2026-09-22
+
+### Core Media Server, Pipeline Desacoplado, Blindaje de Kernel y Persistencia ACID (Fase 2)
+- **Ingesta Desacoplada con Media Server MediaMTX (Opción A Estándar Broadcast)**:
+  - Inclusión de `bin/mediamtx.exe` (v1.9.3) verificado criptográficamente mediante hash SHA-256 oficial en `scripts/setup_binaries.ps1`.
+  - Módulo de ciclo de vida asíncrono `core/mediamtx_mgr.py` (`MediaMTXManager`) con generación dinámica de `config/mediamtx.yml`, healthcheck activo `/v3/paths/list` y supervisor con autoreinicio automático.
+  - Salida FFmpeg en modo caller local hacia MediaMTX (`srt://127.0.0.1:8890?streamid=publish:{cam_id}&mode=caller`).
+  - Puerto central SRT por defecto `8890`, configurable por el usuario en Ajustes Generales en rangos broadcast (`8890-8990` o `9000-9200`), validado por `PortManager`.
+  - Formato universal de conexión para OBS Studio / vMix: `srt://{ip}:{mediamtx_port}?streamid=read:{cam_id}&latency={latency}`.
+  - Watchdog de `core/stream_manager.py` desacoplado: eliminados reinicios espurios por desconexión de clientes externos; la ingesta local de FFmpeg jamás se interrumpe ante aperturas o cierres de OBS.
+- **Blindaje de Procesos por Kernel (Win32 Job Objects)**:
+  - Módulo `core/job_object.py` con `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` (0x2000) a través de `ctypes` y `kernel32.dll`.
+  - Subprocesos de FFmpeg, MediaMTX y visores FFplay asignados al Job Object con retención de handle en singleton y limpieza en `atexit`. Garantía de cero procesos huérfanos si la aplicación principal finaliza o es terminada.
+  - Módulo `core/task_registry.py`: registro centralizado de tareas asíncronas (`asyncio.Task`) y cancelación ordenada en `lifespan` shutdown.
+- **Persistencia Transaccional ACID (De JSON a SQLite WAL)**:
+  - Capa de repositorio `core/repository/` (`database.py`, `config_repository.py`, `migrator.py`) con SQLite en modo `WAL` (`Write-Ahead Logging`) y `busy_timeout=5000`.
+  - Conectividad híbrida: operaciones async con `aiosqlite` para endpoints y métodos thread-safe síncronos para tareas de fondo.
+  - Migración automática transparente desde `config/config.json` a `config/rtms.db` en el primer arranque, con backup inmutable `config.json.v2.4.1.bak` y réplica exportada para herramientas externas.
+- **Papelera y Restauración de Cámaras Eliminadas (Bugfix Hallazgo #20)**:
+  - Nuevos métodos en `core/config_mgr.py`: `get_ignored_devices()`, `unignore_device()`, `clear_ignored_devices()`, `is_device_ignored()`.
+  - Nuevos endpoints API en `api/routes/streams.py`: `GET /api/devices/ignored`, `POST /api/devices/unignore`, `POST /api/devices/unignore_all`, `POST /api/hardware/scan` con soporte de `restore_ignored`.
+  - Nuevos controles visuales en Web GUI: sección colapsable con badge `#ignored-cameras-section`, botones interactivos individuales `🔄 Restaurar Cámara` y masivo `Restaurar Todas`.
+- **Gobernanza de GitHub, Empaquetado y Calidad**:
+  - `build_portable.bat` actualizado con validación de `bin\mediamtx.exe`, `--hidden-import=aiosqlite,sqlite3` y copiado de binarios y plantillas.
+  - `THIRD_PARTY_NOTICES.md` actualizado con licencia MIT de MediaMTX.
+  - `.github/workflows/ci.yml` actualizado con verificación de `mediamtx.exe` en empaquetado portable y validación `mypy`.
+  - Suite completa de 139 pruebas aprobadas (100%), ruff linters aprobados y catálogo de 31 elementos en GitHub verificado al 100%.
+
 ## [2.4.1] — 2026-09-22
 
 ### Corrección de Detección de Dispositivos, Desconexión Hotplug y Control de Inicio
