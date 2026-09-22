@@ -589,6 +589,14 @@ class StreamManager:
             elif proc.config.get("auto_start", False) and proc.state == State.STOPPED and not proc._stop_evt.is_set():
                 asyncio.create_task(self.start_stream(dp))
 
+        # Sincronizar en memoria las rutas con MediaMTX API
+        try:
+            from core.mediamtx_mgr import mediamtx_manager
+
+            await mediamtx_manager.sync_paths_api()
+        except Exception as e:
+            logger.debug(f"Aviso sincronizando rutas en MediaMTX tras escaneo de hardware: {e}")
+
     @property
     def has_active_streams(self) -> bool:
         """Indica si existe al menos un proceso de transmisión activo en ejecución."""

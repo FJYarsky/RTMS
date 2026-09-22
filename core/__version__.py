@@ -6,4 +6,4 @@
 
 """Definición centralizada de la versión del sistema."""
 
-__version__ = "2.5.0"
+__version__ = "2.5.1"

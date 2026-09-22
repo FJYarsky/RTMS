@@ -10,7 +10,6 @@ import json
 import logging
 import os
 import re
-import secrets
 import sys
 import threading
 import uuid
@@ -401,7 +400,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         cam.setdefault("is_virtual", virtual_flag)
         cam.setdefault("protocol", "srt")
         if not cam.get("srt_passphrase") and not cam.get("decryption_failed"):
-            cam["srt_passphrase"] = secrets.token_hex(6)
+            cam["srt_passphrase"] = ""
 
         # Verificar que el puerto esté registrado
         port = cam.get("port")
@@ -420,7 +419,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         logger.error(f"Error asignando puerto mediante PortManager: {exc}. No se puede asignar a ciegas.")
         raise RuntimeError(f"Agotamiento de puertos multimedia: {exc}") from exc
 
-    default_passphrase = secrets.token_hex(6)
+    default_passphrase = ""
 
     new_cam_config = {
         "id": cam_id,

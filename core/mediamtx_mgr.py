@@ -83,45 +83,14 @@ class MediaMTXManager:
     def generate_config(self, srt_port: Optional[int] = None) -> str:
         """
         Genera el archivo config/mediamtx.yml en caliente con los puertos configurados.
-        Garantiza que el servidor no active protocolos no requeridos y aplica srtReadPassphrase
-        para cámaras con contraseña configurada.
+        Garantiza que el servidor no active protocolos no requeridos.
+        Por seguridad estricta (CWE-312), las frases de paso de cámaras no se almacenan
+        en texto plano en disco, sino que se inyectan en memoria a través de la API de MediaMTX.
         """
         if srt_port:
             self.srt_port = srt_port
 
         os.makedirs(os.path.dirname(self.config_active_path), exist_ok=True)
-
-        paths_section = ""
-        try:
-            from core.secrets_mgr import unprotect_secret
-
-            cameras = {}
-            try:
-                from core.repository import config_repository
-
-                cameras = config_repository.get_all_cameras_sync()
-            except Exception:
-                pass
-
-            if not cameras:
-                try:
-                    from core.config_mgr import load_config
-
-                    cfg = load_config()
-                    cameras = cfg.get("cameras", {})
-                except Exception:
-                    pass
-
-            for cam in cameras.values():
-                c_id = cam.get("id") or cam.get("camera_id") or cam.get("port")
-                clean_id = clean_camera_id(c_id)
-                raw_pass = cam.get("srt_passphrase", "")
-                if clean_id and raw_pass:
-                    plain_pass = unprotect_secret(raw_pass)
-                    if plain_pass:
-                        paths_section += f"  {clean_id}:\n    srtReadPassphrase: {plain_pass}\n"
-        except Exception as ex:
-            logger.debug(f"Aviso leyendo rutas de cámaras para MediaMTX: {ex}")
 
         config_content = (
             "# RTMS — Configuración Dinámica de MediaMTX (Autogenerada)\n"
@@ -135,7 +104,6 @@ class MediaMTXManager:
             "srt: yes\n"
             f"srtAddress: :{self.srt_port}\n\n"
             "paths:\n"
-            f"{paths_section}"
             "  all_others:\n"
         )
 
@@ -196,6 +164,12 @@ class MediaMTXManager:
                     return False
 
                 logger.info(f"MediaMTX iniciado exitosamente (SRT puerto {self.srt_port}, API {self.api_port}).")
+
+                # Sincronizar en memoria las rutas de cámaras protegidas vía API local (CWE-312)
+                try:
+                    await self.sync_paths_api()
+                except Exception as ex:
+                    logger.debug(f"Aviso en sincronización inicial de rutas MediaMTX: {ex}")
 
                 # Iniciar tarea de supervisión continua
                 if not self._watchdog_task or self._watchdog_task.done():
@@ -295,6 +269,91 @@ class MediaMTXManager:
         except Exception as e:
             logger.debug(f"Error consultando rutas activas en MediaMTX: {e}")
             return []
+
+    async def sync_paths_api(self) -> None:
+        """
+        Sincroniza en memoria las rutas de cámaras protegidas con la API de control de MediaMTX.
+        Evita el almacenamiento de credenciales en texto plano en disco (CWE-312).
+        """
+        if not self.is_running():
+            return
+
+        def _do_sync():
+            cameras = {}
+            try:
+                from core.repository import config_repository
+
+                cameras = config_repository.get_all_cameras_sync()
+            except Exception:
+                pass
+
+            if not cameras:
+                try:
+                    from core.config_mgr import load_config
+
+                    cfg = load_config()
+                    cameras = cfg.get("cameras", {})
+                except Exception:
+                    pass
+
+            from core.secrets_mgr import unprotect_secret
+
+            for cam in cameras.values():
+                c_id = cam.get("id") or cam.get("camera_id") or cam.get("port")
+                clean_id = clean_camera_id(c_id)
+                raw_pass = cam.get("srt_passphrase", "")
+                plain_pass = unprotect_secret(raw_pass) if raw_pass else ""
+                self._apply_path_api_sync(clean_id, plain_pass)
+
+        await asyncio.to_thread(_do_sync)
+
+    async def sync_path_api(self, clean_id: str, plain_pass: str) -> None:
+        """Sincroniza asíncronamente una ruta individual protegida en MediaMTX."""
+        if not self.is_running() or not clean_id:
+            return
+        await asyncio.to_thread(self._apply_path_api_sync, clean_id, plain_pass)
+
+    def _apply_path_api_sync(self, clean_id: str, plain_pass: str) -> None:
+        """Configura o actualiza una ruta en MediaMTX vía su API REST local."""
+        import urllib.error
+
+        if not clean_id or clean_id == "all_others":
+            return
+
+        api_base = f"http://127.0.0.1:{self.api_port}/v3/config/paths"
+        if plain_pass:
+            add_url = f"{api_base}/add/{clean_id}"
+            body = json.dumps({"srtReadPassphrase": plain_pass}).encode("utf-8")
+            req = urllib.request.Request(
+                add_url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=1.0) as resp:
+                    if resp.status in (200, 201):
+                        return
+            except urllib.error.HTTPError as e:
+                if e.code == 400:
+                    patch_url = f"{api_base}/patch/{clean_id}"
+                    preq = urllib.request.Request(
+                        patch_url, data=body, headers={"Content-Type": "application/json"}, method="PATCH"
+                    )
+                    try:
+                        with urllib.request.urlopen(preq, timeout=1.0):
+                            pass
+                    except Exception as patch_err:
+                        logger.debug(f"Aviso actualizando ruta {clean_id} en MediaMTX: {patch_err}")
+                else:
+                    logger.debug(f"Aviso agregando ruta {clean_id} a MediaMTX: {e}")
+            except Exception as e:
+                logger.debug(f"Aviso comunicando con API de MediaMTX para ruta {clean_id}: {e}")
+        else:
+            del_url = f"{api_base}/delete/{clean_id}"
+            req = urllib.request.Request(del_url, method="DELETE")
+            try:
+                with urllib.request.urlopen(req, timeout=1.0):
+                    pass
+            except Exception:
+                pass
 
 
 # Instancia singleton global
