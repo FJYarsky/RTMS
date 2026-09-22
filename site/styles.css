@@ -1168,37 +1168,107 @@ body::before {
     }
 }
 
-@media (max-width: 640px) {
-    .hero {
-        padding: 48px 0 32px;
+@media (max-width: 768px) {
+    .section {
+        padding: 64px 0;
     }
-    .download-centerpiece {
-        padding: 20px 16px;
-    }
-    .btn-primary-download {
-        font-size: 1rem;
-        padding: 14px 20px;
-    }
-    .system-specs-bar {
-        gap: 8px;
-    }
-    .spec-badge {
-        font-size: 0.78rem;
-        padding: 5px 10px;
-    }
-    .security-banner {
-        padding: 24px 18px;
-    }
-    .bento-grid {
+    .problem-grid {
         grid-template-columns: 1fr;
     }
+    .steps-grid {
+        grid-template-columns: 1fr;
+    }
+    .security-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
 
-    /* MOCKUP & MÉTRICAS EN MODO TELÉFONO */
+@media (max-width: 640px) {
+    .container {
+        padding: 0 16px;
+    }
+
+    .section {
+        padding: 44px 0;
+    }
+
+    .section-header {
+        margin-bottom: 28px;
+    }
+
+    .section-title {
+        font-size: 1.6rem;
+        line-height: 1.25;
+    }
+
+    .section-desc {
+        font-size: 0.9rem;
+    }
+
+    /* HERO EN MODO TELÉFONO */
+    .hero {
+        padding: 32px 0 20px;
+    }
+
+    .hero-pill {
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        margin-bottom: 16px;
+    }
+
+    .hero-title {
+        font-size: 1.85rem;
+        line-height: 1.2;
+        margin-bottom: 12px;
+    }
+
+    .hero-subtitle {
+        font-size: 0.92rem;
+        margin-bottom: 20px;
+        line-height: 1.55;
+    }
+
+    .download-centerpiece {
+        padding: 18px 14px;
+        margin-bottom: 20px;
+    }
+
+    .btn-primary-download {
+        font-size: 0.95rem;
+        padding: 12px 16px;
+    }
+
+    .download-meta {
+        font-size: 0.78rem;
+        gap: 8px 12px;
+    }
+
+    .download-sublinks {
+        flex-direction: column;
+        gap: 8px;
+        font-size: 0.82rem;
+    }
+
+    .system-specs-bar {
+        gap: 6px;
+        margin-top: 16px;
+    }
+
+    .spec-badge {
+        font-size: 0.74rem;
+        padding: 4px 10px;
+    }
+
+    /* MOCKUP & TELEMETRÍA EN MODO TELÉFONO */
+    .mockup-wrapper {
+        margin-top: 28px;
+    }
+
     .mockup-header {
         flex-direction: column;
         align-items: stretch;
-        gap: 10px;
-        padding: 10px 14px;
+        gap: 8px;
+        padding: 8px 12px;
     }
 
     .mockup-dots {
@@ -1206,65 +1276,284 @@ body::before {
     }
 
     .mockup-hud {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px 12px;
-        padding: 8px 12px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 6px 8px;
         width: 100%;
-        font-size: 0.72rem;
+        background: rgba(11, 15, 25, 0.95);
     }
 
     .mockup-hud-item {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        justify-content: space-between;
+        gap: 5px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: var(--radius-sm);
+        padding: 3px 8px;
+        font-size: 0.72rem;
         white-space: nowrap;
-        gap: 6px;
     }
 
     .mockup-hud-item.hud-wide {
-        grid-column: span 2;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        padding: 3px 0;
+        border-color: rgba(56, 189, 248, 0.2);
     }
 
     .mockup-body {
-        padding: 14px 12px;
+        padding: 12px 10px;
+    }
+
+    .mockup-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 
     .camera-card {
-        padding: 12px 14px;
+        padding: 12px;
     }
 
-    /* Evitar desbordes de metadatos y URL SRT en cámaras */
+    .camera-card-top {
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .camera-name {
+        font-size: 0.88rem;
+    }
+
     .stream-meta-row {
         flex-direction: column;
         align-items: flex-start;
         gap: 3px;
-        padding: 6px 0;
+        padding: 5px 0;
+        font-size: 0.78rem;
     }
 
     .stream-meta-row .meta-code {
-        font-size: 0.75rem;
+        font-size: 0.74rem;
         word-break: break-all;
-        background: rgba(0, 0, 0, 0.35);
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.04);
         padding: 4px 8px;
         border-radius: var(--radius-sm);
         display: block;
         width: 100%;
     }
 
-    /* Paso 3 de conexión en modo teléfono */
-    .code-box-content {
+    /* QUÉ RESUELVE */
+    .problem-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .problem-card {
+        padding: 18px 14px;
+    }
+
+    .card-title {
+        font-size: 1.05rem;
+    }
+
+    .problem-block, .solution-block {
+        font-size: 0.84rem;
+        padding: 8px 12px;
+    }
+
+    /* BENTO GRID */
+    .bento-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .bento-item {
+        padding: 18px 14px;
+    }
+
+    .bento-header {
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .bento-icon {
+        width: 34px;
+        height: 34px;
+    }
+
+    .bento-title {
+        font-size: 1.02rem;
+    }
+
+    .bento-text {
+        font-size: 0.86rem;
+        line-height: 1.5;
+    }
+
+    .bento-tag {
+        padding-top: 12px;
+        font-size: 0.74rem;
+    }
+
+    /* SEGURIDAD */
+    .security-banner {
+        padding: 20px 14px;
+    }
+
+    .security-header {
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+
+    .security-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .security-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .security-card {
+        padding: 12px;
+    }
+
+    .sec-desc {
+        font-size: 0.82rem;
+    }
+
+    .security-footer {
         flex-direction: column;
         align-items: stretch;
         gap: 10px;
+    }
+
+    .security-policy-link,
+    .security-report-btn {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+        padding: 9px 12px;
+        font-size: 0.82rem;
+    }
+
+    /* PASOS EN MODO TELÉFONO */
+    .steps-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .step-card {
+        padding: 18px 14px;
+    }
+
+    .step-number {
+        font-size: 1.8rem;
+        margin-bottom: 4px;
+    }
+
+    .step-title {
+        font-size: 1.02rem;
+    }
+
+    .step-desc {
+        font-size: 0.86rem;
+        margin-bottom: 10px;
+    }
+
+    .code-box-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
     }
 
     .code-box-content .btn-copy {
         width: 100%;
         justify-content: center;
         padding: 8px 12px;
+    }
+
+    .step-hint {
+        font-size: 0.78rem;
+        padding: 8px 10px;
+    }
+
+    /* TECNOLOGÍAS */
+    .tech-grid {
+        gap: 8px;
+    }
+
+    .tech-pill {
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        gap: 6px;
+    }
+
+    .tech-pill svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* FOOTER */
+    .footer {
+        padding: 36px 0 20px;
+    }
+
+    .footer-links-group {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px 14px;
+    }
+
+    .footer-links-group > div:last-child {
+        grid-column: span 2;
+    }
+
+    .footer-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 0.78rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar-inner {
+        height: 56px;
+    }
+
+    .brand-text {
+        font-size: 1.05rem;
+    }
+
+    .version-pill {
+        display: none;
+    }
+
+    .btn-github span {
+        display: none;
+    }
+
+    .btn-github {
+        padding: 6px 10px;
+    }
+
+    .btn-lang {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+    }
+
+    .hero-title {
+        font-size: 1.65rem;
+    }
+
+    .footer-links-group {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-links-group > div:last-child {
+        grid-column: span 1;
     }
 }
