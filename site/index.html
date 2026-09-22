@@ -22,7 +22,7 @@
         <div class="container navbar-inner">
             <a href="#" class="brand">
                 <div class="logo-icon"></div>
-                <div class="brand-text">RTMS <span class="accent">Stream</span></div>
+                <div class="brand-text">RTMS <span class="accent">Real-Time Multicam System</span></div>
                 <span class="version-pill" id="nav-version">v...</span>
             </a>
 
@@ -122,7 +122,7 @@
                         <polyline points="16 18 22 12 16 6"></polyline>
                         <polyline points="8 6 2 12 8 18"></polyline>
                     </svg>
-                    <span>Sin instalador (100% Portable)</span>
+                    <span>Ejecutable nativo rtms.exe (Portable)</span>
                 </div>
                 <div class="spec-badge">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -135,7 +135,7 @@
                         <circle cx="12" cy="12" r="10"></circle>
                         <path d="M12 6v6l4 2"></path>
                     </svg>
-                    <span>Latencia típica &lt;100 ms</span>
+                    <span>MediaMTX Ingestion (&lt;100 ms)</span>
                 </div>
             </div>
 
@@ -191,7 +191,7 @@
                             </div>
                             <div class="stream-meta-row">
                                 <span>Destino SRT:</span>
-                                <span class="meta-code">srt://127.0.0.1:9000</span>
+                                <span class="meta-code">srt://127.0.0.1:8890?streamid=read:cam_1</span>
                             </div>
                         </div>
 
@@ -214,7 +214,7 @@
                             </div>
                             <div class="stream-meta-row">
                                 <span>Destino SRT:</span>
-                                <span class="meta-code">srt://127.0.0.1:9002</span>
+                                <span class="meta-code">srt://127.0.0.1:8890?streamid=read:cam_2</span>
                             </div>
                         </div>
 
@@ -361,21 +361,60 @@
                     <div class="bento-header">
                         <div class="bento-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                            </svg>
+                        </div>
+                        <h3 class="bento-title">Ingesta Desacoplada MediaMTX</h3>
+                    </div>
+                    <p class="bento-text">
+                        Servidor local integrado que independiza la captura del receptor. OBS o vMix pueden conectarse o desconectarse sin detener a FFmpeg ni causar reinicios de hardware en las cámaras.
+                    </p>
+                    <div class="bento-tag">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        MediaMTX v1.9.3 &bull; Múltiples clientes
+                    </div>
+                </div>
+
+                <!-- Bento 3 -->
+                <div class="bento-item">
+                    <div class="bento-header">
+                        <div class="bento-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                             </svg>
                         </div>
                         <h3 class="bento-title">Aceleración Multi-Vendor</h3>
                     </div>
                     <p class="bento-text">
-                        Soporte nativo para codificación por hardware en tarjetas NVIDIA (`nvenc`), procesadores Intel Core/Arc (`qsv`) y tarjetas AMD Radeon (`amf`).
+                        Soporte nativo para codificación por hardware en tarjetas NVIDIA (`nvenc`), procesadores Intel Core/Arc (`qsv`) y tarjetas AMD Radeon (`amf`), con fallback automático a CPU.
                     </p>
                     <div class="bento-tag">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Fallback automático a CPU
+                        NVENC &bull; QSV &bull; AMF &bull; libx264
                     </div>
                 </div>
 
-                <!-- Bento 3 -->
+                <!-- Bento 4 (Span 2) -->
+                <div class="bento-item span-2">
+                    <div class="bento-header">
+                        <div class="bento-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="bento-title">Blindaje de Kernel con Win32 Job Objects</h3>
+                    </div>
+                    <p class="bento-text">
+                        Aislamiento y control estricto del árbol de procesos a nivel de sistema operativo. Al cerrar RTMS, el kernel de Windows liquida al instante cualquier proceso subordinado de FFmpeg o MediaMTX sin dejar tareas huérfanas consumiendo GPU o puertos en segundo plano.
+                    </p>
+                    <div class="bento-tag">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Cero procesos huérfanos en memoria
+                    </div>
+                </div>
+
+                <!-- Bento 5 -->
                 <div class="bento-item">
                     <div class="bento-header">
                         <div class="bento-icon">
@@ -387,52 +426,11 @@
                         <h3 class="bento-title">Reconexión PnP & Watchdog</h3>
                     </div>
                     <p class="bento-text">
-                        Watchdog optimizado que detecta congelamiento de cuadros a 0 FPS y sondeo automático de dispositivos DirectShow cada 5 segundos para reanudar transmisiones sin intervención humana.
+                        Watchdog optimizado que detecta congelamiento de cuadros a 0 FPS y sondeo automático DirectShow cada 5 segundos para reanudar transmisiones tras desconexión física.
                     </p>
                     <div class="bento-tag">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         Resiliencia desatendida
-                    </div>
-                </div>
-
-                <!-- Bento 4 (Span 2) -->
-                <div class="bento-item span-2">
-                    <div class="bento-header">
-                        <div class="bento-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                                <line x1="8" y1="21" x2="16" y2="21"></line>
-                                <line x1="12" y1="17" x2="12" y2="21"></line>
-                            </svg>
-                        </div>
-                        <h3 class="bento-title">Aislamiento Inteligente de Cámaras Virtuales</h3>
-                    </div>
-                    <p class="bento-text">
-                        Identificación y clasificación automática de software de video virtual (NVIDIA Broadcast, OBS Virtual Camera, Elgato Virtual Cam, vMix, DroidCam). El sistema evita que se inicien automáticamente en reposo, reservando la memoria VRAM y los Tensor Cores de la GPU para lo que realmente importa.
-                    </p>
-                    <div class="bento-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Gestión inteligente de recursos
-                    </div>
-                </div>
-
-                <!-- Bento 5 -->
-                <div class="bento-item">
-                    <div class="bento-header">
-                        <div class="bento-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </div>
-                        <h3 class="bento-title">Vista Previa On-Demand</h3>
-                    </div>
-                    <p class="bento-text">
-                        Streaming MJPEG en navegador y visor nativo FFplay con consumo cero en reposo. El canal de previsualización solo consume CPU cuando el usuario tiene la pestaña activa.
-                    </p>
-                    <div class="bento-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Cero consumo en reposo
                     </div>
                 </div>
 
@@ -441,23 +439,19 @@
                     <div class="bento-header">
                         <div class="bento-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="5"></circle>
-                                <line x1="12" y1="1" x2="12" y2="3"></line>
-                                <line x1="12" y1="21" x2="12" y2="23"></line>
-                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                                <line x1="1" y1="12" x2="3" y2="12"></line>
-                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
                             </svg>
                         </div>
-                        <h3 class="bento-title">Control Energético Win32</h3>
+                        <h3 class="bento-title">Persistencia ACID en SQLite</h3>
                     </div>
                     <p class="bento-text">
-                        Prevención activa de suspensión del sistema operativo durante las transmisiones en vivo, asegurando que los puertos USB y las tarjetas de red permanezcan siempre encendidas.
+                        Almacenamiento transaccional de alta concurrencia mediante SQLite con modo WAL (Write-Ahead Logging), garantizando integridad ante cierres repentinos sin archivos JSON corruptos.
                     </p>
                     <div class="bento-tag">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Anti-sleep para puertos USB
+                        Integridad transaccional &bull; WAL
                     </div>
                 </div>
             </div>
@@ -570,23 +564,23 @@
                     <div class="step-number">02</div>
                     <h3 class="step-title">Iniciar RTMS</h3>
                     <p class="step-desc">
-                        Ejecuta <code>run.bat</code> para iniciar el servidor local. Se abrirá automáticamente la consola de control en tu navegador o ventana nativa.
+                        Haz doble clic en <code>rtms.exe</code> para iniciar el servidor. Se abrirá automáticamente la ventana nativa de control y telemetría.
                     </p>
                     <div class="code-box">
-                        <span>http://127.0.0.1:8000</span>
-                        <span style="color: var(--status-green);">● Activo</span>
+                        <span>rtms.exe</span>
+                        <span style="color: var(--status-green);">● Ejecutable nativo</span>
                     </div>
                 </div>
 
                 <!-- Paso 3 -->
                 <div class="step-card">
                     <div class="step-number">03</div>
-                    <h3 class="step-title">Conectar en OBS Studio</h3>
+                    <h3 class="step-title">Conectar en OBS Studio o vMix</h3>
                     <p class="step-desc">
                         Agrega una <strong>Fuente multimedia</strong>, desmarca <em>Archivo local</em> y pega la URL en modo <em>Caller</em> con formato <code>mpegts</code>:
                     </p>
                     <div class="code-box">
-                        <span id="obs-srt-sample">srt://127.0.0.1:9000?mode=caller&latency=120000</span>
+                        <span id="obs-srt-sample">srt://127.0.0.1:8890?streamid=read:cam_1&latency=120000</span>
                         <button class="btn-copy" data-copy-target="obs-srt-sample" title="Copiar URL al portapapeles">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
