@@ -1,0 +1,24 @@
+# ==============================================================================
+# RTMS — MediaMTX Broadcast Server Configuration (Template)
+# ==============================================================================
+
+# API interna de telemetria y control de rutas
+api: yes
+apiAddress: 127.0.0.1:9997
+
+# Desactivar protocolos no utilizados para optimizar CPU y puertos
+rtsp: no
+rtmp: no
+hls: no
+
+# Servidor SRT central (Multiplexacion mediante streamid)
+srt: yes
+srtAddress: :8890
+
+# Servidor WebRTC / WHEP para vistas previas de ultra baja latencia
+webrtc: yes
+webrtcAddress: :8889
+
+# Configuracion de rutas (paths)
+paths:
+  all_others:
