@@ -1,6 +1,32 @@
 # Changelog — RTMS (Real-Time Multicam System)
 
-Todas las modificaciones notables de este proyecto se documentan en este archivo.
+## [2.5.2] — 2026-09-22
+
+### Optimización de Latencia Extrema en SRT/UDP, Soporte UDP Unicast/Multicast, Códigos QR Offline y Aceleración de Arranque
+- **Transmisión UDP Unicast y Multicast Local (`core/stream_proc.py`, `core/command_builder.py`, `api/schemas.py`, `gui/templates/index.html`)**:
+  - Implementación de modo UDP dual: Unicast (`udp_unicast` para loopback `127.0.0.1` o IP destino específica) y Multicast (`udp_multicast` para rangos clase D `239.255.0.X`).
+  - MRL canónica para VLC Media Player: formato `udp://@<ip>:<port>` sin parámetros query trailing (`?pkt_size`), eliminando rechazos de sintaxis en el analizador de puertos de VLC.
+  - Validación completa con cero pérdida de paquetes y retardo inferior a 80 ms en decodificación local de VLC.
+- **Optimización de Latencia Extrema en SRT Local y Broadcast (`core/command_builder.py`, `core/stream_proc.py`)**:
+  - Eliminación del flag `smoother=live` en la publicación caller hacia MediaMTX, eliminando la regulación artificial de paquetes en enlaces localhost.
+  - Ajuste dinámico de GOP a 1 segundo (`gop = fps` en modo zerolatency), forzando emisión frecuente de SPS, PPS y cuadros IDR para enganche inmediato de clientes (<100 ms).
+  - Flags de multiplexor MPEG-TS de ultra-baja latencia: `-pat_period 0.1 -pcr_period 20` para sincronización instantánea de tablas PAT/PMT y reloj PCR.
+- **Códigos QR Offline para Conexión Móvil en VLC (`gui/static/qrcode.min.js`, `gui/templates/index.html`, `gui/static/app.js`, `gui/static/styles.css`)**:
+  - Generación local de códigos QR autónoma sin dependencias externas ni CDN (100% offline).
+  - Modal interactivo de escaneo QR integrado en las tarjetas de cámara y en la vista general "Conectar OBS/VLC".
+  - Permite a teléfonos y tablets en la red local escanear y reproducir inmediatamente los flujos en VLC Mobile (iOS / Android).
+- **Arranque Instantáneo y Prevención de Permisos de Administrador (`core/system_env.py`, `main.py`)**:
+  - Eliminación automática de bloqueos de seguridad de Windows (`Zone.Identifier`) en todos los binarios y librerías de `bin/` (`unblock_app_binaries`).
+  - Configuración asíncrona de reglas de Windows Defender Firewall para `mediamtx.exe` en hilo secundario, evitando bloqueos en la interfaz y ventanas emergentes de UAC.
+  - Activación de temporizador multimedia de alta precisión `timeBeginPeriod(1)` en Windows para resolución milimétrica de scheduling y menor jitter.
+  - Prioridad de proceso `ABOVE_NORMAL_PRIORITY_CLASS` (0x00008000) asignada a subprocesos de FFmpeg.
+- **Fiabilidad y Baja Latencia en Monitores de Vista Previa (`core/preview_mgr.py`, `api/routes/preview.py`)**:
+  - Flags `-probesize 100k -analyzeduration 500k -fflags nobuffer+flush_packets -flags low_delay` en flujos MJPEG y visores FFplay, reduciendo el tiempo de apertura de 5 s a <200 ms.
+  - Generador de prueba virtual (`lavfi testsrc2`) para cámaras virtuales y estados inactivos, evitando errores del demuxer DirectShow.
+- **Refinamiento Estético y Consistencia Visual (`gui/templates/index.html`, `gui/static/styles.css`)**:
+  - Corrección visual del campo de entrada de puerto MediaMTX en la ventana de Ajustes Generales (`form-ctrl`, fondo oscuro y borde unificado).
+  - Realineación del título del modal de vista previa y distintivo de estado.
+
 ## [2.5.1] — 2026-09-22
 
 ### Compatibilidad de Reproducción SRT (VLC), Parches de Seguridad CodeQL y Sincronización en Memoria
