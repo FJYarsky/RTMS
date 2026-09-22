@@ -135,10 +135,11 @@ async function copyUrlByIndex(index) {
             const data = await res.json();
             if (data.connect_url) {
                 copyText(data.connect_url);
-                showToast(`URL copiada (${stream.protocol.toUpperCase()}) lista para OBS / vMix`);
+                showToast(`URL copiada (${stream.protocol.toUpperCase()}) lista para OBS / vMix / VLC`);
                 if (urlInput) {
                     urlInput.value = data.connect_url;
                     urlInput.dataset.fullUrl = data.connect_url;
+                    urlInput.dataset.vlcUrl = data.vlc_url;
                 }
                 return;
             }
@@ -153,17 +154,18 @@ async function copyUrlByIndex(index) {
 }
 
 async function loadConnectUrlForStream(stream, globalIndex) {
-    if (stream.protocol !== 'srt') return;
     try {
         const res = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/connect_url`);
         if (res.ok) {
             const data = await res.json();
             if (data.connect_url) {
                 stream.connect_url = data.connect_url;
+                stream.vlc_url = data.vlc_url;
                 const urlInput = document.getElementById(`url-input-${globalIndex}`);
                 if (urlInput) {
                     urlInput.value = data.connect_url;
                     urlInput.dataset.fullUrl = data.connect_url;
+                    urlInput.dataset.vlcUrl = data.vlc_url;
                 }
             }
         }
@@ -354,10 +356,13 @@ function renderConnectPage() {
             const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
             const cleanCamId = stream.clean_cam_id || stream.id;
             clientUrl = `srt://${_localIp}:${srtPort}/?streamid=read:${cleanCamId}`;
+        } else if (stream.udp_mode === 'unicast') {
+            protocolLabel = 'UDP Unicast (Localhost / Misma PC)';
+            clientUrl = `udp://@127.0.0.1:${stream.port}`;
         } else {
-            protocolLabel = 'UDP Multicast (Multipreceptor)';
+            protocolLabel = 'UDP Multicast (Red LAN)';
             const ipLastOctet = (stream.port % 200) + 1;
-            clientUrl = `udp://239.255.0.${ipLastOctet}:${stream.port}?pkt_size=1316`;
+            clientUrl = `udp://@239.255.0.${ipLastOctet}:${stream.port}`;
         }
         
         const row = document.createElement('div');
@@ -375,13 +380,12 @@ function renderConnectPage() {
             <div class="copy-input-grp">
                 <input type="text" id="url-input-${globalIndex}" value="${escapeHtml(clientUrl)}" readonly>
                 ${stream.protocol === 'srt' ? `<button class="btn btn-ghost btn-sm" id="toggle-pass-btn-${globalIndex}" title="Mostrar/Ocultar contraseña" onclick="toggleUrlPassphrase(${globalIndex})" style="padding: 4px 10px; margin-right: 4px; border: 1px solid var(--border-color);">👁️</button>` : ''}
+                <button class="btn btn-ghost btn-sm" onclick="openQrModal(${globalIndex})" title="Código QR para celular" style="padding: 4px 10px; margin-right: 4px; border: 1px solid var(--border-color);">📱 QR</button>
                 <button class="copy-icon-btn" onclick="copyUrlByIndex(${globalIndex})">Copiar URL</button>
             </div>
         `;
         container.appendChild(row);
-        if (stream.protocol === 'srt') {
-            loadConnectUrlForStream(stream, globalIndex);
-        }
+        loadConnectUrlForStream(stream, globalIndex);
     });
 }
 
@@ -457,7 +461,9 @@ function createCameraCardElement(stream, index) {
         badgeText = stream.status.error_count >= 5 ? 'Fallo Permanente' : 'Reintentando...'; 
     }
     
-    const protocolName = stream.protocol === 'srt' ? 'SRT Media Server' : 'UDP Multicast';
+    const protocolName = stream.protocol === 'srt' 
+        ? 'SRT Media Server' 
+        : (stream.udp_mode === 'unicast' ? 'UDP Unicast (Localhost)' : 'UDP Multicast (LAN)');
     
     let actionBtnHtml = '';
     if (state === 'running' || state === 'starting' || state === 'restarting') {
@@ -485,7 +491,7 @@ function createCameraCardElement(stream, index) {
 
     const portInfoHtml = stream.protocol === 'srt'
         ? `<p>Puerto SRT: <strong>${escapeHtml(stream.mediamtx_port || _mediamtxSrtPort || 8890)}</strong> (Servidor Central) | Stream ID: <code>read:${escapeHtml(stream.clean_cam_id || stream.id)}</code></p>`
-        : `<p>Puerto UDP: <strong>${escapeHtml(stream.port)}</strong> (Multicast)</p>`;
+        : `<p>Puerto UDP: <strong>${escapeHtml(stream.port)}</strong> (${stream.udp_mode === 'unicast' ? 'Unicast Local' : 'Multicast LAN'})</p>`;
 
     card.innerHTML = `
         <div class="stream-card-hdr">
@@ -519,6 +525,7 @@ function createCameraCardElement(stream, index) {
         <div class="actions-row" style="flex-wrap: wrap;">
             ${actionBtnHtml}
             <button class="btn btn-primary btn-sm" onclick="openPreviewModal(${index})">👁️ Vista Previa</button>
+            <button class="btn btn-ghost btn-sm" onclick="openQrModal(${index})" title="Ver código QR para reproducir en celular con VLC">📱 QR</button>
             <button class="btn btn-ghost btn-sm" onclick="controlStream(${index}, 'restart')">🔄 Reiniciar</button>
             <button class="btn btn-ghost btn-sm" onclick="configureStream(${index})">⚙️ Ajustes</button>
             <button class="btn btn-ghost btn-sm" onclick="viewLogs(${index})">📝 Logs</button>
@@ -856,7 +863,11 @@ function configureStream(index) {
     document.getElementById('config-resolution').value = stream.resolution;
     document.getElementById('config-fps').value = stream.fps.toString();
     document.getElementById('config-bitrate').value = stream.bitrate;
-    document.getElementById('config-protocol').value = stream.protocol || 'srt';
+    let protoVal = stream.protocol || 'srt';
+    if (protoVal === 'udp') {
+        protoVal = stream.udp_mode === 'unicast' ? 'udp_unicast' : 'udp_multicast';
+    }
+    document.getElementById('config-protocol').value = protoVal;
     document.getElementById('config-encoder').value = stream.encoder;
     document.getElementById('config-cam-autostart').checked = stream.auto_start;
     document.getElementById('config-zerolatency').checked = stream.zerolatency;
@@ -866,7 +877,7 @@ function configureStream(index) {
     // Mostrar enmascarada si ya existe
     document.getElementById('config-srt-passphrase').value = stream.srt_passphrase || '';
     
-    handleProtocolChange(stream.protocol || 'srt');
+    handleProtocolChange(protoVal);
     document.getElementById('config-modal-overlay').classList.add('active');
 }
 
@@ -946,13 +957,25 @@ async function submitCameraConfig(event) {
     const resolution = document.getElementById('config-resolution').value;
     const fps = parseInt(document.getElementById('config-fps').value);
     const bitrate = parseInt(document.getElementById('config-bitrate').value);
-    const protocol = document.getElementById('config-protocol').value;
+    const protoVal = document.getElementById('config-protocol').value;
     const encoder = document.getElementById('config-encoder').value;
     const srtLatency = parseInt(document.getElementById('config-srt-latency').value);
     const srtPassphrase = document.getElementById('config-srt-passphrase').value.trim();
     const autoStart = document.getElementById('config-cam-autostart').checked;
     const zeroLatency = document.getElementById('config-zerolatency').checked;
     const isVirtual = document.getElementById('config-is-virtual').checked;
+
+    let protocol = 'srt';
+    let udpMode = 'multicast';
+    if (protoVal === 'udp_unicast') {
+        protocol = 'udp';
+        udpMode = 'unicast';
+    } else if (protoVal === 'udp_multicast' || protoVal === 'udp') {
+        protocol = 'udp';
+        udpMode = 'multicast';
+    } else {
+        protocol = 'srt';
+    }
     
     if (protocol === 'srt' && srtPassphrase !== '' && srtPassphrase !== '••••••••') {
         if (srtPassphrase.length < 10 || srtPassphrase.length > 79) {
@@ -967,6 +990,8 @@ async function submitCameraConfig(event) {
         fps: fps,
         bitrate: bitrate,
         protocol: protocol,
+        udp_mode: udpMode,
+        udp_host: "127.0.0.1",
         encoder: encoder,
         srt_latency: srtLatency,
         srt_passphrase: srtPassphrase,
@@ -1276,13 +1301,15 @@ async function openPreviewModal(index) {
 
     titleEl.textContent = `Vista Previa — ${stream.friendly_name}`;
     const isRunning = stream.status.state === 'running';
+    const isVirtual = Boolean(stream.is_virtual || (stream.device_path && (stream.device_path.startsWith('virtual://') || stream.device_path.startsWith('testsrc'))));
 
     const portDisplay = stream.protocol === 'srt'
         ? `SRT Central :${escapeHtml(stream.mediamtx_port || _mediamtxSrtPort || 8890)}`
-        : `UDP :${escapeHtml(stream.port)}`;
+        : `UDP :${escapeHtml(stream.port)} (${stream.udp_mode === 'unicast' ? 'Unicast' : 'Multicast'})`;
+    const stoppedText = isVirtual ? 'Generador Virtual' : 'Encuadre DirectShow (Detenido)';
     infoEl.innerHTML = isRunning 
         ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo (${portDisplay})</span>`
-        : `<span class="status-badge stopped"><span class="status-dot"></span>Encuadre DirectShow (Stream Detenido)</span>`;
+        : `<span class="status-badge stopped"><span class="status-dot"></span>${stoppedText}</span>`;
 
     loader.style.display = 'flex';
     imgEl.style.display = 'none';
@@ -1354,5 +1381,81 @@ async function launchFFplayExternal(devicePath) {
         }
     } catch (e) {
         showToast('Error al conectar con el servidor', 'error');
+    }
+}
+
+// CONTROLADOR DEL MODAL DE CÓDIGO QR PARA REPRODUCCIÓN EN CELULAR
+let _currentQrCodeInstance = null;
+
+async function openQrModal(index) {
+    const stream = _streams[index];
+    if (!stream) return;
+
+    const modal = document.getElementById('qr-modal-overlay');
+    const nameEl = document.getElementById('qr-stream-name');
+    const urlInput = document.getElementById('qr-url-input');
+    const qrContainer = document.getElementById('qr-code-display');
+
+    if (!modal || !qrContainer) return;
+
+    const protoTitle = stream.protocol === 'srt' ? 'SRT' : (stream.udp_mode === 'unicast' ? 'UDP Unicast' : 'UDP Multicast');
+    nameEl.textContent = `${stream.friendly_name} — ${protoTitle}`;
+
+    // Obtener la URL más actualizada con autenticación/passphrase
+    let targetUrl = '';
+    try {
+        const res = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/connect_url`);
+        if (res.ok) {
+            const data = await res.json();
+            targetUrl = data.vlc_url || data.connect_url || '';
+        }
+    } catch (e) {
+        console.warn('Fallo obteniendo URL para QR, usando fallback:', e);
+    }
+
+    if (!targetUrl) {
+        if (stream.protocol === 'srt') {
+            const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
+            const cleanCamId = stream.clean_cam_id || stream.id;
+            targetUrl = `srt://${_localIp}:${srtPort}/?streamid=read:${cleanCamId}`;
+        } else if (stream.udp_mode === 'unicast') {
+            targetUrl = `udp://@127.0.0.1:${stream.port}`;
+        } else {
+            const ipLastOctet = (stream.port % 200) + 1;
+            targetUrl = `udp://@239.255.0.${ipLastOctet}:${stream.port}`;
+        }
+    }
+
+    urlInput.value = targetUrl;
+    qrContainer.innerHTML = '';
+
+    if (typeof QRCode !== 'undefined') {
+        _currentQrCodeInstance = new QRCode(qrContainer, {
+            text: targetUrl,
+            width: 220,
+            height: 220,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.M
+        });
+    } else {
+        qrContainer.innerHTML = '<p style="color:#000; font-size:0.8rem;">Generador QR no cargado.</p>';
+    }
+
+    modal.classList.add('active');
+}
+
+function closeQrModal() {
+    const modal = document.getElementById('qr-modal-overlay');
+    if (modal) modal.classList.remove('active');
+    const qrContainer = document.getElementById('qr-code-display');
+    if (qrContainer) qrContainer.innerHTML = '';
+}
+
+function copyQrUrl() {
+    const urlInput = document.getElementById('qr-url-input');
+    if (urlInput && urlInput.value) {
+        copyText(urlInput.value, "URL copiada al portapapeles");
+        showToast("URL de red copiada para VLC / Celular");
     }
 }

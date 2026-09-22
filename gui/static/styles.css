@@ -1340,4 +1340,24 @@ input[type="checkbox"]:checked + .switch-toggle::after {
     color: #ffffff;
 }
 
+/* QR CODE DISPLAY */
+.qr-canvas-container {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    margin: 0 auto 16px;
+}
+
+#qr-code-display canvas,
+#qr-code-display img {
+    display: block;
+    margin: 0 auto;
+    max-width: 220px;
+    height: auto;
+}
+
 
