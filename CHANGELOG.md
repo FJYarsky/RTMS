@@ -2,6 +2,25 @@
 
 Todas las modificaciones notables de este proyecto se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/), y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
+## [2.4.1] — 2026-09-22
+
+### Corrección de Detección de Dispositivos, Desconexión Hotplug y Control de Inicio
+- **Filtro Canónico DirectShow y Corrección de Detección de Micrófono como Video (`core/hardware.py`)**:
+  - Detección precisa del formato moderno de FFmpeg 7.x+ mediante análisis de corchetes con etiquetas `(video)`, `(audio)`, `(none)` y prefijos `[in#`.
+  - Eliminado el falso positivo donde apagar la webcam de la laptop (tecla F5 o switch) provocaba la captura errónea de micrófonos como dispositivos de video. En ausencia de líneas `(video)` en formato moderno, se retorna una lista vacía `[]` sin caer al fallback clásico.
+  - Implementado filtro estricto por GUIDs de DirectShow: rechazo categórico de dispositivos pertenecientes a `KSCATEGORY_AUDIO` (`33D9A762-90C8-11D0-BD43-00A0C911CE86` / `4DF0A701-02CD-11CF-8356-0080C73DF13A`) y rutas con prefijo `@device_cm_`.
+- **Manejo Reactivo de Desconexión Física y Apagado de Cámara (`core/stream_manager.py`)**:
+  - Reacción instantánea ante errores `ErrorCategory.DEVICE` en `_collect_logs`: si una cámara se desconecta físicamente o se desactiva por teclado/hardware, se transiciona de inmediato a `State.DISCONNECTED` y se finaliza su subproceso limpiamente sin acumular contadores de error de software ni entrar en reintentos con backoff.
+  - Watchdog de detección de congelamiento a 0 FPS: si un flujo activo transmite 0 cuadros por segundo sostenidos durante más de 8 segundos y el dispositivo desaparece de DirectShow, el watchdog detiene el proceso y transiciona ordenadamente a `State.DISCONNECTED`.
+  - Reanudación limpia en hotplug: al reconectar o reactivar la cámara física, se limpian bloqueos anteriores (`clear_failure()`) y, si `auto_start` está habilitado, la transmisión se restablece de forma automática; en caso contrario, queda lista en estado `State.STOPPED`.
+  - Sondeo de hardware acelerado a 5 segundos (antes 20 segundos) para detección hotplug casi instantánea.
+- **Política de Inicio Desatendido Seguro (`core/config_mgr.py`, `config/config.example.json`)**:
+  - `auto_start` desactivado por defecto (`False`) para cámaras recién descubiertas en el primer arranque, evitando sobrecarga innecesaria de CPU/GPU al iniciar RTMS.
+  - Configuración inicial `unattended_autostart: false` por defecto en plantillas. El usuario mantiene el control explícito mediante interruptores individuales de autostart en el panel web.
+- **Limpieza de Ramas y Sincronización del Catálogo GitHub**:
+  - Ramas de trabajo y worktrees temporales consolidados y cerrados, manteniendo `main` como rama única y limpia.
+  - Catálogo canónico de 31 elementos en `scripts/manage_descriptions.py` auditado y 100% sincronizado.
+
 ## [2.4.0] — 2026-09-22
 
 ### Arquitectura Limpia y Descomposición Modular (Cierre de Fase 1)
