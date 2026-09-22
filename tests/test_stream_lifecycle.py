@@ -46,3 +46,44 @@ def test_stream_proc_lock_prevents_race_condition():
         assert counter == 3
 
     asyncio.run(_run())
+
+
+def test_stream_proc_clear_failure_resets_zero_fps():
+    """Valida que clear_failure limpie zero_fps_since y estado de fallo."""
+    from datetime import datetime
+
+    proc = StreamProc("@device_fps_test")
+    proc.zero_fps_since = datetime.now()
+    proc.error_count = 3
+    proc.manual_intervention_required = True
+    proc.state = State.ERROR
+
+    proc.clear_failure()
+    assert proc.zero_fps_since is None
+    assert proc.error_count == 0
+    assert proc.manual_intervention_required is False
+    assert proc.state == State.STOPPED
+
+
+def test_stream_manager_handle_device_lost_transitions_to_disconnected():
+    """Valida que _handle_device_lost transicione a DISCONNECTED sin acumular errores."""
+    from unittest.mock import AsyncMock, patch
+
+    from core.stream_manager import StreamManager
+
+    mgr = StreamManager()
+    dp = "@device_unplugged_cam"
+    proc = mgr.get_proc(dp)
+    proc.state = State.RUNNING
+    proc.is_connected = True
+
+    async def _test():
+        with patch("core.stream_manager.get_directshow_devices", new=AsyncMock(return_value=[])):
+            with patch.object(mgr, "stop_stream", new=AsyncMock()):
+                await mgr._handle_device_lost(dp)
+                assert proc.is_connected is False
+                assert proc.state == State.DISCONNECTED
+                assert proc.error_count == 0
+                assert proc.manual_intervention_required is False
+
+    asyncio.run(_test())

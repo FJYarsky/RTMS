@@ -46,3 +46,28 @@ def test_parse_dshow_empty_output():
     """Valida que una salida vacía o sin cámaras retorne lista vacía sin excepciones."""
     devices = parse_dshow_output("Dummy output with no devices")
     assert devices == []
+
+
+def test_parse_dshow_camera_disabled_f5_returns_empty():
+    """Valida que al desactivar la webcam con la tecla F5, el micrófono no sea capturado como video y devuelva lista vacía."""
+    sample_f5_output = """
+ffmpeg version 7.0 Copyright (c) 2000-2024 the FFmpeg developers
+[in#0 @ 000001b1fd873840] "OBS Virtual Camera" (none)
+[in#0 @ 000001b1fd873840]   Alternative name "@device_sw_{860BB310-5D01-11D0-BD3B-00A0C911CE86}\\{A3FCE0F5-3493-419F-958A-ABA1250EC20B}"
+[in#0 @ 000001b1fd873840] "Varios micrófonos (2- Intel® Smart Sound Technology for Digital Microphones)" (audio)
+[in#0 @ 000001b1fd873840]   Alternative name "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{F17C8234-B198-449D-AE7B-BC81CE2C0F0D}"
+Error opening input file dummy.
+    """
+    devices = parse_dshow_output(sample_f5_output)
+    assert devices == []
+
+
+def test_parse_dshow_rejects_audio_guid_in_any_format():
+    """Valida el rechazo estricto de dispositivos con categoría de audio DirectShow KSCATEGORY_AUDIO."""
+    sample_malformed = """
+[dshow @ 000002194203cf00] DirectShow video devices
+[dshow @ 000002194203cf00]  "Microfono USB"
+[dshow @ 000002194203cf00]     Alternative name "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_123"
+    """
+    devices = parse_dshow_output(sample_malformed)
+    assert devices == []

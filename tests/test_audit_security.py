@@ -152,7 +152,7 @@ def test_connect_url_cache_control_headers():
 
     # Configurar una cámara de prueba
     cfg = {
-        "version": "2.4.0",
+        "version": "2.4.1",
         "config_schema_version": 4,
         "cameras": {
             "@cam_test": {

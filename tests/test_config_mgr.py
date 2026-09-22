@@ -35,7 +35,7 @@ def test_get_or_allocate_camera_config():
     assert cfg["protocol"] == "srt"
     assert cfg["port"] >= 9000
     assert len(cfg["srt_passphrase"]) >= 10  # Cumple requerimiento mínimo de longitud de SRT
-    assert cfg["auto_start"] is True
+    assert cfg["auto_start"] is False
     assert cfg["zerolatency"] is True
     assert cfg["is_virtual"] is False
 
@@ -43,7 +43,7 @@ def test_get_or_allocate_camera_config():
 def test_import_config_valid():
     """Valida la importación exitosa de un diccionario de configuración válido."""
     valid_payload = {
-        "version": "2.4.0",
+        "version": "2.4.1",
         "config_schema_version": 4,
         "cameras": {
             "@cam1": {
