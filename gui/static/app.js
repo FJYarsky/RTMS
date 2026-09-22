@@ -6,6 +6,7 @@
 
 let _streams = [];
 let _localIp = '127.0.0.1';
+let _mediamtxSrtPort = 8890;
 let _logsInterval = null;
 let _currentLogDevicePath = null;
 let _uptimeTicker = null;
@@ -208,6 +209,9 @@ async function fetchStatus() {
         
         _localIp = data.local_ip;
         _streams = data.streams;
+        if (data.mediamtx_srt_port) {
+            _mediamtxSrtPort = data.mediamtx_srt_port;
+        }
         
         const connectIpEl = document.getElementById('connect-server-ip');
         if (connectIpEl) connectIpEl.textContent = _localIp;
@@ -346,10 +350,10 @@ function renderConnectPage() {
         let clientUrl = '';
         let protocolLabel = '';
         if (stream.protocol === 'srt') {
-            protocolLabel = 'SRT Caller (Ultra baja latencia)';
-            // Si tiene contraseña protegida, indicarlo en la URL
-            const passNotice = stream.has_passphrase ? ' [Contraseña Requerida]' : '';
-            clientUrl = `srt://${_localIp}:${stream.port}?mode=caller&latency=${stream.srt_latency * 1000}`;
+            protocolLabel = 'SRT Media Server (Reconexión Instantánea)';
+            const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
+            const cleanCamId = stream.clean_cam_id || stream.id;
+            clientUrl = `srt://${_localIp}:${srtPort}?streamid=read:${cleanCamId}`;
         } else {
             protocolLabel = 'UDP Multicast (Multipreceptor)';
             const ipLastOctet = (stream.port % 200) + 1;
@@ -453,7 +457,7 @@ function createCameraCardElement(stream, index) {
         badgeText = stream.status.error_count >= 5 ? 'Fallo Permanente' : 'Reintentando...'; 
     }
     
-    const protocolName = stream.protocol === 'srt' ? 'SRT Listener' : 'UDP Multicast';
+    const protocolName = stream.protocol === 'srt' ? 'SRT Media Server' : 'UDP Multicast';
     
     let actionBtnHtml = '';
     if (state === 'running' || state === 'starting' || state === 'restarting') {
@@ -479,6 +483,10 @@ function createCameraCardElement(stream, index) {
         alertBanner = `<div class="alert-box alert-warning" style="margin: 8px 0; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px;">🔌 Dispositivo desconectado físicamente. En espera de reconexión.</div>`;
     }
 
+    const portInfoHtml = stream.protocol === 'srt'
+        ? `<p>Puerto SRT: <strong>${escapeHtml(stream.mediamtx_port || _mediamtxSrtPort || 8890)}</strong> (Servidor Central) | Stream ID: <code>read:${escapeHtml(stream.clean_cam_id || stream.id)}</code></p>`
+        : `<p>Puerto UDP: <strong>${escapeHtml(stream.port)}</strong> (Multicast)</p>`;
+
     card.innerHTML = `
         <div class="stream-card-hdr">
             <div>
@@ -491,7 +499,7 @@ function createCameraCardElement(stream, index) {
         ${alertBanner}
 
         <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
-            <p>Puerto SRT/UDP: <strong>${escapeHtml(stream.port)}</strong></p>
+            ${portInfoHtml}
             <p>Protocolo: <strong>${escapeHtml(protocolName)}</strong></p>
             <p>Perfil: <strong>${escapeHtml(stream.resolution)} @ ${escapeHtml(stream.fps)} FPS | ${escapeHtml(stream.bitrate)} kbps</strong></p>
             <p>Codificador: <strong>${escapeHtml(encText)}</strong></p>
@@ -1269,8 +1277,11 @@ async function openPreviewModal(index) {
     titleEl.textContent = `Vista Previa — ${stream.friendly_name}`;
     const isRunning = stream.status.state === 'running';
 
+    const portDisplay = stream.protocol === 'srt'
+        ? `SRT Central :${escapeHtml(stream.mediamtx_port || _mediamtxSrtPort || 8890)}`
+        : `UDP :${escapeHtml(stream.port)}`;
     infoEl.innerHTML = isRunning 
-        ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo (${escapeHtml(stream.protocol.toUpperCase())}:${escapeHtml(stream.port)})</span>`
+        ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo (${portDisplay})</span>`
         : `<span class="status-badge stopped"><span class="status-dot"></span>Encuadre DirectShow (Stream Detenido)</span>`;
 
     loader.style.display = 'flex';
