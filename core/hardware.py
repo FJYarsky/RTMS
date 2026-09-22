@@ -82,33 +82,53 @@ async def get_directshow_devices() -> List[Dict[str, str]]:
 def parse_dshow_output(output: str) -> List[Dict[str, str]]:
     r"""
     Analiza la salida stderr de ffmpeg dshow.
-    Soporta formatos antiguos y el nuevo formato de FFmpeg 7.x.
+    Soporta formatos antiguos y el formato moderno de FFmpeg 7.x/8.x.
+    Filtra estrictamente dispositivos de audio DirectShow (KSCATEGORY_AUDIO / @device_cm_).
     """
-    devices = []
+    devices: List[Dict[str, str]] = []
     lines = output.split("\n")
 
-    # 1. Intentar el formato moderno de FFmpeg 7.x:
-    # [in#0 @ 0000...] "Name" (video)
-    # [in#0 @ 0000...]   Alternative name "@device..."
-    current_video_device = None
-    has_modern_format = False
+    # Audio GUIDs y prefijos en DirectShow que NUNCA deben capturarse como video
+    AUDIO_DEVICE_MARKERS = [
+        "@device_cm_",
+        "33d9a762-90c8-11d0-bd43-00a0c911ce86",  # CLSID_AudioInputDeviceCategory
+        "4df0a701-02cd-11cf-8356-0080c73df13a",  # KSCATEGORY_AUDIO
+    ]
 
-    for line in lines:
-        if "(video)" in line and "]" in line:
-            has_modern_format = True
-            m = re.search(r'"([^"]+)"\s*\(video\)', line)
-            if m:
-                current_video_device = m.group(1)
-        elif "Alternative name" in line and current_video_device:
-            m = re.search(r'Alternative name\s+"([^"]+)"', line)
-            if m:
-                devices.append({"friendly_name": current_video_device, "device_path": m.group(1)})
-            current_video_device = None
-        elif "(audio)" in line or "(none)" in line:
-            current_video_device = None
+    def is_audio_device(name: str, path: str) -> bool:
+        path_lower = path.lower()
+        if any(marker in path_lower for marker in AUDIO_DEVICE_MARKERS):
+            return True
+        name_lower = name.lower()
+        if "(audio)" in name_lower:
+            return True
+        return False
+
+    # 1. Detectar si la salida corresponde al formato moderno de FFmpeg 7.x+:
+    # Formato: [in#0 @ 0000...] "Name" (video) / (audio) / (none)
+    has_modern_format = any(
+        ("]" in line and ("(video)" in line or "(audio)" in line or "(none)" in line)) or "[in#" in line
+        for line in lines
+    )
 
     if has_modern_format:
-        logger.info(f"Se encontraron {len(devices)} dispositivos de video.")
+        current_video_device = None
+        for line in lines:
+            if "(video)" in line and "]" in line:
+                m = re.search(r'"([^"]+)"\s*\(video\)', line)
+                if m:
+                    current_video_device = m.group(1)
+            elif "Alternative name" in line and current_video_device:
+                m = re.search(r'Alternative name\s+"([^"]+)"', line)
+                if m:
+                    dev_path = m.group(1)
+                    if not is_audio_device(current_video_device, dev_path):
+                        devices.append({"friendly_name": current_video_device, "device_path": dev_path})
+                current_video_device = None
+            elif "(audio)" in line or "(none)" in line:
+                current_video_device = None
+
+        logger.info(f"Se encontraron {len(devices)} dispositivos de video (formato moderno).")
         return devices
 
     # 2. Fallback al formato clásico de FFmpeg (6.x y anteriores)
@@ -119,19 +139,23 @@ def parse_dshow_output(output: str) -> List[Dict[str, str]]:
 
     current_device = None
     for line in video_part.split("\n"):
-        if "DirectShow video devices" in line:
+        if "DirectShow video devices" in line or "(audio)" in line or "(none)" in line:
             continue
         if "Alternative name" in line and current_device:
             m = re.search(r'Alternative name\s+"([^"]+)"', line)
             if m:
-                devices.append({"friendly_name": current_device, "device_path": m.group(1)})
+                dev_path = m.group(1)
+                if not is_audio_device(current_device, dev_path):
+                    devices.append({"friendly_name": current_device, "device_path": dev_path})
             current_device = None
         elif "]" in line and '"' in line:
             m = re.search(r'"([^"]+)"', line)
             if m:
-                current_device = m.group(1)
+                candidate = m.group(1)
+                if "(audio)" not in line.lower():
+                    current_device = candidate
 
-    logger.info(f"Se encontraron {len(devices)} dispositivos de video.")
+    logger.info(f"Se encontraron {len(devices)} dispositivos de video (formato clásico).")
     return devices
 
 

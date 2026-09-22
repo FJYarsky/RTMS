@@ -113,6 +113,7 @@ class StreamProc:
         self.per_stream_encoder: Optional[str] = None
         self.last_error_category: ErrorCategory = ErrorCategory.UNKNOWN
         self.last_transition: Optional[datetime] = None
+        self.zero_fps_since: Optional[datetime] = None
 
     def transition_to(self, new_state: State) -> None:
         """Formaliza la transición de estados de la máquina de estados del stream."""
@@ -133,6 +134,7 @@ class StreamProc:
         self.manual_intervention_required = False
         self.error_count = 0
         self.next_retry_at = None
+        self.zero_fps_since = None
         self.last_error_category = ErrorCategory.UNKNOWN
         if self.state in (State.ERROR, State.MANUAL_INTERVENTION_REQUIRED):
             self.transition_to(State.STOPPED)

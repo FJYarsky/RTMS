@@ -213,7 +213,7 @@ def load_config() -> Dict[str, Any]:
             "cameras": {},
             "ignored_devices": [],
             "next_port": 9000,
-            "unattended_autostart": True,
+            "unattended_autostart": False,
         }
 
         if not os.path.exists(CONFIG_FILE):
@@ -378,7 +378,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         cam = cameras[device_path]
         cam["friendly_name"] = friendly_name
         cam.setdefault("id", cam_id)
-        cam.setdefault("auto_start", not virtual_flag)
+        cam.setdefault("auto_start", False)
         cam.setdefault("zerolatency", True)
         cam.setdefault("is_virtual", virtual_flag)
         cam.setdefault("protocol", "srt")
@@ -417,7 +417,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         "srt_latency": 120,
         "srt_passphrase": default_passphrase,
         "zerolatency": True,
-        "auto_start": not virtual_flag,
+        "auto_start": False,
         "is_virtual": virtual_flag,
     }
 
@@ -449,7 +449,7 @@ def update_camera_config(
     encoder: str = "auto",
     srt_latency: int = 120,
     srt_passphrase: str = "",
-    auto_start: bool = True,
+    auto_start: Optional[bool] = None,
     zerolatency: bool = True,
     is_virtual: bool = False,
 ):
@@ -465,7 +465,8 @@ def update_camera_config(
         cam["srt_latency"] = srt_latency
         if srt_passphrase:
             cam["srt_passphrase"] = srt_passphrase
-        cam["auto_start"] = auto_start
+        if auto_start is not None:
+            cam["auto_start"] = auto_start
         cam["zerolatency"] = zerolatency
         cam["is_virtual"] = is_virtual
         return save_config(config)

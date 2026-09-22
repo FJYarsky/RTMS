@@ -84,6 +84,8 @@ class StreamManager:
 
         proc.state = State.STARTING
         proc._stop_evt.clear()
+        proc.clear_failure()
+        proc.zero_fps_since = None
         proc.using_fallback_cpu = force_cpu
 
         # Bloqueo por fallo de descifrado de credencial
@@ -203,6 +205,7 @@ class StreamManager:
         proc.process = None
         proc.current_fps = 0.0
         proc.current_bitrate_kbps = 0.0
+        proc.zero_fps_since = None
         proc.log("Stream detenido limpiamente.")
 
     async def remove_stream(self, device_path: str) -> bool:
@@ -268,6 +271,21 @@ class StreamManager:
         """Alias formal para detención global de todas las transmisiones."""
         await self.emergency_stop_all()
 
+    async def _handle_device_lost(self, device_path: str):
+        """Maneja la desconexión física o apagado (F5/USB) de un dispositivo de captura."""
+        proc = self.get_proc(device_path)
+        devices = await get_directshow_devices()
+        detected_paths = {d["device_path"] for d in devices}
+        if device_path not in detected_paths:
+            logger.warning(f"Cámara {device_path} desconectada físicamente (hotplug/F5). Marcando DISCONNECTED.")
+            proc.is_connected = False
+            proc.transition_to(State.DISCONNECTED)
+            proc.error_count = 0
+            proc.manual_intervention_required = False
+            proc.zero_fps_since = None
+            if proc.is_alive:
+                await self.stop_stream(device_path, timeout=1.0)
+
     async def watchdog(self):
         """
         Watchdog no bloqueante con recuperación independiente por stream,
@@ -287,10 +305,44 @@ class StreamManager:
                         ):
                             logger.info(f"Flujo {dp} estable por {int(uptime)}s. Reseteando contadores de error.")
                             proc.clear_failure()
+
+                        # Detección de congelamiento por desconexión física de hardware (0 FPS sostenido)
+                        if uptime >= 8.0 and proc.current_fps == 0.0:
+                            if proc.zero_fps_since is None:
+                                proc.zero_fps_since = now
+                            elif (now - proc.zero_fps_since).total_seconds() >= 8.0:
+                                devices = await get_directshow_devices()
+                                detected_paths = {d["device_path"] for d in devices}
+                                if dp not in detected_paths:
+                                    logger.warning(
+                                        f"Cámara {dp} sin cuadros (0 fps) y no encontrada en DirectShow. Desconectando..."
+                                    )
+                                    proc.is_connected = False
+                                    proc.transition_to(State.DISCONNECTED)
+                                    proc.zero_fps_since = None
+                                    proc.error_count = 0
+                                    proc.manual_intervention_required = False
+                                    asyncio.create_task(self.stop_stream(dp, timeout=1.0))
+                                    continue
+                        else:
+                            proc.zero_fps_since = None
                         continue
 
                     # 2. Detección de caída de flujo
                     if not proc.is_alive and proc.state == State.RUNNING:
+                        # Si el fallo fue originado por desconexión física de hardware
+                        if proc.last_error_category == ErrorCategory.DEVICE:
+                            devices = await get_directshow_devices()
+                            detected_paths = {d["device_path"] for d in devices}
+                            if dp not in detected_paths:
+                                proc.is_connected = False
+                                proc.transition_to(State.DISCONNECTED)
+                                proc.error_count = 0
+                                proc.next_retry_at = None
+                                proc.manual_intervention_required = False
+                                logger.info(f"Cámara {dp} no disponible físicamente. Pausada en DISCONNECTED.")
+                                continue
+
                         # Detección de desconexión de cliente en SRT listener
                         is_srt_disconnect = False
                         if proc.config.get("protocol") == "srt":
@@ -379,6 +431,12 @@ class StreamManager:
             "device not found",
             "could not find video device",
             "dshow: could not",
+            "cannot find video device",
+            "capture device was lost",
+            "device removed",
+            "error reading from input",
+            "input/output error",
+            "i/o error",
             "error while opening encoder",
             "bind failed",
             "address already in use",
@@ -423,8 +481,15 @@ class StreamManager:
                         "could not find video device" in line_lower
                         or "device not found" in line_lower
                         or "dshow: could not" in line_lower
+                        or "cannot find video device" in line_lower
+                        or "capture device was lost" in line_lower
+                        or "device removed" in line_lower
+                        or "error reading from input" in line_lower
+                        or "input/output error" in line_lower
+                        or "i/o error" in line_lower
                     ):
                         proc.last_error_category = ErrorCategory.DEVICE
+                        asyncio.create_task(self._handle_device_lost(device_path))
                     elif "error while opening encoder" in line_lower:
                         proc.last_error_category = ErrorCategory.ENCODER
                     elif "connection refused" in line_lower or "bind failed" in line_lower:
@@ -437,16 +502,20 @@ class StreamManager:
                         return
 
                     if proc.state == State.RUNNING:
-                        proc.transition_to(State.ERROR)
-                        proc.error_count += 1
-                        backoff = min(5 * (2 ** max(0, proc.error_count - 1)), 60)
-                        proc.next_retry_at = datetime.now() + timedelta(seconds=backoff)
+                        if proc.last_error_category == ErrorCategory.DEVICE:
+                            # Se delega a _handle_device_lost para verificar si el hardware desapareció sin quemar reintentos
+                            pass
+                        else:
+                            proc.transition_to(State.ERROR)
+                            proc.error_count += 1
+                            backoff = min(5 * (2 ** max(0, proc.error_count - 1)), 60)
+                            proc.next_retry_at = datetime.now() + timedelta(seconds=backoff)
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.error(f"Error leyendo logs de {device_path}: {e}")
 
-    async def start_periodic_hardware_sync(self, interval: int = 20):
+    async def start_periodic_hardware_sync(self, interval: int = 5):
         """Tarea en segundo plano que sondea periódicamente cambios en dispositivos DirectShow (hotplug)."""
         while True:
             try:
@@ -486,16 +555,21 @@ class StreamManager:
             if dp in ignored_devs:
                 continue
             proc = self.get_proc(dp)
-            was_disconnected = not proc.is_connected
+            was_disconnected = not proc.is_connected or proc.state == State.DISCONNECTED
             proc.config = get_or_allocate_camera_config(dp, d["friendly_name"])
             proc.is_connected = True
 
-            # Si la cámara se reconectó y tiene autoarranque habilitado
-            if was_disconnected and proc.config.get("auto_start", False) and not proc._stop_evt.is_set():
-                logger.info(f"Cámara {dp} reconectada. Reiniciando transmisión automática...")
-                proc.error_count = 0
-                proc.permanent_failure = False
-                asyncio.create_task(self.start_stream(dp))
+            # Si la cámara se reconectó o salió del estado desconectado
+            if was_disconnected:
+                proc.clear_failure()
+                proc.zero_fps_since = None
+                if proc.config.get("auto_start", False) and not proc._stop_evt.is_set():
+                    logger.info(f"Cámara {dp} reconectada físicamente. Restaurando transmisión...")
+                    proc.log("Cámara reconectada. Restaurando transmisión automáticamente...")
+                    asyncio.create_task(self.start_stream(dp))
+                else:
+                    proc.transition_to(State.STOPPED)
+                    proc.log("Cámara detectada y conectada. Lista para iniciar.")
             elif proc.config.get("auto_start", False) and proc.state == State.STOPPED and not proc._stop_evt.is_set():
                 asyncio.create_task(self.start_stream(dp))
 
@@ -527,7 +601,7 @@ class StreamManager:
                     "has_passphrase": bool(raw_pass),
                     "decryption_failed": bool(cfg.get("decryption_failed", False)),
                     "url": sanitize_url(raw_url),
-                    "auto_start": cfg.get("auto_start", True),
+                    "auto_start": cfg.get("auto_start", False),
                     "zerolatency": cfg.get("zerolatency", True),
                     "is_virtual": cfg.get("is_virtual", False),
                     "is_connected": proc.is_connected,
