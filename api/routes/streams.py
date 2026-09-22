@@ -52,11 +52,13 @@ async def get_status():
         sc["srt_passphrase"] = "••••••••" if real_pass else ""
         sanitized_streams.append(sc)
 
+    from core.mediamtx_mgr import mediamtx_manager
     from core.system_env import get_platform_details
 
     return {
         "version": __version__,
         "local_ip": get_local_ip(),
+        "mediamtx_srt_port": mediamtx_manager.get_srt_port(),
         "platform_info": get_platform_details(),
         "autostart_enabled": is_autostart_enabled(),
         "streams": sanitized_streams,
@@ -142,6 +144,13 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
             await stream_manager.stop_stream(dp)
             await stream_manager.start_stream(dp)
 
+    try:
+        from core.mediamtx_mgr import mediamtx_manager
+
+        mediamtx_manager.generate_config()
+    except Exception as ex:
+        logger.debug(f"Aviso regenerando configuración de MediaMTX tras guardar cámara: {ex}")
+
     return {"status": "ok", "message": "Configuración guardada y aplicada"}
 
 
@@ -158,6 +167,13 @@ async def delete_camera_endpoint(device_path: str):
 
     if not removed:
         raise HTTPException(status_code=404, detail="Cámara no encontrada en la configuración")
+
+    try:
+        from core.mediamtx_mgr import mediamtx_manager
+
+        mediamtx_manager.generate_config()
+    except Exception as ex:
+        logger.debug(f"Aviso regenerando configuración de MediaMTX tras eliminar cámara: {ex}")
 
     return {"status": "ok", "message": f"Cámara {dp} eliminada permanentemente"}
 
@@ -310,20 +326,18 @@ async def get_stream_connect_url(device_path: str):
     local_ip = get_local_ip()
 
     if protocol == "srt":
-        import re
-
-        from core.mediamtx_mgr import mediamtx_manager
+        from core.mediamtx_mgr import clean_camera_id, mediamtx_manager
 
         mediamtx_port = mediamtx_manager.get_srt_port()
         cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
-        clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
-        params = {
-            "streamid": f"read:{clean_cam_id}",
-            "latency": str(latency * 1000),
-        }
+        clean_cam_id = clean_camera_id(cam_id)
+        query_parts = [
+            f"streamid=read:{clean_cam_id}",
+            f"latency={latency * 1000}",
+        ]
         if passphrase:
-            params["passphrase"] = passphrase
-        query = urllib.parse.urlencode(params)
+            query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
+        query = "&".join(query_parts)
         url = f"srt://{local_ip}:{mediamtx_port}?{query}"
     else:
         ip_last = (int(port) % 200) + 1

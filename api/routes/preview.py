@@ -79,21 +79,38 @@ async def stream_preview(request: Request, device_path: str, ticket: Optional[st
     is_running = proc.is_alive if proc else False
     if is_running:
         protocol = cfg.get("protocol", "srt")
-        port = cfg.get("port", 9000)
         from core.secrets_mgr import unprotect_secret
 
         raw_pass = cfg.get("srt_passphrase", "")
         passphrase = unprotect_secret(raw_pass) if raw_pass else ""
         latency = int(cfg.get("srt_latency", 120))
         zerolatency = bool(cfg.get("zerolatency", True))
-        url = build_stream_url(
-            protocol=protocol,
-            port=port,
-            passphrase=passphrase,
-            mode="caller",
-            latency_ms=latency,
-            zerolatency=zerolatency,
-        )
+
+        if protocol == "srt":
+            from core.mediamtx_mgr import clean_camera_id, mediamtx_manager
+
+            mediamtx_port = mediamtx_manager.get_srt_port()
+            cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{cfg.get('port', 9000)}"
+            clean_cam_id = clean_camera_id(cam_id)
+            url = build_stream_url(
+                protocol="srt",
+                port=mediamtx_port,
+                passphrase=passphrase,
+                mode="caller",
+                latency_ms=latency,
+                zerolatency=zerolatency,
+                streamid=f"read:{clean_cam_id}",
+            )
+        else:
+            port = cfg.get("port", 9000)
+            url = build_stream_url(
+                protocol=protocol,
+                port=port,
+                passphrase=passphrase,
+                mode="caller",
+                latency_ms=latency,
+                zerolatency=zerolatency,
+            )
         gen = preview_manager.generate_mjpeg_stream(url, is_dshow=False, identifier=dp)
     else:
         dshow_target = cfg.get("friendly_name", dp)
@@ -152,22 +169,41 @@ async def launch_external_ffplay(device_path: str):
 
     if is_running:
         protocol = cfg.get("protocol", "srt")
-        port = cfg.get("port", 9000)
         from core.secrets_mgr import unprotect_secret
 
         raw_pass = cfg.get("srt_passphrase", "")
         passphrase = unprotect_secret(raw_pass) if raw_pass else ""
         latency = int(cfg.get("srt_latency", 120))
         zerolatency = bool(cfg.get("zerolatency", True))
-        url = build_stream_url(
-            protocol=protocol,
-            port=port,
-            passphrase=passphrase,
-            mode="caller",
-            latency_ms=latency,
-            zerolatency=zerolatency,
-        )
-        ok = preview_manager.launch_ffplay(url, title=f"RTMS Monitor — {name} ({port})", is_dshow=False)
+
+        if protocol == "srt":
+            from core.mediamtx_mgr import clean_camera_id, mediamtx_manager
+
+            mediamtx_port = mediamtx_manager.get_srt_port()
+            cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{cfg.get('port', 9000)}"
+            clean_cam_id = clean_camera_id(cam_id)
+            url = build_stream_url(
+                protocol="srt",
+                port=mediamtx_port,
+                passphrase=passphrase,
+                mode="caller",
+                latency_ms=latency,
+                zerolatency=zerolatency,
+                streamid=f"read:{clean_cam_id}",
+            )
+            title = f"RTMS Monitor — {name} (SRT :{mediamtx_port})"
+        else:
+            port = cfg.get("port", 9000)
+            url = build_stream_url(
+                protocol=protocol,
+                port=port,
+                passphrase=passphrase,
+                mode="caller",
+                latency_ms=latency,
+                zerolatency=zerolatency,
+            )
+            title = f"RTMS Monitor — {name} (UDP :{port})"
+        ok = preview_manager.launch_ffplay(url, title=title, is_dshow=False)
     else:
         ok = preview_manager.launch_ffplay(name, title=f"RTMS Encuadre DirectShow — {name}", is_dshow=True)
 
