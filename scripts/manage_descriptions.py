@@ -43,6 +43,7 @@ DESCRIPTIONS_CATALOG: Dict[str, str] = {
     "run.bat": "tools: lanzador rapido para Windows",
     "scripts": "scripts: utilidades de arranque y test",
     "SECURITY.md": "docs: politica de reporte de seguridad",
+    "site": "web: sitio oficial y portal de descargas",
     "tests": "tests: suite de pruebas automatizadas",
     "THIRD_PARTY_NOTICES.md": "legal: licencias de librerias de terceros",
     "uv.lock": "deps: resolucion determinista de paquetes",
