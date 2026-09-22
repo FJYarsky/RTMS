@@ -3,14 +3,330 @@
  * Script de cliente para la landing page oficial
  * Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
  *
- * Resuelve dinámicamente el último release desde la API de GitHub
- * sin versiones fijas en el código, gestiona copiado de URLs y navegación.
+ * Motor bilingüe (Español por defecto / Inglés con bandera de UK),
+ * resolución dinámica de releases vía API de GitHub y utilidades UI.
  */
 
+// Diccionario de Traducciones Oficiales
+const TRANSLATIONS = {
+    es: {
+        meta_title: "RTMS — Real-Time Multicam System | Servidor de Streaming de Baja Latencia para Windows",
+        meta_desc: "Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio y vMix. Captura DirectShow, aceleración GPU y telemetría en tiempo real.",
+        brand_sub: "Real-Time Multicam System",
+        nav_resolve: "Qué Resuelve",
+        nav_features: "Características",
+        nav_security: "Seguridad",
+        nav_quickstart: "Inicio Rápido",
+        nav_tech: "Tecnologías",
+        hero_pill: "Servidor Multicámara Nativo para Windows",
+        hero_title_1: "Streaming de Ultra-Baja Latencia",
+        hero_title_2: "Directo a tu OBS Studio y vMix",
+        hero_subtitle: "Captura tus cámaras web, capturadoras HDMI y dispositivos virtuales en DirectShow. Transmite flujos independientes en red local mediante <strong>MediaMTX</strong> y <strong>SRT</strong> con latencia inferior a 100 ms y telemetría en vivo.",
+        download_btn: "Descargar RTMS para Windows",
+        meta_ver: "Versión:",
+        meta_size: "Tamaño:",
+        meta_date: "Fecha:",
+        meta_type: "ZIP Portable",
+        sublink_notes: "Notas de lanzamiento",
+        sublink_obs: "Guía de configuración en OBS",
+        spec_os: "Windows 10 / 11 (64-bit)",
+        spec_portable: "Ejecutable nativo rtms.exe (Portable)",
+        spec_dpapi: "Cifrado DPAPI Nativo",
+        spec_latency: "MediaMTX Ingestion (&lt;100 ms)",
+        hud_streams: "2 Activos",
+        cam1_type: "Dispositivo Físico DirectShow",
+        cam_live: "● EN VIVO",
+        cam_stopped: "DETENIDO",
+        cam_encoder_label: "Codificador:",
+        cam_res_label: "Resolución & FPS:",
+        cam_dest_label: "Destino SRT:",
+        cam2_type: "Capturadora HDMI Externa",
+        cam3_type: "Cámara Virtual IA (Aislada)",
+        cam3_status_label: "Estado:",
+        cam3_status_val: "Reposo (0% CPU/GPU)",
+        cam3_port_label: "Puerto asignado:",
+        cam3_policy_label: "Política:",
+        cam3_policy_val: "Sin autoinicio forzado",
+        resolve_tag: "Desafíos del DirectShow en Windows",
+        resolve_title: "Qué Resuelve RTMS",
+        resolve_desc: "Diseñado específicamente para eliminar los tres dolores de cabeza más comunes en transmisiones en vivo con múltiples cámaras.",
+        prob1_title: "Desconexión Física de USB (Hotplug)",
+        prob1_bad: "<strong>El problema clásico:</strong> Un tirón de cable USB en vivo congela la fuente en OBS para siempre o bloquea el controlador de video en Windows.",
+        prob1_good: "<strong>La solución RTMS:</strong> Intercepta de inmediato los errores de hardware, marca el dispositivo en reposo y, al volver a enchufarlo, reanuda la transmisión limpia en menos de 5 segundos.",
+        prob2_title: "Microcortes y Fluctuaciones de Red",
+        prob2_bad: "<strong>El problema clásico:</strong> El streaming UDP crudo pierde paquetes en redes WiFi o switches congestionados, generando cuadros rotos y pixelación.",
+        prob2_good: "<strong>La solución RTMS:</strong> Implementa SRT (Secure Reliable Transport) nativo con retransmisión ultrarrápida ante pérdidas y buffer ajustable en microsegundos.",
+        prob3_title: "Saturación del Procesador (CPU)",
+        prob3_bad: "<strong>El problema clásico:</strong> Codificar 3 o más cámaras simultáneas por software en CPU (`libx264`) degrada los FPS y satura la máquina.",
+        prob3_good: "<strong>La solución RTMS:</strong> Autodetecta aceleración por silicio (NVIDIA NVENC, Intel QSV, AMD AMF) y solo conmuta a CPU como mecanismo de emergencia sin interrupción.",
+        bento_tag: "Capacidades del Sistema",
+        bento_title: "Con Qué Cuenta RTMS",
+        bento_desc: "Funcionalidades diseñadas para estabilidad industrial en estudios de streaming y producciones en vivo.",
+        b1_title: "Telemetría de Hardware en Vivo",
+        b1_desc: "Monitoreo continuo de latencia, tasa de cuadros por segundo, porcentaje de uso de CPU, tráfico total de red y telemetría nativa de tarjeta gráfica NVIDIA vía NVML directo (`nvml.dll`) con tiempo de consulta inferior a 1 milisegundo.",
+        b1_tag: "NVML Nativo &bull; Cero sobrecarga",
+        b2_title: "Ingesta Desacoplada MediaMTX",
+        b2_desc: "Servidor local integrado que independiza la captura del receptor. OBS o vMix pueden conectarse o desconectarse sin detener a FFmpeg ni causar reinicios de hardware en las cámaras.",
+        b2_tag: "MediaMTX v1.9.3 &bull; Múltiples clientes",
+        b3_title: "Aceleración Multi-Vendor",
+        b3_desc: "Soporte nativo para codificación por hardware en tarjetas NVIDIA (`nvenc`), procesadores Intel Core/Arc (`qsv`) y tarjetas AMD Radeon (`amf`), con fallback automático a CPU.",
+        b3_tag: "NVENC &bull; QSV &bull; AMF &bull; libx264",
+        b4_title: "Blindaje de Kernel con Win32 Job Objects",
+        b4_desc: "Aislamiento y control estricto del árbol de procesos a nivel de sistema operativo. Al cerrar RTMS, el kernel de Windows liquida al instante cualquier proceso subordinado de FFmpeg o MediaMTX sin dejar tareas huérfanas consumiendo GPU o puertos en segundo plano.",
+        b4_tag: "Cero procesos huérfanos en memoria",
+        b5_title: "Reconexión PnP & Watchdog",
+        b5_desc: "Watchdog optimizado que detecta congelamiento de cuadros a 0 FPS y sondeo automático DirectShow cada 5 segundos para reanudar transmisiones tras desconexión física.",
+        b5_tag: "Resiliencia desatendida",
+        b6_title: "Persistencia ACID en SQLite",
+        b6_desc: "Almacenamiento transaccional de alta concurrencia mediante SQLite con modo WAL (Write-Ahead Logging), garantizando integridad ante cierres repentinos sin archivos JSON corruptos.",
+        b6_tag: "Integridad transaccional &bull; WAL",
+        sec_tag: "Seguridad por Diseño",
+        sec_title: "Arquitectura y Política de Seguridad",
+        sec_c1_title: "Cifrado Nativo DPAPI",
+        sec_c1_desc: "Las contraseñas de transmisión SRT se almacenan protegidas mediante las API criptográficas del usuario de Windows. Cero almacenamiento en texto plano.",
+        sec_c2_title: "Sanitización de URLs y Logs",
+        sec_c2_desc: "Ocultamiento automático de contraseñas SRT y tokens de sesión en consola, memoria y archivos de registro para prevenir fugas accidentales en capturas de pantalla.",
+        sec_c3_title: "Panel Web Air-Gapped",
+        sec_c3_desc: "Interfaz 100% offline sin dependencias en CDNs externas, con cabeceras estrictas de seguridad (CSP, X-Frame-Options, nosniff) y restricción de origen a 127.0.0.1.",
+        sec_c4_title: "Tickets Criptográficos Efímeros",
+        sec_c4_desc: "Tokens temporales de un solo uso para previsualizaciones MJPEG en vivo, evitando exponer credenciales globales a terceros en la red local.",
+        sec_policy_btn: "Consultar Política de Seguridad Oficial (SECURITY.md)",
+        sec_report_btn: "Reportar Vulnerabilidad Responsable (joaquinyarsky@gmail.com)",
+        step_tag: "Puesta en Marcha en 2 Minutos",
+        step_title: "De la Descarga a OBS en 3 Pasos",
+        step_desc: "Sin comandos complejos ni instaladores intrusivos. Listo para transmitir de inmediato.",
+        s1_title: "Descomprimir el Archivo ZIP",
+        s1_desc: "Descarga el archivo portable y descomprime el contenido en cualquier carpeta de tu disco (por ejemplo en tu escritorio o disco secundario).",
+        s1_box: "Carpeta limpia",
+        s2_title: "Iniciar RTMS",
+        s2_desc: "Haz doble clic en <code>rtms.exe</code> para iniciar el servidor. Se abrirá automáticamente la ventana nativa de control y telemetría.",
+        s2_box: "Ejecutable nativo",
+        s3_title: "Conectar en OBS Studio o vMix",
+        s3_desc: "Agrega una <strong>Fuente multimedia</strong>, desmarca <em>Archivo local</em> y pega la URL en modo <em>Caller</em> con formato <code>mpegts</code>:",
+        tech_tag: "Ecosistema & Silicio",
+        tech_title: "Tecnologías que Incluye",
+        tech_desc: "Construido sobre estándares industriales de video, telecomunicaciones y seguridad de bajo nivel.",
+        footer_brand_desc: "Estación de transmisión multicámara de alta fidelidad y ultra-baja latencia para Windows vía SRT y UDP hacia OBS Studio, vMix y VLC.",
+        footer_col_project: "Proyecto",
+        footer_repo: "Repositorio en GitHub",
+        footer_releases: "Todos los Releases",
+        footer_changelog: "Historial de Cambios",
+        footer_license: "Licencia MIT",
+        footer_col_docs: "Documentación",
+        footer_hw: "Compatibilidad de Hardware",
+        footer_trouble: "Resolución de Problemas",
+        footer_sec: "Política de Seguridad",
+        footer_bug: "Reportar un Bug",
+        footer_col_author: "Autor & Contacto",
+        footer_profile: "Perfil de GitHub",
+        footer_license_text: "Distribuido bajo la",
+        footer_credit: "Desarrollado con pasión para la comunidad de streaming por"
+    },
+    en: {
+        meta_title: "RTMS — Real-Time Multicam System | Ultra-Low Latency Streaming Server for Windows",
+        meta_desc: "Ultra-low latency multicamera video server for Windows via SRT and MediaMTX to OBS Studio and vMix. DirectShow capture, GPU acceleration, and live telemetry.",
+        brand_sub: "Real-Time Multicam System",
+        nav_resolve: "What it Solves",
+        nav_features: "Features",
+        nav_security: "Security",
+        nav_quickstart: "Quickstart",
+        nav_tech: "Tech Stack",
+        hero_pill: "Native Windows Multicam Server",
+        hero_title_1: "Ultra-Low Latency Streaming",
+        hero_title_2: "Directly to your OBS Studio & vMix",
+        hero_subtitle: "Capture webcams, HDMI capture cards, and virtual devices via DirectShow. Stream independent feeds across your LAN using <strong>MediaMTX</strong> and <strong>SRT</strong> with sub-100ms latency and live telemetry.",
+        download_btn: "Download RTMS for Windows",
+        meta_ver: "Version:",
+        meta_size: "Size:",
+        meta_date: "Date:",
+        meta_type: "Portable ZIP",
+        sublink_notes: "Release notes",
+        sublink_obs: "OBS setup guide",
+        spec_os: "Windows 10 / 11 (64-bit)",
+        spec_portable: "Native executable rtms.exe (Portable)",
+        spec_dpapi: "Native DPAPI Encryption",
+        spec_latency: "MediaMTX Ingestion (&lt;100 ms)",
+        hud_streams: "2 Active",
+        cam1_type: "DirectShow Physical Device",
+        cam_live: "● LIVE",
+        cam_stopped: "STOPPED",
+        cam_encoder_label: "Encoder:",
+        cam_res_label: "Resolution & FPS:",
+        cam_dest_label: "SRT Destination:",
+        cam2_type: "External HDMI Capture Card",
+        cam3_type: "AI Virtual Camera (Isolated)",
+        cam3_status_label: "Status:",
+        cam3_status_val: "Idle (0% CPU/GPU)",
+        cam3_port_label: "Assigned port:",
+        cam3_policy_label: "Policy:",
+        cam3_policy_val: "No forced autostart",
+        resolve_tag: "DirectShow Challenges on Windows",
+        resolve_title: "What RTMS Solves",
+        resolve_desc: "Engineered specifically to eliminate the three most common bottlenecks in multicamera live streaming.",
+        prob1_title: "Physical USB Disconnection (Hotplug)",
+        prob1_bad: "<strong>The classic problem:</strong> An accidental USB cable pull freezes the OBS feed indefinitely or locks up the Windows video driver.",
+        prob1_good: "<strong>The RTMS solution:</strong> Instantly intercepts hardware errors, marks the stream idle, and resumes cleanly within 5 seconds upon reconnecting.",
+        prob2_title: "Network Jitter & Micro-Drops",
+        prob2_bad: "<strong>The classic problem:</strong> Raw UDP streaming drops packets over WiFi or congested switches, causing broken frames and artifacts.",
+        prob2_good: "<strong>The RTMS solution:</strong> Implements native SRT (Secure Reliable Transport) with ultra-fast packet retransmission and microsecond-level adaptive buffer.",
+        prob3_title: "CPU Saturation & Overheating",
+        prob3_bad: "<strong>The classic problem:</strong> Encoding 3 or more simultaneous cameras by software on CPU (`libx264`) degrades frame rates and saturates system cores.",
+        prob3_good: "<strong>The RTMS solution:</strong> Auto-detects silicon hardware acceleration (NVIDIA NVENC, Intel QSV, AMD AMF) with seamless CPU fallback fail-safe.",
+        bento_tag: "System Capabilities",
+        bento_title: "RTMS Key Features",
+        bento_desc: "Industrial-grade features built for live broadcast studios and production environments.",
+        b1_title: "Live Hardware Telemetry",
+        b1_desc: "Real-time monitoring of latency, framerate, CPU load, network traffic, and native NVIDIA GPU metrics via direct NVML (`nvml.dll`) with sub-millisecond polling.",
+        b1_tag: "Native NVML &bull; Zero Overhead",
+        b2_title: "Decoupled MediaMTX Ingestion",
+        b2_desc: "Embedded local media server that decouples capture from client playback. OBS or vMix can disconnect or reconnect without resetting FFmpeg or hardware.",
+        b2_tag: "MediaMTX v1.9.3 &bull; Multiple Viewers",
+        b3_title: "Multi-Vendor Acceleration",
+        b3_desc: "Native hardware encoding for NVIDIA GPUs (`nvenc`), Intel Core/Arc processors (`qsv`), and AMD Radeon (`amf`), with automatic CPU fallback.",
+        b3_tag: "NVENC &bull; QSV &bull; AMF &bull; libx264",
+        b4_title: "Kernel Shielding with Win32 Job Objects",
+        b4_desc: "OS-level process tree isolation. When RTMS exits, the Windows kernel terminates all subordinate FFmpeg and MediaMTX child processes immediately without leftover background tasks.",
+        b4_tag: "Zero orphan processes in memory",
+        b5_title: "PnP Reconnection & Watchdog",
+        b5_desc: "Optimized watchdog that detects 0 FPS frame stalls and polls DirectShow hardware every 5 seconds to resume streams automatically after USB disconnection.",
+        b5_tag: "Unattended resilience",
+        b6_title: "ACID Persistence in SQLite",
+        b6_desc: "High-concurrency transactional database storage powered by SQLite with WAL (Write-Ahead Logging) mode, ensuring configuration integrity against sudden crashes.",
+        b6_tag: "Transactional integrity &bull; WAL",
+        sec_tag: "Security by Design",
+        sec_title: "Security Architecture & Policy",
+        sec_c1_title: "Native DPAPI Encryption",
+        sec_c1_desc: "SRT stream passphrases are stored encrypted using Windows user-level cryptographic DPAPI. Zero plaintext credentials.",
+        sec_c2_title: "URL & Log Sanitization",
+        sec_c2_desc: "Automatic masking of SRT passphrases and session tokens in console output, memory, and log files to prevent accidental leaks in screenshots.",
+        sec_c3_title: "Air-Gapped Web Panel",
+        sec_c3_desc: "100% offline user interface with zero external CDN dependencies, strict security headers (CSP, X-Frame-Options, nosniff), and localhost-only CORS.",
+        sec_c4_title: "Ephemeral Crypto Tickets",
+        sec_c4_desc: "Single-use temporary cryptographic tokens for live MJPEG previews, avoiding exposure of global session credentials across the local network.",
+        sec_policy_btn: "View Official Security Policy (SECURITY.md)",
+        sec_report_btn: "Report a Vulnerability Responsibly (joaquinyarsky@gmail.com)",
+        step_tag: "Get Running in 2 Minutes",
+        step_title: "From Download to OBS in 3 Steps",
+        step_desc: "No complex terminal commands or intrusive installers. Ready to broadcast out of the box.",
+        s1_title: "Extract the ZIP Package",
+        s1_desc: "Download the portable archive and extract its contents into any folder on your drive (e.g. your Desktop or secondary drive).",
+        s1_box: "Clean folder",
+        s2_title: "Launch RTMS",
+        s2_desc: "Double-click <code>rtms.exe</code> to start the server. The native control window and telemetry dashboard will open automatically.",
+        s2_box: "Native executable",
+        s3_title: "Connect in OBS Studio or vMix",
+        s3_desc: "Add a <strong>Media Source</strong>, uncheck <em>Local File</em>, and paste the URL in <em>Caller</em> mode with <code>mpegts</code> format:",
+        tech_tag: "Ecosystem & Silicon",
+        tech_title: "Included Technologies",
+        tech_desc: "Built on top of industry-standard video, telecom, and low-level system security protocols.",
+        footer_brand_desc: "High-fidelity, ultra-low latency multicamera streaming station for Windows via SRT and UDP to OBS Studio, vMix, and VLC.",
+        footer_col_project: "Project",
+        footer_repo: "GitHub Repository",
+        footer_releases: "All Releases",
+        footer_changelog: "Changelog",
+        footer_license: "MIT License",
+        footer_col_docs: "Documentation",
+        footer_hw: "Hardware Compatibility",
+        footer_trouble: "Troubleshooting Guide",
+        footer_sec: "Security Policy",
+        footer_bug: "Report an Issue",
+        footer_col_author: "Author & Contact",
+        footer_profile: "GitHub Profile",
+        footer_license_text: "Distributed under the",
+        footer_credit: "Built with passion for the streaming community by"
+    }
+};
+
+// SVG de Banderas Oficiales
+const ICONS = {
+    uk: `<svg class="flag-icon" viewBox="0 0 60 30" width="20" height="12" xmlns="http://www.w3.org/2000/svg">
+        <clipPath id="uk-clip"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
+        <clipPath id="uk-diag"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
+        <g clip-path="url(#uk-clip)">
+            <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
+            <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/>
+            <path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#uk-diag)" stroke="#C8102E" stroke-width="4"/>
+            <path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/>
+            <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/>
+        </g>
+    </svg>`,
+    spain: `<svg class="flag-icon" viewBox="0 0 750 500" width="20" height="13" xmlns="http://www.w3.org/2000/svg">
+        <rect width="750" height="500" fill="#c60b1e"/>
+        <rect width="750" height="250" y="125" fill="#ffc400"/>
+    </svg>`
+};
+
+let currentLang = 'es';
+let latestReleaseData = null;
+
 document.addEventListener('DOMContentLoaded', () => {
+    initLanguage();
     initDynamicRelease();
     initCopyButtons();
 });
+
+/**
+ * Inicializa el sistema de traducción y el botón toggle con bandera.
+ */
+function initLanguage() {
+    const savedLang = localStorage.getItem('rtms_lang') || 'es';
+    const langBtn = document.getElementById('lang-toggle-btn');
+
+    setLanguage(savedLang);
+
+    if (langBtn) {
+        langBtn.addEventListener('click', () => {
+            const newLang = currentLang === 'es' ? 'en' : 'es';
+            setLanguage(newLang);
+        });
+    }
+}
+
+/**
+ * Aplica el idioma especificado en toda la página.
+ */
+function setLanguage(lang) {
+    if (!TRANSLATIONS[lang]) return;
+    currentLang = lang;
+    localStorage.setItem('rtms_lang', lang);
+    document.documentElement.lang = lang;
+
+    const t = TRANSLATIONS[lang];
+
+    // Actualizar metadatos del documento
+    document.title = t.meta_title;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', t.meta_desc);
+
+    // Traducir todos los elementos con data-i18n
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key] !== undefined) {
+            el.innerHTML = t[key];
+        }
+    });
+
+    // Actualizar el botón de alternancia de idioma con la bandera correspondiente
+    const langBtn = document.getElementById('lang-toggle-btn');
+    if (langBtn) {
+        if (lang === 'es') {
+            // Actualmente en español -> mostrar bandera UK para cambiar a inglés
+            langBtn.innerHTML = `${ICONS.uk} <span>EN</span>`;
+            langBtn.setAttribute('title', 'Switch to English');
+            langBtn.setAttribute('aria-label', 'Switch to English');
+        } else {
+            // Actualmente en inglés -> mostrar bandera España para volver a español
+            langBtn.innerHTML = `${ICONS.spain} <span>ES</span>`;
+            langBtn.setAttribute('title', 'Cambiar a Español');
+            langBtn.setAttribute('aria-label', 'Cambiar a Español');
+        }
+    }
+
+    // Actualizar fecha dinámica según el idioma seleccionado
+    if (latestReleaseData && latestReleaseData.published_at) {
+        updateDynamicDate(latestReleaseData.published_at);
+    }
+}
 
 /**
  * Consulta la API de GitHub para obtener la última versión oficial publicada,
@@ -18,10 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function initDynamicRelease() {
     const navVersion = document.getElementById('nav-version');
-    const heroVersion = document.getElementById('hero-version');
     const downloadBtn = document.getElementById('primary-download-btn');
     const downloadSize = document.getElementById('download-size');
-    const downloadDate = document.getElementById('download-date');
     const downloadTag = document.getElementById('download-tag');
 
     const REPO_OWNER = 'FJYarsky';
@@ -39,11 +353,11 @@ async function initDynamicRelease() {
         }
 
         const release = await response.json();
+        latestReleaseData = release;
         const tagName = release.tag_name || 'v2.5.0';
 
         // Actualizar badges de versión
         if (navVersion) navVersion.textContent = tagName;
-        if (heroVersion) heroVersion.textContent = tagName;
         if (downloadTag) downloadTag.textContent = tagName;
 
         // Buscar el archivo ZIP de Windows x64 en los assets del release
@@ -52,37 +366,44 @@ async function initDynamicRelease() {
         );
 
         if (zipAsset) {
-            // Actualizar URL directa de descarga
             if (downloadBtn) {
                 downloadBtn.href = zipAsset.browser_download_url;
                 downloadBtn.setAttribute('title', `Descargar ${zipAsset.name}`);
             }
 
-            // Calcular tamaño en MB
             if (downloadSize && zipAsset.size) {
                 const sizeMB = (zipAsset.size / (1024 * 1024)).toFixed(1);
                 downloadSize.textContent = `${sizeMB} MB`;
             }
 
-            // Formatear fecha
-            if (downloadDate && release.published_at) {
-                const pubDate = new Date(release.published_at);
-                const options = { year: 'numeric', month: 'short', day: 'numeric' };
-                downloadDate.textContent = pubDate.toLocaleDateString('es-ES', options);
+            if (release.published_at) {
+                updateDynamicDate(release.published_at);
             }
         } else {
-            // Si el release existe pero no tiene assets todavía, apuntar a la página del release
             if (downloadBtn) downloadBtn.href = release.html_url || FALLBACK_URL;
         }
 
     } catch (err) {
         console.warn('No se pudo consultar la API de GitHub, utilizando fallback canónico:', err);
-        // Fallback resiliente
         if (downloadBtn) downloadBtn.href = FALLBACK_URL;
-        if (downloadTag) downloadTag.textContent = 'Última Versión';
-        if (downloadSize) downloadSize.textContent = '~50 MB';
-        if (downloadDate) downloadDate.textContent = 'Oficial';
+        if (downloadTag) downloadTag.textContent = 'v2.5.0';
+        if (downloadSize) downloadSize.textContent = '~52 MB';
+        const downloadDate = document.getElementById('download-date');
+        if (downloadDate) downloadDate.textContent = currentLang === 'es' ? 'Oficial' : 'Official';
     }
+}
+
+/**
+ * Formatea la fecha de release según el idioma activo.
+ */
+function updateDynamicDate(isoDateStr) {
+    const downloadDate = document.getElementById('download-date');
+    if (!downloadDate) return;
+
+    const pubDate = new Date(isoDateStr);
+    const locale = currentLang === 'es' ? 'es-ES' : 'en-US';
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    downloadDate.textContent = pubDate.toLocaleDateString(locale, options);
 }
 
 /**
@@ -99,7 +420,6 @@ function initCopyButtons() {
             try {
                 await navigator.clipboard.writeText(textToCopy);
                 
-                // Feedback visual en el botón
                 const originalHtml = button.innerHTML;
                 button.innerHTML = `
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
