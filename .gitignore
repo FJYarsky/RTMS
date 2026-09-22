@@ -55,9 +55,12 @@ $RECYCLE.BIN/
 
 # Temporary scratch test files
 scratch/
+*-help.txt
+Docs 3.0.0/
 
 # Test, linter & coverage caches
 .pytest_cache/
 .ruff_cache/
 .coverage
 htmlcov/
+
