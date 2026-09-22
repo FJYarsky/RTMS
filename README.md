@@ -2,6 +2,7 @@
 
 <div align="center">
 
+[![Website](https://img.shields.io/badge/Sitio%20Web-fjyarsky.github.io%2FRTMS-0ea5e9?logo=googlechrome&logoColor=white)](https://fjyarsky.github.io/RTMS/)
 [![Platform](https://img.shields.io/badge/Plataforma-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)](https://microsoft.com)
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Seguridad-DPAPI%20%7C%20Token-10b981)](#-seguridad)
@@ -12,7 +13,7 @@
 
 **Servidor de video multicámara de baja latencia para Windows con ingesta desacoplada vía MediaMTX, SRT y UDP.**
 
-[Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Estructura](#-estructura-del-proyecto) • [Contacto](#-contacto-y-soporte)
+[Sitio Web Oficial](https://fjyarsky.github.io/RTMS/) • [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Estructura](#-estructura-del-proyecto) • [Contacto](#-contacto-y-soporte)
 
 ---
 
@@ -21,6 +22,9 @@
 ## 📌 Descripción
 
 **RTMS (Real-Time Multicam System)** es una estación de streaming para Windows que captura dispositivos DirectShow (cámaras web, capturadoras HDMI y cámaras virtuales) y centraliza su transmisión de ultra baja latencia (<100ms) mediante **MediaMTX** y **SRT** / **UDP Multicast** hacia OBS Studio, vMix o VLC con telemetría en tiempo real, persistencia transaccional ACID en SQLite WAL y blindaje de procesos por Kernel (Win32 Job Objects).
+
+> [!TIP]
+> 🌐 **Sitio Web Oficial & Descarga Directa**: Visita **[fjyarsky.github.io/RTMS](https://fjyarsky.github.io/RTMS/)** para descargar el ejecutable portable oficial (`rtms.exe`), consultar la matriz de compatibilidad de hardware y acceder a guías de configuración.
 
 ---
 
@@ -40,7 +44,7 @@ python main.py
 ```
 
 > [!TIP]
-> En producción, ejecuta `run.bat` para iniciar el entorno de ejecución.
+> En producción, ejecuta directamente el archivo ejecutable portable `rtms.exe` (o `run.bat` al ejecutar desde código fuente en modo desarrollo).
 
 ---
 
