@@ -24,6 +24,11 @@ if not exist "bin\ffplay.exe" (
     echo Ejecute powershell -ExecutionPolicy Bypass -File scripts\setup_binaries.ps1 primero.
     exit /b 1
 )
+if not exist "bin\mediamtx.exe" (
+    echo [ERROR] bin\mediamtx.exe no fue encontrado.
+    echo Ejecute powershell -ExecutionPolicy Bypass -File scripts\setup_binaries.ps1 primero.
+    exit /b 1
+)
 
 REM Detectar interprete de Python preferido
 if exist "bin\python\python.exe" (
@@ -56,6 +61,7 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
   --add-data "gui\templates;gui\templates" ^
   --add-data "gui\static;gui\static" ^
   --add-data "config\config.example.json;config" ^
+  --add-data "config\mediamtx.example.yml;config" ^
   --add-data "icon.ico;." ^
   --hidden-import=uvicorn ^
   --hidden-import=uvicorn.logging ^
@@ -89,6 +95,8 @@ echo [INFO] Esto ocultara la consola (--noconsole) al ejecutar el programa.
   --hidden-import=pystray ^
   --hidden-import=PIL ^
   --hidden-import=psutil ^
+  --hidden-import=aiosqlite ^
+  --hidden-import=sqlite3 ^
   --hidden-import=core.telemetry ^
   --collect-all=uvicorn ^
   --collect-all=fastapi ^
@@ -106,7 +114,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Copiar los binarios multimedia (ffmpeg.exe, ffplay.exe) dentro de dist/rtms/bin/
+REM Copiar los binarios multimedia (ffmpeg.exe, ffplay.exe, mediamtx.exe) dentro de dist/rtms/bin/
 if not exist "dist\rtms\bin" mkdir "dist\rtms\bin"
 if exist "bin\ffmpeg.exe" (
     echo [INFO] Copiando FFmpeg a dist\rtms\bin...
@@ -116,12 +124,20 @@ if exist "bin\ffplay.exe" (
     echo [INFO] Copiando FFplay a dist\rtms\bin...
     copy /Y "bin\ffplay.exe" "dist\rtms\bin\" >nul
 )
+if exist "bin\mediamtx.exe" (
+    echo [INFO] Copiando MediaMTX a dist\rtms\bin...
+    copy /Y "bin\mediamtx.exe" "dist\rtms\bin\" >nul
+)
 
-REM Copiar la plantilla limpia de configuracion a dist/rtms/config/ (NUNCA config.json ni .bak)
+REM Copiar plantillas limpias de configuracion a dist/rtms/config/ (NUNCA config.json, rtms.db ni .bak)
 if not exist "dist\rtms\config" mkdir "dist\rtms\config"
 if exist "config\config.example.json" (
     echo [INFO] Copiando config.example.json a dist\rtms\config...
     copy /Y "config\config.example.json" "dist\rtms\config\" >nul
+)
+if exist "config\mediamtx.example.yml" (
+    echo [INFO] Copiando mediamtx.example.yml a dist\rtms\config...
+    copy /Y "config\mediamtx.example.yml" "dist\rtms\config\" >nul
 )
 
 REM Copiar licencias y avisos de terceros
