@@ -1,8 +1,8 @@
 {
     "_comment": "Plantilla de configuración de RTMS con aceleración por hardware",
-    "version": "2.4.0",
+    "version": "2.4.1",
     "config_schema_version": 4,
     "cameras": {},
     "next_port": 9000,
-    "unattended_autostart": true
+    "unattended_autostart": false
 }
