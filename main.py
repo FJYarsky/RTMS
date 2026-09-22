@@ -54,15 +54,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from api.deps import set_global_api_token
 from api.routes import router as api_router
-from api.routes import set_global_api_token
 from core.__version__ import __version__
 from core.config_mgr import get_base_dir
-from core.ffmpeg_mgr import stream_manager, sync_streams_with_hardware
+from core.hardware_sync import sync_streams_with_hardware
 from core.preview_mgr import preview_manager
 from core.process_cleanup import terminate_all_processes
 from core.sanitizer import SecretFilter
 from core.single_instance import acquire_single_instance_lock, release_single_instance_lock
+from core.stream_manager import stream_manager
 from core.system_env import (
     acquire_stay_awake,
     get_platform_details,
