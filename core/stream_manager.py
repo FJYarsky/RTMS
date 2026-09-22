@@ -269,6 +269,14 @@ class StreamManager:
     async def stop_all(self):
         """Detiene todos los flujos activos de forma concurrente y ordenada."""
         logger.info("Deteniendo todos los flujos activos ordenadamente...")
+        if self._watchdog_task and not self._watchdog_task.done():
+            self._watchdog_task.cancel()
+            try:
+                await self._watchdog_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._watchdog_task = None
+
         tasks = [self.stop_stream(dp) for dp in list(self._procs.keys())]
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -549,7 +557,12 @@ class StreamManager:
     async def sync_streams_with_hardware(self):
         """Sincroniza el inventario de cámaras con el hardware DirectShow detectado."""
         if not self._watchdog_task or self._watchdog_task.done():
-            self._watchdog_task = asyncio.create_task(self.watchdog())
+            try:
+                from core.task_registry import task_registry
+
+                self._watchdog_task = task_registry.create_task(self.watchdog(), name="stream_manager_watchdog")
+            except Exception:
+                self._watchdog_task = asyncio.create_task(self.watchdog())
 
         devices = await get_directshow_devices()
         detected_paths = {d["device_path"]: d["friendly_name"] for d in devices}

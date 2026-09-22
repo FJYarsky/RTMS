@@ -226,7 +226,21 @@ def load_config() -> Dict[str, Any]:
             logger.debug(f"Migración inicial a SQLite WAL omitida o no requerida: {me}")
 
         if not os.path.exists(CONFIG_FILE):
-            # Si no existe config.json pero existe backup, restaurar desde backup
+            # 1. Intentar recuperación prioritaria desde base de datos SQLite WAL (rtms.db)
+            try:
+                from core.repository.config_repository import config_repository
+                from core.repository.migrator import export_sqlite_to_json
+
+                if config_repository.get_all_cameras_sync() or config_repository.get_system_settings_sync():
+                    logger.warning("Restaurando configuración principal desde base de datos SQLite WAL (rtms.db)...")
+                    if export_sqlite_to_json(CONFIG_FILE):
+                        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            return _unprotect_config_cameras(migrate_config(data))
+            except Exception as dbe:
+                logger.debug(f"Recuperación previa desde SQLite WAL omitida o fallida: {dbe}")
+
+            # 2. Si no existe en SQLite, intentar restaurar desde backup (.bak)
             if os.path.exists(CONFIG_BAK_FILE):
                 try:
                     with open(CONFIG_BAK_FILE, "r", encoding="utf-8") as fb:
@@ -239,6 +253,7 @@ def load_config() -> Dict[str, Any]:
                 except Exception as e:
                     logger.error(f"Error restaurando desde backup: {e}")
 
+            # 3. Fallback inicial con configuración por defecto
             _atomic_save_unlocked(default_config)
             return default_config
 
@@ -271,7 +286,23 @@ def load_config() -> Dict[str, Any]:
                             logger.warning(f"Puerto corrupto ignorado en configuración: {p!r} ({pe})")
                 return _unprotect_config_cameras(migrated)
         except (json.JSONDecodeError, OSError) as e:
-            logger.error(f"Configuración corrupta o ilegible ({e}). Intentando recuperación desde backup...")
+            logger.error(
+                f"Configuración corrupta o ilegible ({e}). Intentando recuperación desde SQLite WAL o backup..."
+            )
+            # 1. Intentar recuperación desde SQLite WAL
+            try:
+                from core.repository.config_repository import config_repository
+                from core.repository.migrator import export_sqlite_to_json
+
+                if config_repository.get_all_cameras_sync() or config_repository.get_system_settings_sync():
+                    logger.warning("Restaurando configuración corrupta desde SQLite WAL (rtms.db)...")
+                    if export_sqlite_to_json(CONFIG_FILE):
+                        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            return _unprotect_config_cameras(migrate_config(data))
+            except Exception as dbe:
+                logger.debug(f"Recuperación desde SQLite WAL fallida: {dbe}")
+
             if os.path.exists(CONFIG_BAK_FILE):
                 try:
                     with open(CONFIG_BAK_FILE, "r", encoding="utf-8") as fb:
