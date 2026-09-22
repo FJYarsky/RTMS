@@ -1,47 +1,30 @@
-# RTMS v2.3.0 — Seguridad Crítica, Gobernador Energético Win32 y Estandarización de Arquitectura
+# RTMS v2.4.0 — Arquitectura Limpia, Descomposición Modular sin Fachadas, Tooling Determinista y Cierre de Fase 1
 
-**Fecha:** 19 de Septiembre de 2026 | **Versión:** `v2.3.0`
-
----
-
-### 🛡️ Seguridad Crítica y Protección de Sesión (Hotfixes P0)
-- **Corrección de Limpieza Asíncrona de Procesos (`core/process_cleanup.py`)**:
-  - Resuelto fallo P0-01 encapsulando `asyncio.gather` dentro de una corrutina real antes de llamar a `asyncio.run_coroutine_threadsafe()`, garantizando la terminación ordenada de los managers de streaming y preview sin excepciones de runtime.
-- **Filtro Estricto y Seguro de Terminación de Procesos (`core/process_cleanup.py`)**:
-  - Resuelto fallo P0-02 acotando la terminación forzada exclusivamente a subprocesos hijos de RTMS (`ppid == my_pid`), binarios ubicados en el directorio `bin/` de RTMS o líneas de comando con marca `rtms`. Protege instancias externas de FFmpeg utilizadas por otras aplicaciones en el sistema del usuario.
-- **Eliminación de Fuga de Tokens en Query Parameters (`api/routes.py`)**:
-  - Resuelto fallo P0-03 eliminando la aceptación de tokens en la URL (`?token=...`), retornando código HTTP 403. Incorporadas cabeceras `Cache-Control: no-store, no-cache, must-revalidate` y `Pragma: no-cache` en `/api/stream/{device}/connect_url`.
-- **Autenticación por Cookie HttpOnly y Eliminación de Meta Tag (`main.py` y `gui/templates/index.html`)**:
-  - Resuelto fallo P0-04 eliminando `<meta name="rtms-token">` del DOM y del contexto de plantilla. Emisión de cookie segura `rtms_session` con flags `httponly=True, samesite='lax'` y configuración de `credentials: 'same-origin'` en todas las peticiones `apiFetch` de la interfaz web.
-- **Corrección de Visualización y Revelado de Contraseña en URLs (`gui/static/app.js`)**:
-  - Las URLs de conexión mostradas en las tarjetas cargan inmediatamente la contraseña descifrada para streams activos e incorporan un botón conmutable para ocultar/mostrar la clave (icono 👁️ / 🔒), garantizando la copia exacta al portapapeles.
+**Fecha:** 22 de Septiembre de 2026 | **Versión:** `v2.4.0`
 
 ---
 
-### ⚡ Gestión Energética Profesional y Nativa (Win32)
-- **Nuevo Módulo de Energía Nativo (`core/power_mgr.py`)**:
-  - Implementación de control energético mediante APIs Win32 nativas (`powrprof.dll`, `kernel32.dll`) sin invocar scripts externos de PowerShell, eliminando alertas de antivirus y falsos positivos.
-- **Gobernador Dinámico de Energía (`DynamicPowerGovernor`)**:
-  - Elevación automática al plan de energía de **Alto Rendimiento** de Windows en cuanto inicia al menos una transmisión activa (`active_streams >= 1`) y restauración inmediata y transparente del plan original al concluir todas las transmisiones (`active_streams == 0`).
-- **Prevención Nativa de Suspensión de Pantalla y Equipo**:
-  - Activación continua de `SetThreadExecutionState` (`ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED`) durante la operación activa.
-- **Optimización de Adaptadores de Red Vía Registro**:
-  - Desactivación de ahorro de energía (`PnPCapabilities = 24`) mediante manipulación directa en el registro con `winreg` y verificación de privilegios `is_admin()`.
-- **Rollback Atómico y Persistencia**:
-  - Creación de respaldo seguro en `config/power_backup.json` con restauración garantizada de directivas originales al cerrar o solicitar la restauración.
+### 🏗️ Arquitectura Limpia y Descomposición Modular (Cierre de Fase 1)
+- **Eliminación Total de Monolitos**:
+  - `core/ffmpeg_mgr.py` (813 líneas) descompuesto y reemplazado en su totalidad por 4 módulos de responsabilidad única:
+    - `core/stream_proc.py`: Estados (`State`), categorías de error (`ErrorCategory`), construcción de URLs y proceso individual `StreamProc`.
+    - `core/command_builder.py`: Constructor puro de comandos FFmpeg, mapeo de resoluciones y perfiles zerolatency.
+    - `core/hardware_sync.py`: Sincronización periódica y manual de hardware DirectShow con el inventario de cámaras.
+    - `core/stream_manager.py`: Orquestador `StreamManager`, watchdog asíncrono y singleton central.
+  - `api/routes.py` (797 líneas) transformado en el paquete canónico de FastAPI `api/routes/` (`health.py`, `streams.py`, `preview.py`, `config.py`, `system.py`, `power.py`) junto con `api/deps.py`.
+- **Cero Fachadas Residuales**: Prescindido de intermediarios o capas obsoletas. Resolución directa de módulos sin envoltorios artificiales.
 
 ---
 
-### 🔄 Ruptura Limpia de Retrocompatibilidad (< 2.3.0)
-- **Esquema de Configuración v4 (`core/config_mgr.py`)**:
-  - Actualizado a `CURRENT_SCHEMA_VERSION = 4` y purgadas todas las rutinas de migración heredadas v1 y v2.
-  - Detección automática de versiones de configuración previas (< 4) con respaldo seguro en `config/config.json.legacy_v2_bak` y reinicialización limpia a valores por defecto para v2.3.0.
-  - Eliminado el script obsoleto `run_silent.vbs` y actualizadas las referencias de arranque en el proyecto.
+### 🛡️ Erradicación Total de "Mock Drift" en Tests
+- Actualización del 100% de la suite de pruebas unitarias y de integración:
+  - Cada test importa y mockea directamente el submódulo de destino donde se ejecuta la lógica (`core.stream_proc`, `core.stream_manager`, `api.routes.preview`, `api.routes.streams`, `api.deps`).
+  - Garantía de evaluación fidedigna del comportamiento de ejecución, sin riesgo de falsos positivos.
 
 ---
 
-### 🛠️ Estandarización de Arquitectura y Herramientas (PEP 621)
-- **Modernización de pyproject.toml**:
-  - Configuración del sistema de empaquetado estándar `hatchling` con metadatos PEP 621.
-  - Incorporadas reglas de linting y formato estrictas con Ruff (`line-length = 120`, reglas `E`, `F`, `W`, `I`, `B`), tipado con Mypy y configuración de Pytest.
-  - 100% de la base de código formateada y alineada con estándares modernos de Python.
+### 📦 Tooling Determinista y Catálogo Oficial
+- **`justfile`**: Recetas estándar de automatización de desarrollo (`install`, `test`, `lint`, `format`, `build`).
+- **`.pre-commit-config.yaml`**: Hooks locales de pre-commit para linters y formateo con Ruff.
+- **`uv.lock`**: Resolución determinista de dependencias del proyecto.
+- **Catálogo Canónico GitHub**: Dimensionamiento y preservación estricta de 31 elementos raíz oficiales sin truncamiento ni drift.
