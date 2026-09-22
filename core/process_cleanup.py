@@ -24,8 +24,8 @@ def terminate_all_processes(force: bool = True):
 
     # 1. Detener streams y previews en memoria
     try:
-        from core.ffmpeg_mgr import stream_manager
         from core.preview_mgr import preview_manager
+        from core.stream_manager import stream_manager
 
         try:
             loop = asyncio.get_event_loop()

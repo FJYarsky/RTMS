@@ -104,7 +104,7 @@ class SystemTrayManager:
                     try:
                         import asyncio
 
-                        from core.ffmpeg_mgr import stream_manager
+                        from core.stream_manager import stream_manager
 
                         asyncio.run(stream_manager.stop_all())
                     except Exception as e:
