@@ -250,9 +250,15 @@ const ICONS = {
             <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/>
         </g>
     </svg>`,
-    spain: `<svg class="flag-icon" viewBox="0 0 750 500" width="20" height="13" xmlns="http://www.w3.org/2000/svg">
-        <rect width="750" height="500" fill="#c60b1e"/>
-        <rect width="750" height="250" y="125" fill="#ffc400"/>
+    argentina: `<svg class="flag-icon" viewBox="0 0 60 36" width="20" height="12" xmlns="http://www.w3.org/2000/svg">
+        <rect width="60" height="12" fill="#74ACDF"/>
+        <rect y="12" width="60" height="12" fill="#FFFFFF"/>
+        <rect y="24" width="60" height="12" fill="#74ACDF"/>
+        <polygon points="35.2,18.0 32.9,18.6 34.8,20.0 32.5,19.7 33.7,21.7 31.7,20.5 32.0,22.8 30.6,20.9 30.0,23.2 29.4,20.9 28.0,22.8 28.3,20.5 26.3,21.7 27.5,19.7 25.2,20.0 27.1,18.6 24.8,18.0 27.1,17.4 25.2,16.0 27.5,16.3 26.3,14.3 28.3,15.5 28.0,13.2 29.4,15.1 30.0,12.8 30.6,15.1 32.0,13.2 31.7,15.5 33.7,14.3 32.5,16.3 34.8,16.0 32.9,17.4" fill="#F6B40E" stroke="#85340A" stroke-width="0.3"/>
+        <circle cx="30" cy="18" r="2.6" fill="#F6B40E" stroke="#85340A" stroke-width="0.5"/>
+        <circle cx="28.9" cy="17.4" r="0.4" fill="#85340A"/>
+        <circle cx="31.1" cy="17.4" r="0.4" fill="#85340A"/>
+        <path d="M29.2,19 Q30,19.8 30.8,19" fill="none" stroke="#85340A" stroke-width="0.4" stroke-linecap="round"/>
     </svg>`
 };
 
@@ -315,8 +321,8 @@ function setLanguage(lang) {
             langBtn.setAttribute('title', 'Switch to English');
             langBtn.setAttribute('aria-label', 'Switch to English');
         } else {
-            // Actualmente en inglés -> mostrar bandera España para volver a español
-            langBtn.innerHTML = `${ICONS.spain} <span>ES</span>`;
+            // Actualmente en inglés -> mostrar bandera Argentina para volver a español
+            langBtn.innerHTML = `${ICONS.argentina} <span>ES</span>`;
             langBtn.setAttribute('title', 'Cambiar a Español');
             langBtn.setAttribute('aria-label', 'Cambiar a Español');
         }
