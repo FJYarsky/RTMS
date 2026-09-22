@@ -148,6 +148,7 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
         from core.mediamtx_mgr import mediamtx_manager
 
         mediamtx_manager.generate_config()
+        await mediamtx_manager.sync_paths_api()
     except Exception as ex:
         logger.debug(f"Aviso regenerando configuración de MediaMTX tras guardar cámara: {ex}")
 
@@ -172,6 +173,7 @@ async def delete_camera_endpoint(device_path: str):
         from core.mediamtx_mgr import mediamtx_manager
 
         mediamtx_manager.generate_config()
+        await mediamtx_manager.sync_paths_api()
     except Exception as ex:
         logger.debug(f"Aviso regenerando configuración de MediaMTX tras eliminar cámara: {ex}")
 
@@ -322,7 +324,6 @@ async def get_stream_connect_url(device_path: str):
         from core.secrets_mgr import unprotect_secret
 
         passphrase = unprotect_secret(raw_pass)
-    latency = int(cfg.get("srt_latency", 120))
     local_ip = get_local_ip()
 
     if protocol == "srt":
@@ -333,12 +334,11 @@ async def get_stream_connect_url(device_path: str):
         clean_cam_id = clean_camera_id(cam_id)
         query_parts = [
             f"streamid=read:{clean_cam_id}",
-            f"latency={latency * 1000}",
         ]
         if passphrase:
             query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
         query = "&".join(query_parts)
-        url = f"srt://{local_ip}:{mediamtx_port}?{query}"
+        url = f"srt://{local_ip}:{mediamtx_port}/?{query}"
     else:
         ip_last = (int(port) % 200) + 1
         url = f"udp://239.255.0.{ip_last}:{port}?pkt_size=1316"
