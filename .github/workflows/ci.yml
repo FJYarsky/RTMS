@@ -45,6 +45,10 @@ jobs:
         run: |
           ruff check .
 
+      - name: Type Checking (Mypy)
+        run: |
+          mypy core api
+
       - name: Run Pytest Suite with Coverage
         run: |
           pytest tests/ -v --cov=core --cov=api --cov-report=term-missing
@@ -91,5 +95,12 @@ jobs:
           if (-not (Test-Path "dist/rtms/bin/ffplay.exe")) {
             throw "ffplay.exe no esta presente en dist/rtms/bin."
           }
+          if (-not (Test-Path "dist/rtms/bin/mediamtx.exe")) {
+            throw "mediamtx.exe no esta presente en dist/rtms/bin."
+          }
+          if (-not (Test-Path "dist/rtms/config/mediamtx.example.yml")) {
+            throw "mediamtx.example.yml no esta presente en dist/rtms/config."
+          }
           Write-Host "Verificacion de empaquetado completada exitosamente." -ForegroundColor Green
+
  
