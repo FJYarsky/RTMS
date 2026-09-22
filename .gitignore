@@ -34,8 +34,13 @@ rtms_startup.log
 config/config.json
 config/config.json.bak
 config/config.json.tmp
+config/config.json.*bak*
 config/power_backup.json
-*.bak
+config/mediamtx.yml
+config/rtms.db*
+*.db*
+*.bak*
+*_bak*
 *.tmp
 
 # IDEs & OS files
