@@ -431,3 +431,77 @@ async def test_stream_preview_and_ffplay_use_mediamtx_port_and_streamid():
     assert f"streamid=read:{clean_id}" in preview_url
     assert "passphrase=ReaderPassword123" in preview_url
     assert "mode=caller" in preview_url
+
+
+def test_sqlite_wal_recovery_when_json_missing():
+    """Valida la recuperación bidireccional desde SQLite WAL cuando config.json se pierde o elimina."""
+    from unittest.mock import patch
+
+    import core.config_mgr as cm
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        db_path = os.path.join(tmp_dir, "rtms.db")
+        json_path = os.path.join(tmp_dir, "config.json")
+        bak_path = os.path.join(tmp_dir, "config.json.bak")
+        init_db(db_path)
+        repo = ConfigRepository(db_path=db_path)
+
+        # 1. Guardar cámara directamente en SQLite WAL
+        sample_cam = {
+            "id": "cam_recovered_db",
+            "friendly_name": "Recovered DB Cam",
+            "resolution": "1080p",
+            "fps": 60,
+            "bitrate": 4500,
+            "port": 9070,
+            "protocol": "srt",
+        }
+        repo.save_camera_sync("@device:pnp:recovered_01", sample_cam)
+
+        # Asegurar que config.json y config.bak no existan
+        assert not os.path.exists(json_path)
+        assert not os.path.exists(bak_path)
+
+        with (
+            patch.object(cm, "CONFIG_FILE", json_path),
+            patch.object(cm, "CONFIG_BAK_FILE", bak_path),
+            patch.object(cm, "CONFIG_DIR", tmp_dir),
+            patch("core.repository.config_repository.config_repository", repo),
+            patch("core.repository.migrator.config_repository", repo),
+            patch("core.repository.database.get_db_path", return_value=db_path),
+            patch("core.repository.migrator.get_db_path", return_value=db_path),
+        ):
+            loaded = cm.load_config()
+            assert "@device:pnp:recovered_01" in loaded.get("cameras", {})
+            assert loaded["cameras"]["@device:pnp:recovered_01"]["friendly_name"] == "Recovered DB Cam"
+            # Y config.json debe haberse restaurado en disco
+            assert os.path.exists(json_path)
+
+
+@pytest.mark.asyncio
+async def test_stream_manager_watchdog_lifecycle_in_task_registry():
+    """Valida que el watchdog de StreamManager se registre en TaskRegistry y se cancele limpiamente en stop_all."""
+    from unittest.mock import patch
+
+    from core.stream_manager import StreamManager
+    from core.task_registry import TaskRegistry
+
+    test_registry = TaskRegistry()
+    sm = StreamManager()
+
+    with (
+        patch("core.task_registry.task_registry", test_registry),
+        patch("core.stream_manager.get_directshow_devices", return_value=[]),
+    ):
+        await sm.sync_streams_with_hardware()
+
+        # El watchdog debe estar registrado
+        assert sm._watchdog_task is not None
+        assert not sm._watchdog_task.done()
+
+        # Debe estar en el registro de tareas activas
+        assert sm._watchdog_task in test_registry.active_tasks
+
+        # Al llamar a stop_all, debe cancelarse y quedar en None
+        await sm.stop_all()
+        assert sm._watchdog_task is None
