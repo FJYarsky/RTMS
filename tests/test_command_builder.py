@@ -67,9 +67,11 @@ def test_build_command_zerolatency_false():
 
 
 def test_build_command_url_escapes_passphrase_special_characters():
-    """Valida que caracteres especiales (&, #, =, ?) en la contraseña no rompan el formato de URL SRT."""
+    """Valida que caracteres especiales (&, #, =, ?) en la contraseña se escapen en URLs de cliente y se aíslen del publisher loopback."""
 
     async def _run():
+        from core.stream_proc import build_stream_url
+
         mgr = StreamManager()
         passphrase_with_symbols = "mi_clave&foo=bar#123?ok"
         cfg = {
@@ -86,13 +88,22 @@ def test_build_command_url_escapes_passphrase_special_characters():
         }
         cmd, url, enc = await mgr.build_command(cfg, force_cpu=True)
 
-        # En la URL cruda del comando debe estar codificada (ej. %26 en vez de & sin escapar)
+        # En la arquitectura desacoplada v2.5.0, el comando FFmpeg hacia loopback no incluye passphrase (evita BADSECRET)
         raw_url = cmd[-1]
-        assert "mi_clave" in raw_url
-        assert "foo=bar" not in raw_url.split("passphrase=")[0]
-        # La URL retornada para APIs y estado debe estar sanitizada
-        assert "mi_clave" not in url
-        assert "••••••••" in url or "********" in url
+        assert raw_url.startswith("srt://127.0.0.1:")
+        assert "streamid=publish:cam_9004" in raw_url
+        assert "passphrase=" not in raw_url
+
+        # En la URL de conexión para clientes externos (OBS), los caracteres especiales están debidamente codificados
+        client_url = build_stream_url(
+            protocol="srt",
+            port=8890,
+            passphrase=passphrase_with_symbols,
+            mode="caller",
+            streamid="read:cam_9004",
+        )
+        assert "mi_clave" in client_url
+        assert "streamid=read:cam_9004" in client_url
 
     asyncio.run(_run())
 

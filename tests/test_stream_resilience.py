@@ -303,3 +303,124 @@ async def test_config_repository_async_crud():
         assert deleted is True
         cams_after = await repo.get_all_cameras()
         assert "@device:pnp:async_cam" not in cams_after
+
+
+@pytest.mark.asyncio
+async def test_command_builder_srt_publisher_no_passphrase():
+    """Valida que FFmpeg como publisher en loopback SRT no incluya passphrase para evitar BADSECRET."""
+    from core.command_builder import build_ffmpeg_command
+
+    camera_cfg = {
+        "id": "cam_secure_01",
+        "device_path": "@device:pnp:\\\\?\\usb#test",
+        "friendly_name": "Test Secure Cam",
+        "resolution": "1080p",
+        "fps": 30,
+        "bitrate": 4000,
+        "encoder": "libx264",
+        "port": 9055,
+        "protocol": "srt",
+        "srt_latency": 120,
+        "srt_passphrase": "SecretPassphrase123!",
+        "zerolatency": True,
+    }
+    cmd, _, _ = await build_ffmpeg_command(camera_cfg)
+    # El destino (último argumento de ffmpeg) debe ser srt://127.0.0.1:8890 con streamid=publish:cam_secure_01
+    dest_url = cmd[-1]
+    assert dest_url.startswith("srt://127.0.0.1:")
+    assert "streamid=publish:cam_secure_01" in dest_url
+    assert "passphrase=" not in dest_url
+
+
+def test_mediamtx_config_generation_with_srt_passphrase():
+    """Valida que MediaMTX configure srtReadPassphrase cuando la cámara tiene passphrase."""
+    from unittest.mock import patch
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        db_path = os.path.join(tmp_dir, "test_rtms.db")
+        init_db(db_path)
+        repo = ConfigRepository(db_path=db_path)
+
+        camera_cfg = {
+            "id": "cam_enc_02",
+            "friendly_name": "Encrypted Camera",
+            "port": 9060,
+            "protocol": "srt",
+            "srt_passphrase": "ProtectedPass1234",
+        }
+        repo.save_camera_sync("@device:pnp:enc_02", camera_cfg)
+
+        mgr = MediaMTXManager(base_dir=tmp_dir)
+
+        with patch("core.repository.config_repository", repo):
+            cfg_path = mgr.generate_config(srt_port=8890)
+
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        assert "paths:" in content
+        assert "cam_enc_02:" in content
+        assert "srtReadPassphrase: ProtectedPass1234" in content
+        assert "srtPublishPassphrase" not in content
+
+
+@pytest.mark.asyncio
+async def test_stream_manager_network_error_not_device_lost():
+    """Valida que errores de red/salida de FFmpeg se clasifiquen como NETWORK y no como DEVICE."""
+    from unittest.mock import AsyncMock
+
+    from core.stream_manager import ErrorCategory, StreamManager
+    from core.stream_proc import StreamProc
+
+    sm = StreamManager()
+    proc = StreamProc(device_path="@device:pnp:test_net_error")
+    sm._procs[proc.device_path] = proc
+
+    fake_stderr_lines = [
+        b"Output #0, mpegts, to 'srt://127.0.0.1:8890?streamid=publish:cam_test':\n",
+        b"[srt @ 000001f3a2] Connection to srt://127.0.0.1:8890 failed: I/O error\n",
+        b"Error opening output srt://127.0.0.1:8890: I/O error\n",
+    ]
+
+    class FakeProcess:
+        def __init__(self, lines):
+            self.stderr = self._gen(lines)
+
+        async def _gen(self, lines):
+            for line in lines:
+                yield line
+
+    mock_handle_device_lost = AsyncMock()
+    sm._handle_device_lost = mock_handle_device_lost
+
+    await sm._collect_logs(proc.device_path, FakeProcess(fake_stderr_lines))
+
+    # Debe ser NETWORK
+    assert proc.last_error_category == ErrorCategory.NETWORK
+    # NO debe haber llamado a _handle_device_lost
+    mock_handle_device_lost.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_stream_preview_and_ffplay_use_mediamtx_port_and_streamid():
+    """Valida que las URLs de vista previa y FFplay consuman desde MediaMTX con streamid=read."""
+    from core.mediamtx_mgr import clean_camera_id, mediamtx_manager
+    from core.stream_proc import build_stream_url
+
+    mediamtx_port = mediamtx_manager.get_srt_port()
+    clean_id = clean_camera_id("cam-01 test")
+
+    preview_url = build_stream_url(
+        protocol="srt",
+        port=mediamtx_port,
+        passphrase="ReaderPassword123",
+        mode="caller",
+        latency_ms=120,
+        zerolatency=True,
+        streamid=f"read:{clean_id}",
+    )
+
+    assert f":{mediamtx_port}" in preview_url
+    assert f"streamid=read:{clean_id}" in preview_url
+    assert "passphrase=ReaderPassword123" in preview_url
+    assert "mode=caller" in preview_url
