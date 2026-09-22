@@ -69,12 +69,20 @@ from core.system_env import (
     acquire_stay_awake,
     get_platform_details,
     release_stay_awake,
+    set_high_resolution_timer,
     setup_firewall_rules,
     unblock_app_binaries,
 )
 from core.task_registry import task_registry
 from core.telemetry import telemetry_service
 from core.tray_icon import SystemTrayManager
+
+# Desbloqueo inicial preventivo de binarios (elimina marcas Zone.Identifier para evitar avisos SmartScreen / UAC)
+if sys.platform == "win32":
+    try:
+        unblock_app_binaries()
+    except Exception:
+        pass
 
 # Generación de token criptográfico de sesión local para proteger la API contra CSRF / drive-by
 API_TOKEN = secrets.token_urlsafe(32)
@@ -107,8 +115,11 @@ _uvicorn_thread = None
 async def lifespan(app: FastAPI):
     logger.info(f"Iniciando RTMS API Backend v{__version__}...")
     app.state.loop = asyncio.get_running_loop()
-    setup_firewall_rules()
     acquire_stay_awake()
+    set_high_resolution_timer(True)
+
+    # Configuración de firewall en segundo plano para arranque instantáneo de la ventana (<1s)
+    task_registry.create_task(asyncio.to_thread(setup_firewall_rules), name="setup_firewall")
 
     # Iniciar Media Server (MediaMTX) antes de sincronizar hardware
     try:
@@ -150,6 +161,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error en shutdown de telemetría: {e}")
     finally:
+        set_high_resolution_timer(False)
         release_stay_awake()
 
 
