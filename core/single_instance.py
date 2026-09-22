@@ -18,7 +18,7 @@ _LOCAL_MUTEX = "Local\\RTMS_Multicam_v2_SingleInstance_Mutex"
 _mutex_handle = None
 
 
-def acquire_single_instance_lock() -> bool:
+def acquire_single_instance_lock(mutex_name: str | None = None) -> bool:
     """
     Intenta adquirir un Mutex en Windows para asegurar que solo una instancia
     de RTMS esté en ejecución a la vez. Intenta primero en el espacio Global
@@ -32,19 +32,22 @@ def acquire_single_instance_lock() -> bool:
     ERROR_ALREADY_EXISTS = 183
     ERROR_ACCESS_DENIED = 5
 
+    target_global = f"Global\\{mutex_name}" if mutex_name else _GLOBAL_MUTEX
+    target_local = f"Local\\{mutex_name}" if mutex_name else _LOCAL_MUTEX
+
     try:
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel32.CreateMutexW.argtypes = [wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR]
         kernel32.CreateMutexW.restype = wintypes.HANDLE
 
         # 1. Intentar Mutex Global
-        _mutex_handle = kernel32.CreateMutexW(None, False, _GLOBAL_MUTEX)
+        _mutex_handle = kernel32.CreateMutexW(None, False, target_global)
         last_error = ctypes.get_last_error()
 
         # Si da error de permisos en Global, caer al espacio Local
         if (not _mutex_handle or last_error == ERROR_ACCESS_DENIED) and last_error != ERROR_ALREADY_EXISTS:
             logger.debug("No se pudo crear mutex Global (permisos). Intentando mutex Local...")
-            _mutex_handle = kernel32.CreateMutexW(None, False, _LOCAL_MUTEX)
+            _mutex_handle = kernel32.CreateMutexW(None, False, target_local)
             last_error = ctypes.get_last_error()
 
         if not _mutex_handle or last_error == ERROR_ALREADY_EXISTS:

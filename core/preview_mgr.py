@@ -165,6 +165,12 @@ class PreviewManager:
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_WIN_FLAGS)
             self._active_ffplay[url] = proc
+            try:
+                from core.job_object import job_object_mgr
+
+                job_object_mgr.assign_process(proc)
+            except Exception as ex:
+                logger.debug(f"Asignación de FFplay a Job Object omitida: {ex}")
             return True
         except Exception as e:
             logger.error(f"Error al lanzar FFplay: {e}")
@@ -278,6 +284,8 @@ class PreviewManager:
             logger.info(f"Worker de vista previa iniciado para: {safe_source_log}")
 
             buffer = bytearray()
+            if proc.stdout is None:
+                return
             while True:
                 chunk = await proc.stdout.read(16384)
                 if not chunk:

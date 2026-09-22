@@ -122,6 +122,8 @@ class VideoReceiverDigest:
 
         # Leer stdout (progreso) y stderr (logs y metadatos) asíncronamente
         async def read_stdout():
+            if proc.stdout is None:
+                return
             nonlocal first_frame_time, last_frame_time
             last_frame = 0
             async for line in proc.stdout:
@@ -166,6 +168,8 @@ class VideoReceiverDigest:
                                 pass
 
         async def read_stderr():
+            if proc.stderr is None:
+                return
             async for line in proc.stderr:
                 line_str = line.decode("utf-8", errors="replace").strip()
                 if not line_str:
@@ -329,7 +333,7 @@ class VirtualCameraSource:
             return False
 
     async def _collect_logs(self):
-        if not self.process:
+        if not self.process or self.process.stderr is None:
             return
         try:
             async for line in self.process.stderr:
@@ -439,11 +443,11 @@ class FFmpegDiagnosticSuite:
         bin_path = get_ffmpeg_bin()
         import subprocess
 
-        caps = {
+        caps: Dict[str, Any] = {
             "friendly_name": friendly_name,
             "supported_modes": [],
             "max_resolution": "Desconocida",
-            "max_fps": 0,
+            "max_fps": 0.0,
             "supports_1080p60": False,
             "error": None,
         }
@@ -459,13 +463,15 @@ class FFmpegDiagnosticSuite:
             pattern = re.compile(
                 r"pixel_format=([a-zA-Z0-9]+)\s+min s=(\d+)x(\d+)\s+fps=([0-9.]+)\s+max s=(\d+)x(\d+)\s+fps=([0-9.]+)"
             )
-            max_w, max_h, max_fps = 0, 0, 0
+            max_w, max_h = 0, 0
+            max_fps: float = 0.0
+            modes: List[Dict[str, Any]] = caps["supported_modes"]
             for line in output.splitlines():
                 m = pattern.search(line)
                 if m:
                     fmt = m.group(1)
                     w, h, fps = int(m.group(5)), int(m.group(6)), float(m.group(7))
-                    caps["supported_modes"].append({"pixel_format": fmt, "width": w, "height": h, "fps": fps})
+                    modes.append({"pixel_format": fmt, "width": w, "height": h, "fps": fps})
                     if (w * h) > (max_w * max_h) or (w * h == max_w * max_h and fps > max_fps):
                         max_w, max_h = w, h
                         max_fps = fps

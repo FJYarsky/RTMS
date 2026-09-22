@@ -7,6 +7,7 @@
 """Construcción de argumentos de línea de comandos para procesos FFmpeg."""
 
 import logging
+import re
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from core.hardware import get_ffmpeg_bin, hardware_detector
@@ -140,15 +141,31 @@ async def build_ffmpeg_command(
     port = cfg.get("port", 9000)
     passphrase = cfg.get("srt_passphrase", "")
     latency_ms = int(cfg.get("srt_latency", 120))
+    cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
+    clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
 
-    raw_url = build_stream_url(
-        protocol=protocol,
-        port=port,
-        passphrase=passphrase,
-        mode="listener",
-        latency_ms=latency_ms,
-        zerolatency=zerolatency,
-    )
+    if protocol == "srt":
+        from core.mediamtx_mgr import mediamtx_manager
+
+        mediamtx_port = mediamtx_manager.get_srt_port()
+        raw_url = build_stream_url(
+            protocol="srt",
+            port=mediamtx_port,
+            passphrase=passphrase,
+            mode="caller",
+            latency_ms=latency_ms,
+            zerolatency=zerolatency,
+            streamid=f"publish:{clean_cam_id}",
+        )
+    else:
+        raw_url = build_stream_url(
+            protocol=protocol,
+            port=port,
+            passphrase=passphrase,
+            mode="listener",
+            latency_ms=latency_ms,
+            zerolatency=zerolatency,
+        )
 
     if zerolatency:
         cmd += [

@@ -62,6 +62,7 @@ def build_stream_url(
     mode: str = "listener",
     latency_ms: int = 120,
     zerolatency: bool = True,
+    streamid: Optional[str] = None,
 ) -> str:
     """Construye la URL normalizada de transmisión para SRT o UDP con parámetros seguros."""
     if protocol == "udp":
@@ -80,6 +81,8 @@ def build_stream_url(
         "sndbuf": "262144",
         "rcvbuf": "262144",
     }
+    if streamid:
+        params["streamid"] = streamid
     if passphrase:
         params["passphrase"] = passphrase
     query = urllib.parse.urlencode(params)

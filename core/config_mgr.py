@@ -189,6 +189,7 @@ def migrate_config(data: Dict[str, Any]) -> Dict[str, Any]:
                     pass
 
     data.setdefault("ignored_devices", [])
+    data.setdefault("mediamtx_srt_port", 8890)
     data["version"] = __version__
     return data
 
@@ -214,7 +215,16 @@ def load_config() -> Dict[str, Any]:
             "ignored_devices": [],
             "next_port": 9000,
             "unattended_autostart": False,
+            "mediamtx_srt_port": 8890,
         }
+
+        # Inicialización / Migración automática desde JSON hacia SQLite WAL
+        try:
+            from core.repository.migrator import auto_migrate_json_to_sqlite
+
+            auto_migrate_json_to_sqlite(CONFIG_FILE)
+        except Exception as me:
+            logger.debug(f"Migración inicial a SQLite WAL omitida o no requerida: {me}")
 
         if not os.path.exists(CONFIG_FILE):
             # Si no existe config.json pero existe backup, restaurar desde backup
@@ -352,6 +362,14 @@ def _atomic_save_unlocked(config_data: Dict[str, Any]):
     # 3. Reemplazo atómico
     os.replace(CONFIG_TMP_FILE, CONFIG_FILE)
     _LAST_SAVED_CONFIG = current_serialized
+
+    # 4. Guardar en base de datos SQLite WAL transaccional
+    try:
+        from core.repository.config_repository import config_repository
+
+        config_repository.save_full_config_sync(disk_data)
+    except Exception as dbe:
+        logger.debug(f"Aviso guardando en SQLite WAL: {dbe}")
 
 
 def save_config(config_data: Dict[str, Any], raise_on_error: bool = False) -> bool:
@@ -558,9 +576,21 @@ def remove_camera_config(identifier: str) -> bool:
     if target_key:
         removed_cam = cameras.pop(target_key)
         dp = removed_cam.get("device_path", target_key)
+        friendly_name = removed_cam.get("friendly_name") or removed_cam.get("name") or dp
         ignored = config.setdefault("ignored_devices", [])
-        if dp not in ignored:
-            ignored.append(dp)
+        already_ignored = any(
+            (item == dp if isinstance(item, str) else item.get("device_path") == dp) for item in ignored
+        )
+        if not already_ignored:
+            from datetime import datetime, timezone
+
+            ignored.append(
+                {
+                    "device_path": dp,
+                    "friendly_name": friendly_name,
+                    "ignored_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
         port = removed_cam.get("port")
         if port:
             try:
@@ -571,17 +601,55 @@ def remove_camera_config(identifier: str) -> bool:
     return False
 
 
+def get_ignored_devices() -> list[dict]:
+    """Retorna la lista de dispositivos ignorados en formato uniforme de diccionarios."""
+    config = load_config()
+    res = []
+    for item in config.get("ignored_devices", []):
+        if isinstance(item, str):
+            res.append({"device_path": item, "friendly_name": item, "ignored_at": None})
+        elif isinstance(item, dict):
+            res.append(
+                {
+                    "device_path": item.get("device_path", ""),
+                    "friendly_name": item.get("friendly_name") or item.get("device_path", ""),
+                    "ignored_at": item.get("ignored_at"),
+                }
+            )
+    return res
+
+
 def unignore_device(device_path: str) -> bool:
     """Permite readmitir un dispositivo DirectShow previamente descartado o ignorado."""
     config = load_config()
     ignored = config.get("ignored_devices", [])
-    if device_path in ignored:
-        ignored.remove(device_path)
+    found = False
+    new_ignored = []
+    for item in ignored:
+        dp = item if isinstance(item, str) else item.get("device_path")
+        if dp == device_path:
+            found = True
+        else:
+            new_ignored.append(item)
+    if found:
+        config["ignored_devices"] = new_ignored
         return save_config(config)
     return False
+
+
+def clear_ignored_devices() -> bool:
+    """Limpia completamente la lista de dispositivos ignorados."""
+    config = load_config()
+    config["ignored_devices"] = []
+    return save_config(config)
 
 
 def is_device_ignored(device_path: str) -> bool:
     """Verifica si un dispositivo se encuentra en la lista de ignorados."""
     config = load_config()
-    return device_path in config.get("ignored_devices", [])
+    for item in config.get("ignored_devices", []):
+        if isinstance(item, str) and item == device_path:
+            return True
+        if isinstance(item, dict) and item.get("device_path") == device_path:
+            return True
+    return False

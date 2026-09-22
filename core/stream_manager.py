@@ -149,6 +149,14 @@ class StreamManager:
         proc.permanent_failure = False
         proc.next_retry_at = None
 
+        try:
+            from core.job_object import job_object_mgr
+
+            if process.pid:
+                job_object_mgr.assign_process(process.pid)
+        except Exception as e:
+            logger.debug(f"Asignación a Job Object omitida o fallida: {e}")
+
         if proc._log_task and not proc._log_task.done():
             proc._log_task.cancel()
         proc._log_task = asyncio.create_task(self._collect_logs(proc.device_path, process))
@@ -343,26 +351,6 @@ class StreamManager:
                                 logger.info(f"Cámara {dp} no disponible físicamente. Pausada en DISCONNECTED.")
                                 continue
 
-                        # Detección de desconexión de cliente en SRT listener
-                        is_srt_disconnect = False
-                        if proc.config.get("protocol") == "srt":
-                            recent_logs = "".join(proc.get_logs(5)).lower()
-                            if (
-                                "i/o error" in recent_logs
-                                or "muxer" in recent_logs
-                                or "conversion failed" in recent_logs
-                            ):
-                                is_srt_disconnect = True
-
-                        if is_srt_disconnect:
-                            logger.info(f"[{dp}] Cliente SRT desconectado. Reiniciando listener inmediatamente...")
-                            proc.log("Cliente SRT desconectado. Reiniciando listener a la espera de nueva conexión...")
-                            proc.transition_to(State.STARTING)
-                            proc.recovery_task = asyncio.create_task(
-                                self.start_stream(dp, force_cpu=proc.using_fallback_cpu)
-                            )
-                            continue
-
                         logger.warning(f"Flujo {dp} caído inesperadamente (error #{proc.error_count + 1}).")
                         proc.error_count += 1
                         proc.transition_to(State.ERROR)
@@ -443,6 +431,9 @@ class StreamManager:
         ]
 
         stats_pattern = re.compile(r"fps=\s*([0-9.]+).*bitrate=\s*([0-9.]+)kbits/s.*speed=\s*([0-9.x]+)")
+
+        if process.stderr is None:
+            return
 
         try:
             async for raw in process.stderr:
@@ -545,14 +536,11 @@ class StreamManager:
                     asyncio.create_task(self.stop_stream(dp, timeout=1.0))
 
         # 2. Registrar y actualizar dispositivos presentes (omitiendo dispositivos en ignored_devices)
-        from core.config_mgr import load_config
-
-        active_cfg = load_config()
-        ignored_devs = set(active_cfg.get("ignored_devices", []))
+        from core.config_mgr import is_device_ignored
 
         for d in devices:
             dp = d["device_path"]
-            if dp in ignored_devs:
+            if is_device_ignored(dp):
                 continue
             proc = self.get_proc(dp)
             was_disconnected = not proc.is_connected or proc.state == State.DISCONNECTED
