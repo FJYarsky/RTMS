@@ -1341,7 +1341,7 @@ wheels = [
 
 [[package]]
 name = "rtms"
-version = "2.3.0"
+version = "2.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
