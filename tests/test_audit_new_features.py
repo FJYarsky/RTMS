@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from api.routes import preview_ticket_mgr
+from api.deps import preview_ticket_mgr
 from core.config_mgr import (
     get_or_allocate_camera_config,
     is_device_ignored,
@@ -148,7 +148,7 @@ def test_process_cleanup_terminate_all():
     """Valida que terminate_all_processes intente detener streams y cerrar recursos."""
     with patch("core.single_instance.release_single_instance_lock") as mock_release:
         with patch("os._exit") as mock_exit:
-            with patch("core.ffmpeg_mgr.stream_manager.stop_all"):
+            with patch("core.stream_manager.stream_manager.stop_all"):
                 with patch("core.preview_mgr.preview_manager.stop_all"):
                     terminate_all_processes(force=False)
                     assert mock_release.called
@@ -180,7 +180,7 @@ def test_process_cleanup_only_kills_rtms_processes():
 
     with patch("core.single_instance.release_single_instance_lock"):
         with patch("os._exit"):
-            with patch("core.ffmpeg_mgr.stream_manager.stop_all"):
+            with patch("core.stream_manager.stream_manager.stop_all"):
                 with patch("core.preview_mgr.preview_manager.stop_all"):
                     with patch(
                         "psutil.process_iter",
@@ -252,8 +252,8 @@ def test_unprotect_secret_case_insensitive():
 def test_ffplay_launch_unprotects_dpapi_passphrase(client):
     """Valida que launch_external_ffplay descifre la passphrase DPAPI al armar la URL del monitor."""
     from core.config_mgr import get_or_allocate_camera_config, update_camera_config
-    from core.ffmpeg_mgr import stream_manager
     from core.secrets_mgr import protect_secret
+    from core.stream_manager import stream_manager
 
     cam = get_or_allocate_camera_config("@device_ffplay_dpapi_test", "FFplay DPAPI Test")
     dp = cam["device_path"]
@@ -289,7 +289,7 @@ def test_ffplay_launch_unprotects_dpapi_passphrase(client):
 def test_config_update_preserves_optional_booleans(client):
     """Valida que update_stream_config preserve valores booleanos en proc.config."""
     from core.config_mgr import get_or_allocate_camera_config
-    from core.ffmpeg_mgr import stream_manager
+    from core.stream_manager import stream_manager
 
     cam = get_or_allocate_camera_config("@device_bool_test", "Bool Test")
     dp = cam["device_path"]

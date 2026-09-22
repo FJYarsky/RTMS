@@ -8,7 +8,7 @@
 
 import asyncio
 
-from core.ffmpeg_mgr import State, StreamProc
+from core.stream_proc import State, StreamProc
 
 
 def test_stream_proc_initial_state():

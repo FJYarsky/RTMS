@@ -11,7 +11,8 @@ import asyncio
 from fastapi.testclient import TestClient
 
 from core.config_mgr import generate_stable_camera_id, load_config, save_config
-from core.ffmpeg_mgr import ErrorCategory, State, StreamManager, StreamProc
+from core.stream_manager import StreamManager
+from core.stream_proc import ErrorCategory, State, StreamProc
 from main import create_app
 
 

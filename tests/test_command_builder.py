@@ -8,7 +8,7 @@
 
 import asyncio
 
-from core.ffmpeg_mgr import StreamManager
+from core.stream_manager import StreamManager
 
 
 def test_build_command_zerolatency_true():

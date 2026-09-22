@@ -6,8 +6,8 @@
 
 """Pruebas de sanitización de credenciales y registros del sistema."""
 
-from core.ffmpeg_mgr import StreamProc
 from core.sanitizer import sanitize_command_for_log, sanitize_log_line
+from core.stream_proc import StreamProc
 
 
 def test_sanitize_command_srt_passphrase():

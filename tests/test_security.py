@@ -67,7 +67,7 @@ def test_mutating_post_endpoints_require_token(monkeypatch):
     """Valida que peticiones POST sean rechazadas con 403 si falta el token o es incorrecto."""
     from unittest.mock import AsyncMock
 
-    monkeypatch.setattr("api.routes.sync_streams_with_hardware", AsyncMock())
+    monkeypatch.setattr("api.routes.streams.sync_streams_with_hardware", AsyncMock())
     # Sin token
     res_no_token = client.post("/api/hardware/scan")
     assert res_no_token.status_code == 403

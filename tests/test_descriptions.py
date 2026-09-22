@@ -17,8 +17,8 @@ from scripts.manage_descriptions import (
 
 
 def test_catalog_completeness():
-    """Valida que el catálogo contenga exactamente los 28 elementos raíz oficiales."""
-    assert len(DESCRIPTIONS_CATALOG) == 28
+    """Valida que el catálogo contenga exactamente los 31 elementos raíz oficiales."""
+    assert len(DESCRIPTIONS_CATALOG) == 31
     expected_directories = [".github", "api", "config", "core", "docs", "gui", "scripts", "tests"]
     for d in expected_directories:
         assert d in DESCRIPTIONS_CATALOG

@@ -13,7 +13,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from api.routes import preview_ticket_mgr
+from api.deps import preview_ticket_mgr
 from core.config_mgr import save_config
 from core.sanitizer import SecretFilter, sanitize_url
 from core.secrets_mgr import SecretDecryptionError, unprotect_secret
@@ -152,7 +152,7 @@ def test_connect_url_cache_control_headers():
 
     # Configurar una cámara de prueba
     cfg = {
-        "version": "2.3.0",
+        "version": "2.4.0",
         "config_schema_version": 4,
         "cameras": {
             "@cam_test": {
