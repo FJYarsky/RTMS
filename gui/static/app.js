@@ -11,6 +11,7 @@ let _currentLogDevicePath = null;
 let _uptimeTicker = null;
 let _metricsTicker = null;
 let _virtualGridVisible = false;
+let _ignoredGridVisible = false;
 
 // TOKEN DE SEGURIDAD CSRF LOCAL
 function getApiToken() {
@@ -431,6 +432,8 @@ function renderCamerasPage() {
             virtualSection.style.display = 'none';
         }
     }
+
+    loadIgnoredDevices();
 }
 
 // CREADOR DE TARJETAS DE CÁMARA
@@ -530,6 +533,127 @@ function toggleVirtualCamerasVisibility() {
     } else {
         grid.classList.remove('active');
         if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+// CARGAR Y RENDERIZAR CÁMARAS IGNORADAS / ELIMINADAS
+async function loadIgnoredDevices() {
+    const section = document.getElementById('ignored-cameras-section');
+    const badge = document.getElementById('ignored-count-badge');
+    const grid = document.getElementById('ignored-cameras-grid');
+    if (!section || !grid) return;
+
+    try {
+        const res = await apiFetch('/api/devices/ignored');
+        if (!res.ok) return;
+        const data = await res.json();
+        const devices = data.ignored_devices || [];
+
+        if (devices.length === 0) {
+            section.style.display = 'none';
+            grid.innerHTML = '';
+            if (badge) badge.textContent = '0';
+            return;
+        }
+
+        section.style.display = 'block';
+        if (badge) badge.textContent = String(devices.length);
+        grid.innerHTML = '';
+
+        devices.forEach(dev => {
+            const card = document.createElement('div');
+            card.className = 'stream-card';
+            card.style.borderLeft = '3px solid #ef4444';
+            card.style.background = 'rgba(239, 68, 68, 0.03)';
+
+            const connBadge = dev.is_connected
+                ? `<span class="status-badge running" style="font-size: 0.7rem;"><span class="status-dot"></span>Conectada (USB)</span>`
+                : `<span class="status-badge stopped" style="font-size: 0.7rem;"><span class="status-dot"></span>Desconectada</span>`;
+
+            card.innerHTML = `
+                <div class="stream-card-hdr">
+                    <div>
+                        <div class="stream-name" style="color: #fca5a5;">${escapeHtml(dev.friendly_name)}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-muted); word-break: break-all; margin-top: 2px;">
+                            ${escapeHtml(dev.device_path)}
+                        </div>
+                    </div>
+                    ${connBadge}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin: 10px 0;">
+                    Estado: Cámara oculta o eliminada. No transmitirá hasta que sea restaurada.
+                </div>
+                <div class="actions-row">
+                    <button class="btn btn-primary btn-sm" onclick="unignoreCamera('${escapeHtml(dev.device_path).replace(/'/g, "\\'")}')">
+                        🔄 Restaurar Cámara
+                    </button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    } catch (err) {
+        console.error("Error al cargar dispositivos ignorados:", err);
+    }
+}
+
+// TOGGLE SECCIÓN DE CÁMARAS IGNORADAS
+function toggleIgnoredCamerasVisibility() {
+    const grid = document.getElementById('ignored-cameras-grid');
+    const chevron = document.getElementById('ignored-chevron');
+    if (!grid) return;
+
+    _ignoredGridVisible = !_ignoredGridVisible;
+    if (_ignoredGridVisible) {
+        grid.classList.add('active');
+        grid.style.display = 'grid';
+        if (chevron) chevron.style.transform = 'rotate(90deg)';
+    } else {
+        grid.classList.remove('active');
+        grid.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+// RESTAURAR CÁMARA IGNORADA
+async function unignoreCamera(devicePath) {
+    try {
+        const res = await apiFetch('/api/devices/unignore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_path: devicePath })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || "Cámara restaurada exitosamente", "success");
+            await fetchStatus();
+            await loadIgnoredDevices();
+        } else {
+            showToast(data.detail || "Error al restaurar cámara", "error");
+        }
+    } catch (err) {
+        showToast("Error de comunicación con el servidor", "error");
+    }
+}
+
+// RESTAURAR TODAS LAS CÁMARAS IGNORADAS
+async function restoreAllIgnoredCameras() {
+    if (!confirm("¿Deseas restaurar todas las cámaras que fueron eliminadas u ocultadas?")) {
+        return;
+    }
+    try {
+        const res = await apiFetch('/api/devices/unignore_all', {
+            method: 'POST'
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || "Todas las cámaras han sido restauradas", "success");
+            await fetchStatus();
+            await loadIgnoredDevices();
+        } else {
+            showToast(data.detail || "Error al restaurar cámaras", "error");
+        }
+    } catch (err) {
+        showToast("Error de comunicación con el servidor", "error");
     }
 }
 
@@ -754,9 +878,10 @@ async function deleteCurrentCamera() {
         });
         const data = await res.json();
         if (res.ok) {
-            showToast(data.message || "Cámara eliminada", 'success');
+            showToast("Cámara eliminada del panel. Puedes restaurarla en cualquier momento desde 'Cámaras Ocultadas / Eliminadas'.", 'success');
             closeConfigModal();
             fetchStatus();
+            loadIgnoredDevices();
         } else {
             showToast(data.detail || 'Error al eliminar cámara', 'error');
         }
@@ -969,10 +1094,58 @@ window.addEventListener('beforeunload', (e) => {
     }
 });
 
+// CONFIGURACIÓN DE MEDIAMTX (PUERTO SRT CENTRAL)
+async function loadSystemSettings() {
+    try {
+        const res = await apiFetch('/api/system/settings');
+        if (res.ok) {
+            const data = await res.json();
+            const portInput = document.getElementById('mediamtx-srt-port-input');
+            if (portInput && data.mediamtx_srt_port) {
+                portInput.value = data.mediamtx_srt_port;
+            }
+        }
+    } catch (e) {
+        console.warn("No se pudieron cargar los ajustes de sistema:", e);
+    }
+}
+
+async function saveMediaMtxPort() {
+    const portInput = document.getElementById('mediamtx-srt-port-input');
+    const btn = document.getElementById('btn-save-mediamtx-port');
+    if (!portInput) return;
+    const portVal = parseInt(portInput.value, 10);
+    if (isNaN(portVal) || portVal < 1024 || portVal > 65535) {
+        showToast("Puerto inválido. Debe estar entre 1024 y 65535.", "error");
+        return;
+    }
+    if (btn) btn.disabled = true;
+    try {
+        const res = await apiFetch('/api/system/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mediamtx_srt_port: portVal })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(`Puerto central SRT actualizado a ${portVal}. MediaMTX listo.`, "success");
+            fetchStatus();
+        } else {
+            showToast(data.detail || "Error actualizando el puerto", "error");
+        }
+    } catch (e) {
+        showToast("Error de conexión al guardar puerto", "error");
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 // INICIALIZACIÓN
 window.addEventListener('DOMContentLoaded', () => {
     fetchStatus();
     fetchMetrics();
+    loadSystemSettings();
+    loadIgnoredDevices();
     
     setInterval(fetchStatus, 3000);
     _metricsTicker = setInterval(fetchMetrics, 2000);
