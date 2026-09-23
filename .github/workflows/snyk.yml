@@ -1,0 +1,52 @@
+# RTMS — Pipeline de análisis de seguridad y escaneo de vulnerabilidades con Snyk
+name: Snyk Security Scan
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Análisis periódico automatizado los lunes a las 03:00 UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  snyk-scan:
+    name: Snyk Vulnerability & Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/python@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --sarif-file-output=snyk.sarif
+        if: env.SNYK_TOKEN != ''
+
+      - name: Upload Snyk Results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        if: always() && env.SNYK_TOKEN != ''
+        with:
+          sarif_file: snyk.sarif
