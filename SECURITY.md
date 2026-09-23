@@ -6,11 +6,23 @@ RTMS adopta una política de soporte activo restringida exclusivamente a la **ú
 
 | Versión | Soportada |
 | ------- | --------- |
-| >= 2.5.2 | :white_check_mark: |
-| < 2.5.2 | :x: |
+| Versión | Soportada |
+| ------- | --------- |
+| >= 2.6.0 | :white_check_mark: |
+| < 2.6.0 | :x: |
 
 > [!IMPORTANT]
 > Si estás ejecutando una versión anterior a la más reciente disponible en los [Releases oficiales de GitHub](https://github.com/FJYarsky/RTMS/releases), por favor actualiza tu instalación antes de reportar un posible problema de seguridad.
+
+---
+
+## Escaneo Continuo de Vulnerabilidades (Snyk Security)
+
+RTMS implementa análisis continuo de seguridad y composición de software (SCA/SAST) mediante **Snyk Security** integrado en los pipelines de GitHub Actions ([`.github/workflows/snyk.yml`](.github/workflows/snyk.yml)).
+
+- **Inspección de Dependencias**: Verificación automatizada de vulnerabilidades y exploits conocidos en el árbol de dependencias de producción y desarrollo.
+- **Exportación SARIF**: Los resultados se exportan e integran nativamente en la pestaña **Security / Code Scanning** de GitHub.
+- **Configuración del Secreto**: Para colaboradores y entornos de integración continua, el escaneo se autentica mediante el secreto `SNYK_TOKEN` configurado en el repositorio (`Settings > Secrets and variables > Actions`).
 
 ---
 
