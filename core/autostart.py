@@ -87,4 +87,3 @@ def enable_autostart(enable: bool) -> None:
 
 def is_autostart_enabled() -> bool:
     return get_startup_path().is_file()
-
