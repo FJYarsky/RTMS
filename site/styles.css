@@ -122,15 +122,21 @@ body::before {
     gap: 12px;
     text-decoration: none;
     color: var(--text-primary);
+    transition: opacity 0.2s ease;
+}
+
+.brand:hover {
+    opacity: 0.92;
 }
 
 .logo-icon {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     background-color: var(--teal);
     border-radius: 50%;
     box-shadow: 0 0 10px var(--teal);
     animation: pulse-glow 2s infinite;
+    flex-shrink: 0;
 }
 
 @keyframes pulse-glow {
@@ -144,39 +150,48 @@ body::before {
     }
 }
 
-.brand-text {
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+.brand-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    line-height: 1;
+}
+
+.brand-top {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.brand-text span.accent {
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-    font-weight: 500;
-    border-left: 1px solid var(--border-color);
-    padding-left: 8px;
-    letter-spacing: 0;
-}
-
-@media (max-width: 768px) {
-    .brand-text span.accent {
-        display: none;
-    }
+.brand-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+    line-height: 1;
 }
 
 .version-pill {
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-family: var(--font-mono);
     font-weight: 600;
     color: var(--cyan);
-    background: rgba(56, 189, 248, 0.12);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    padding: 2px 8px;
-    border-radius: var(--radius-full);
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 1px 6px;
+    border-radius: 4px;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+}
+
+.brand-subtitle {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    line-height: 1;
 }
 
 .nav-menu {
@@ -1524,12 +1539,12 @@ body::before {
         height: 56px;
     }
 
-    .brand-text {
+    .brand-title {
         font-size: 1.05rem;
     }
 
-    .version-pill {
-        display: none;
+    .brand-subtitle {
+        font-size: 0.62rem;
     }
 
     .btn-github span {
