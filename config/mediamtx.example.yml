@@ -18,6 +18,9 @@ srtAddress: :8890
 # Servidor WebRTC / WHEP para vistas previas de ultra baja latencia
 webrtc: yes
 webrtcAddress: :8889
+webrtcEncryption: no
+webrtcLocalUDPAddress: :8189
+webrtcAllowOrigin: "*"
 
 # Configuracion de rutas (paths)
 paths:

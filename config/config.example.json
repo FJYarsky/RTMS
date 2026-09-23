@@ -1,6 +1,6 @@
 {
     "_comment": "Plantilla de configuración de RTMS con aceleración por hardware",
-    "version": "2.5.2",
+    "version": "2.6.0",
     "config_schema_version": 4,
     "cameras": {},
     "ignored_devices": [],
