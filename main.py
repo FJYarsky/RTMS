@@ -157,6 +157,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error drenando tareas asíncronas en shutdown: {e}")
     try:
+        from core.telemetry_hub import telemetry_hub
+
+        await telemetry_hub.stop()
+    except Exception as e:
+        logger.error(f"Error deteniendo hub de telemetría en shutdown: {e}")
+    try:
         telemetry_service.shutdown()
     except Exception as e:
         logger.error(f"Error en shutdown de telemetría: {e}")
