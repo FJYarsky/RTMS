@@ -31,23 +31,53 @@ class SystemTrayManager:
         self._thread = None
 
     def _create_fallback_image(self):
-        """Genera un icono de respaldo de 64x64 HD con diseño de cámara de estudio."""
-        img = Image.new("RGBA", (64, 64), color=(0, 0, 0, 0))
+        """Genera un icono de respaldo de 64x64 HD con el diseño de obturador dinámico oficial de RTMS."""
+        import math
+
+        img = Image.new("RGBA", (128, 128), color=(0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
 
-        # Base con esquinas redondeadas en pizarra oscura (#0f172a) y contorno teal (#0d9488)
-        draw.rounded_rectangle([4, 4, 60, 60], radius=12, fill=(15, 23, 42, 255), outline=(13, 148, 136, 255), width=2)
+        # Base con esquinas redondeadas en pizarra oscura (#111827) y contorno teal suave
+        draw.rounded_rectangle(
+            [6, 6, 122, 122], radius=28, fill=(17, 24, 39, 255), outline=(20, 184, 166, 70), width=2
+        )
 
-        # Cuerpo de cámara en blanco perla (#f1f5f9)
-        draw.rounded_rectangle([14, 22, 38, 42], radius=4, fill=(241, 245, 249, 255))
+        cx, cy = 64.0, 64.0
+        R = 48.0
+        r = 16.0
+        alpha = math.acos(r / R)
+        seam_width = 2
+        seam_color = (17, 24, 39, 255)
 
-        # Lente de cámara estilizada en teal brillante (#14b8a6)
-        draw.polygon([(40, 26), (50, 20), (50, 44), (40, 38)], fill=(20, 184, 166, 255))
+        blade_colors = [
+            (56, 189, 248, 255),  # Sky Cyan
+            (45, 202, 242, 255),
+            (34, 211, 238, 255),  # Bright Cyan
+            (20, 184, 166, 255),  # Primary Teal
+            (16, 166, 150, 255),
+            (13, 148, 136, 255),  # Deep Teal
+        ]
 
-        # Indicador de grabación / streaming activo (#ef4444)
-        draw.ellipse([18, 26, 24, 32], fill=(239, 68, 68, 255))
+        for k in range(6):
+            theta = math.radians(k * 60)
+            phi = theta + math.pi / 6
+            ang_out1 = phi - alpha
+            ang_out2 = ang_out1 + math.radians(60)
+            hex_ang = phi + math.radians(30)
+            r_hex = r / math.cos(math.radians(30))
+            p_hex = (cx + r_hex * math.cos(hex_ang), cy + r_hex * math.sin(hex_ang))
 
-        return img
+            poly_points = [p_hex]
+            steps = 16
+            for s in range(steps + 1):
+                cur_ang = ang_out1 + (ang_out2 - ang_out1) * (s / steps)
+                poly_points.append((cx + R * math.cos(cur_ang), cy + R * math.sin(cur_ang)))
+
+            draw.polygon(poly_points, fill=blade_colors[k])
+            draw.line([poly_points[0], poly_points[1]], fill=seam_color, width=seam_width)
+            draw.line([poly_points[0], poly_points[-1]], fill=seam_color, width=seam_width)
+
+        return img.resize((64, 64), Image.Resampling.LANCZOS)
 
     def _get_icon_image(self):
         """Busca el icono oficial icon.ico en múltiples ubicaciones antes de recurrir al fallback generado."""
