@@ -121,6 +121,11 @@ def set_global_api_token(token: str):
     _GLOBAL_API_TOKEN = token
 
 
+def get_global_api_token() -> Optional[str]:
+    """Retorna el token de sesión criptográfico global configurado."""
+    return _GLOBAL_API_TOKEN
+
+
 async def verify_api_token(
     request: Request,
     x_rtms_token: Optional[str] = Header(None, alias="X-RTMS-Token"),

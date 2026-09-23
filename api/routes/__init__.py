@@ -14,6 +14,7 @@ from .power import router as power_router
 from .preview import router as preview_router
 from .streams import router as streams_router
 from .system import router as system_router
+from .ws import router as ws_router
 
 router = APIRouter()
 
@@ -23,5 +24,6 @@ router.include_router(preview_router)
 router.include_router(config_router)
 router.include_router(system_router)
 router.include_router(power_router)
+router.include_router(ws_router)
 
 __all__ = ["router"]

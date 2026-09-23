@@ -6,15 +6,20 @@
 
 """Rutas REST para generación MJPEG on-demand, tickets efímeros y control de monitorización."""
 
+import asyncio
 import logging
+import secrets
+import urllib.error
+import urllib.request
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
-from api.deps import preview_ticket_mgr, verify_api_token
+from api.deps import get_global_api_token, preview_ticket_mgr, verify_api_token
 from api.schemas import PreviewTicketRequest
 from core.config_mgr import find_camera_by_id_or_path
+from core.mediamtx_mgr import clean_camera_id, mediamtx_manager
 from core.preview_mgr import preview_manager
 from core.stream_manager import stream_manager
 from core.stream_proc import build_stream_url
@@ -254,3 +259,74 @@ async def launch_external_ffplay(device_path: str):
         )
 
     return {"status": "ok", "message": f"Monitor FFplay lanzado para {name}"}
+
+
+@router.post("/api/stream/{device_path:path}/whep")
+@router.post("/api/whep/{device_path:path}")
+async def whep_proxy_endpoint(request: Request, device_path: str, ticket: Optional[str] = None):
+    """
+    Endpoint proxy para señalización WebRTC WHEP (RFC 9397) con MediaMTX.
+    Recibe la oferta SDP del cliente y retorna la respuesta SDP del Media Server.
+    Elimina problemas de CORS y centraliza la autenticación segura por token o ticket.
+    """
+    cam = find_camera_by_id_or_path(device_path)
+    dp = cam["device_path"] if cam else device_path
+    cam_id = cam.get("id", dp) if cam else dp
+    clean_cam_id = clean_camera_id(cam_id)
+
+    # 1. Autenticación (ticket efímero, token por query string o cabecera X-RTMS-Token)
+    if ticket:
+        if not preview_ticket_mgr.consume_ticket(ticket, dp):
+            raise HTTPException(status_code=403, detail="Ticket de previsualización inválido o expirado.")
+    else:
+        token_q = request.query_params.get("token")
+        if token_q:
+            expected = getattr(request.app.state, "api_token", get_global_api_token())
+            if not expected or not secrets.compare_digest(str(token_q), str(expected)):
+                raise HTTPException(status_code=403, detail="Token inválido.")
+        else:
+            await verify_api_token(request)
+
+    # 2. Lectura del cuerpo SDP de la oferta
+    body_bytes = await request.body()
+    if not body_bytes:
+        raise HTTPException(status_code=400, detail="Cuerpo SDP de oferta vacío.")
+
+    webrtc_port = mediamtx_manager.get_webrtc_port()
+    whep_url = f"http://127.0.0.1:{webrtc_port}/{clean_cam_id}/whep"
+
+    def _forward_sdp():
+        req = urllib.request.Request(
+            whep_url,
+            data=body_bytes,
+            headers={"Content-Type": "application/sdp"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=4.0) as resp:
+                status = resp.status
+                data = resp.read().decode("utf-8", errors="replace")
+                return status, data
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode("utf-8", errors="replace")
+            return he.code, err_body
+        except Exception as ex:
+            return 502, str(ex)
+
+    status_code, answer_sdp = await asyncio.to_thread(_forward_sdp)
+    if status_code in (200, 201):
+        return Response(
+            content=answer_sdp,
+            status_code=status_code,
+            media_type="application/sdp",
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            },
+        )
+
+    raise HTTPException(
+        status_code=status_code,
+        detail=f"Fallo en señalización WHEP con MediaMTX: {answer_sdp}",
+    )
