@@ -176,6 +176,8 @@ class StreamProc:
         self.last_error_category: ErrorCategory = ErrorCategory.UNKNOWN
         self.last_transition: Optional[datetime] = None
         self.zero_fps_since: Optional[datetime] = None
+        self.mjpeg_supported: Optional[bool] = None
+        self.mjpeg_input_failed: bool = False
 
     async def read_progress(self, stream: asyncio.StreamReader) -> None:
         """

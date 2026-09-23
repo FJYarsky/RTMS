@@ -278,3 +278,99 @@ def test_snyk_workflow_configuration():
     step_uses = [s.get("uses", "") for s in steps]
     assert any("snyk/actions/python" in u for u in step_uses)
     assert any("upload-sarif" in u for u in step_uses)
+
+
+@pytest.mark.asyncio
+async def test_command_builder_mjpeg_silicon_fallback_when_unsupported_or_failed():
+    """Valida que no se inyecte -vcodec mjpeg cuando el dispositivo no lo soporta o falló."""
+    # 1. Cuando mjpeg_supported es False
+    proc_no_mjpeg = StreamProc("@device_no_mjpeg")
+    proc_no_mjpeg.mjpeg_supported = False
+    cmd1, _, _ = await build_ffmpeg_command(
+        {
+            "friendly_name": "Integrated Laptop Webcam",
+            "device_path": "@device_no_mjpeg",
+            "resolution": "720p",
+            "fps": 30,
+            "bitrate": 3000,
+            "protocol": "srt",
+            "port": 9000,
+            "is_virtual": False,
+        },
+        proc=proc_no_mjpeg,
+    )
+    assert "-vcodec" not in cmd1
+
+    # 2. Cuando mjpeg_input_failed es True
+    proc_failed = StreamProc("@device_failed")
+    proc_failed.mjpeg_input_failed = True
+    cmd2, _, _ = await build_ffmpeg_command(
+        {
+            "friendly_name": "USB Webcam",
+            "device_path": "@device_failed",
+            "resolution": "720p",
+            "fps": 30,
+            "bitrate": 3000,
+            "protocol": "srt",
+            "port": 9000,
+            "is_virtual": False,
+        },
+        proc=proc_failed,
+    )
+    assert "-vcodec" not in cmd2
+
+
+@pytest.mark.asyncio
+async def test_probe_device_mjpeg_support():
+    """Valida la función probe_device_mjpeg_support para dispositivos virtuales y físicos."""
+    from core.hardware import probe_device_mjpeg_support
+
+    # Virtual device siempre retorna False sin llamar a subprocess
+    assert await probe_device_mjpeg_support("virtual://test") is False
+    assert await probe_device_mjpeg_support("testsrc") is False
+
+    # Con mock de salida DirectShow que tiene pixel_format=mjpeg
+    with patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = AsyncMock()
+        mock_proc.communicate.return_value = (b"", b"Pin Capturar: pixel_format=mjpeg fps=30")
+        mock_exec.return_value = mock_proc
+
+        result = await probe_device_mjpeg_support("@test_usb_cam_mjpeg")
+        assert result is True
+
+    # Con mock de salida DirectShow que NO tiene mjpeg (solo yuyv/nv12)
+    with patch("asyncio.create_subprocess_exec") as mock_exec:
+        mock_proc = AsyncMock()
+        mock_proc.communicate.return_value = (b"", b"Pin Capturar: pixel_format=yuyv422 fps=30")
+        mock_exec.return_value = mock_proc
+
+        result = await probe_device_mjpeg_support("@test_usb_cam_yuyv")
+        assert result is False
+
+
+@pytest.mark.asyncio
+async def test_stream_manager_mjpeg_fallback_recovery():
+    """Valida que _collect_logs dispare _fallback_from_mjpeg ante rechazo de opciones en DirectShow."""
+    from core.stream_manager import StreamManager
+
+    sm = StreamManager()
+    proc = sm.get_proc("@device_options_rejected")
+    proc.state = State.RUNNING
+    proc.mjpeg_supported = True
+    proc.mjpeg_input_failed = False
+
+    mock_process = AsyncMock()
+
+    # Generar línea de error de DirectShow
+    async def mock_stderr_gen():
+        yield b"[in#0] Could not set video options\n"
+        yield b"Error opening input: I/O error\n"
+
+    mock_process.stderr = mock_stderr_gen()
+    mock_process.wait = AsyncMock()
+
+    with patch.object(sm, "_fallback_from_mjpeg", new_callable=AsyncMock) as mock_fallback:
+        await sm._collect_logs("@device_options_rejected", mock_process)
+        assert proc.mjpeg_input_failed is True
+        assert proc.mjpeg_supported is False
+        mock_fallback.assert_called_once_with("@device_options_rejected")

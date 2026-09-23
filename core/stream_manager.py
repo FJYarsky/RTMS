@@ -114,6 +114,25 @@ class StreamManager:
                 c_all["cameras"][proc.device_path]["port"] = new_port
                 save_config(c_all)
 
+        # Detección preventiva de compatibilidad de compresión MJPEG en DirectShow
+        raw_dev = proc.config.get("device_path", proc.device_path)
+        from core.config_mgr import is_virtual_device
+
+        is_virt = (
+            raw_dev.startswith("virtual://")
+            or raw_dev.startswith("testsrc")
+            or proc.config.get("is_virtual", False)
+            or is_virtual_device(raw_dev)
+        )
+        if not is_virt and proc.mjpeg_supported is None and not proc.mjpeg_input_failed:
+            try:
+                from core.hardware import probe_device_mjpeg_support
+
+                proc.mjpeg_supported = await probe_device_mjpeg_support(raw_dev)
+            except Exception as pe:
+                logger.debug(f"Aviso sondeando MJPEG para {raw_dev}: {pe}")
+                proc.mjpeg_supported = False
+
         try:
             cmd, url, actual_encoder = await self.build_command(proc.config, force_cpu=force_cpu, proc=proc)
             proc.config["_url"] = url
@@ -299,6 +318,17 @@ class StreamManager:
             proc.per_stream_encoder = "libx264"
             await self._start_stream_locked(proc, force_cpu=True)
 
+    async def _fallback_from_mjpeg(self, device_path: str):
+        """Maneja la transición ágil de fallo de negociación MJPEG a formato nativo YUYV/NV12."""
+        proc = self.get_proc(device_path)
+        async with proc.lock:
+            proc.mjpeg_input_failed = True
+            proc.mjpeg_supported = False
+            logger.warning(f"[{device_path}] DirectShow rechazó pin MJPEG. Conmutando a formato nativo (YUYV/NV12)...")
+            proc.log("DirectShow rechazó compresión MJPEG. Conmutando a formato nativo...")
+            await self._stop_stream_locked(proc, timeout=1.0)
+            await self._start_stream_locked(proc, force_cpu=proc.using_fallback_cpu)
+
     async def stop_all(self):
         """Detiene todos los flujos activos de forma concurrente y ordenada."""
         logger.info("Deteniendo todos los flujos activos ordenadamente...")
@@ -341,6 +371,12 @@ class StreamManager:
                 proc.zero_fps_since = None
                 if proc.is_alive:
                     await self.stop_stream(device_path, timeout=1.0)
+            else:
+                if not proc.is_alive and proc.state == State.RUNNING:
+                    proc.error_count += 1
+                    proc.transition_to(State.ERROR)
+                    backoff = min(5 * (2 ** max(0, proc.error_count - 1)), 60)
+                    proc.next_retry_at = datetime.now() + timedelta(seconds=backoff)
         finally:
             self._handling_device_lost.discard(device_path)
 
@@ -468,6 +504,8 @@ class StreamManager:
             "unable to open input",
             "device not found",
             "could not find video device",
+            "could not set video options",
+            "cannot find video device with requested options",
             "dshow: could not",
             "cannot find video device",
             "capture device was lost",
@@ -516,6 +554,20 @@ class StreamManager:
 
                 if any(pat in line_lower for pat in FATAL_PATTERNS):
                     logger.warning(f"[{device_path}] Error en FFmpeg: {clean_line}")
+
+                    # Fallback inmediato de silicio si DirectShow rechaza el pin o códec MJPEG
+                    if (
+                        "could not set video options" in line_lower
+                        or "cannot find video device with requested options" in line_lower
+                    ) and not proc.mjpeg_input_failed:
+                        logger.warning(
+                            f"[{device_path}] DirectShow rechazó opciones de entrada MJPEG ({clean_line}). Conmutando automáticamente a formato nativo YUYV/NV12..."
+                        )
+                        proc.log("DirectShow rechazó pin MJPEG. Conmutando de inmediato a formato nativo...")
+                        proc.mjpeg_input_failed = True
+                        proc.mjpeg_supported = False
+                        asyncio.create_task(self._fallback_from_mjpeg(device_path))
+                        return
 
                     # Clasificación de categoría de error según diagnóstico de FFmpeg
                     is_output_or_net = any(
@@ -575,6 +627,11 @@ class StreamManager:
             pass
         except Exception as e:
             logger.error(f"Error leyendo logs de {device_path}: {e}")
+        finally:
+            try:
+                await process.wait()
+            except Exception:
+                pass
 
     async def start_periodic_hardware_sync(self, interval: int = 5):
         """Tarea en segundo plano que sondea periódicamente cambios en dispositivos DirectShow (hotplug)."""

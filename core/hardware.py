@@ -245,3 +245,55 @@ class HardwareCapabilityDetector:
 
 
 hardware_detector = HardwareCapabilityDetector.get_instance()
+
+_mjpeg_support_cache: Dict[str, bool] = {}
+
+
+async def probe_device_mjpeg_support(raw_device: str) -> bool:
+    """
+    Sondea si un dispositivo DirectShow físico expone un pin de captura con compresión MJPEG.
+    Retorna True si el dispositivo soporta pixel_format=mjpeg o vcodec=mjpeg.
+    Retorna False para dispositivos virtuales o cámaras sin pin de compresión MJPEG (solo YUYV/NV12).
+    Los resultados se almacenan en caché para evitar sondeos redundantes de subprocesos.
+    """
+    if not raw_device or raw_device.startswith("virtual://") or raw_device.startswith("testsrc"):
+        return False
+    if raw_device in _mjpeg_support_cache:
+        return _mjpeg_support_cache[raw_device]
+
+    ffmpeg_bin = get_ffmpeg_bin()
+    if not has_ffmpeg_binary():
+        _mjpeg_support_cache[raw_device] = False
+        return False
+
+    escaped_device = raw_device.replace(":", "\\:")
+    cmd = [
+        ffmpeg_bin,
+        "-hide_banner",
+        "-list_options",
+        "true",
+        "-f",
+        "dshow",
+        "-i",
+        f"video={escaped_device}",
+    ]
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            creationflags=_WIN_FLAGS,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=3.0)
+        output = stderr.decode("utf-8", errors="ignore").lower()
+        supports_mjpeg = "pixel_format=mjpeg" in output or "vcodec=mjpeg" in output
+        _mjpeg_support_cache[raw_device] = supports_mjpeg
+        if supports_mjpeg:
+            logger.info(f"[{raw_device}] Pin de compresión MJPEG validado en sensor DirectShow.")
+        else:
+            logger.info(f"[{raw_device}] Pin MJPEG no disponible en DirectShow (ingesta nativa YUYV/NV12 requerida).")
+        return supports_mjpeg
+    except Exception as e:
+        logger.debug(f"Aviso al sondear soporte MJPEG en {raw_device}: {e}")
+        _mjpeg_support_cache[raw_device] = False
+        return False

@@ -69,6 +69,11 @@ async def build_ffmpeg_command(
         # Si el dispositivo no es virtual y use_mjpeg_input no está deshabilitado explícitamente,
         # inyectamos -vcodec mjpeg para compresión por hardware en el sensor DirectShow (>95% ahorro de bus).
         use_mjpeg = cfg.get("use_mjpeg_input", True)
+        if proc and getattr(proc, "mjpeg_input_failed", False):
+            use_mjpeg = False
+        elif proc and getattr(proc, "mjpeg_supported", None) is False:
+            use_mjpeg = False
+
         if use_mjpeg:
             dshow_args += ["-vcodec", "mjpeg"]
 
