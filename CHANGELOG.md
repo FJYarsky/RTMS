@@ -16,9 +16,13 @@
   - Inyección de `-progress pipe:1 -nostats` en FFmpeg.
   - Lector `read_progress` asíncrono en `StreamProc` para parseo directo de pares `key=value` sin sobrecarga regex.
   - Prevención garantizada de bloqueos de buffer de tubería (*pipe deadlock*) en Windows mediante drenado asíncrono simultáneo de `stdout` y `stderr`.
-- **Negociación DirectShow MJPEG por Silicio en Webcams USB (`core/command_builder.py`)**:
-  - Inyección de `-vcodec mjpeg` previo a `-i` en dispositivos DirectShow físicos.
-  - Descompresión en hardware interno de la cámara, reduciendo el tráfico del bus USB de 1000 Mbps a 25–40 Mbps (>95% de ahorro) para operar múltiples cámaras en un solo hub.
+- **Negociación Inteligente DirectShow MJPEG por Silicio con Fallback Automático a YUYV/NV12 (`core/hardware.py`, `core/command_builder.py`, `core/stream_proc.py`, `core/stream_manager.py`)**:
+  - Detección preventiva en caché (`probe_device_mjpeg_support`) de compatibilidad de compresión MJPEG en hardware DirectShow.
+  - Conmutación automática transparente e inmediata a formatos nativos sin compresión (`YUYV`/`NV12`) cuando la cámara no dispone de codificador MJPEG por silicio (como webcams integradas en laptops), eliminando fallos `Could not set video options`.
+  - Fallback en tiempo de ejecución ante errores DirectShow en tiempo real sin requerir intervención manual del usuario.
+- **Refinamiento Estético del Badge de Versión en el Panel Web (`gui/templates/index.html`, `gui/static/styles.css`)**:
+  - Corrección visual en la barra superior izquierda desacoplando la píldora de versión del degradado con recorte de texto `text-fill-color: transparent`.
+  - Despliegue nítido, moderno y perfectamente alineado del indicador de versión `v2.6.0`.
 - **Seguridad Continua con Snyk Security y Resolución de Dependabot (`.github/workflows/snyk.yml`, `SECURITY.md`, `pyproject.toml`, `requirements-dev.txt`, `requirements-lock.txt`, `uv.lock`)**:
   - Workflow automatizado de análisis SCA/SAST con generación de reportes SARIF y carga en GitHub Code Scanning.
   - Actualización sincronizada a `ruff >= 0.16.8` y `mypy >= 2.3.1`, absorbiendo y resolviendo Dependabot PR #13 y PR #14.

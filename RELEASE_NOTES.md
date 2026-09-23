@@ -29,11 +29,17 @@ Historial completo y notas oficiales de lanzamiento organizadas cronológicament
   - Prevención garantizada de bloqueos de buffer de tubería (*pipe deadlock*) en Windows mediante drenado concurrente de `stdout` y `stderr`.
   - Contabilización precisa de fotogramas caídos (*dropped frames*) y total de frames procesados.
 
-### 🔌 Negociación DirectShow MJPEG por Silicio en Webcams Físicas
-- **Descompresión en el Chip Interno de la Cámara**:
-  - Inyección de `-vcodec mjpeg` antes de la entrada DirectShow para dispositivos físicos.
-  - Reducción de más del 95% del consumo de ancho de banda en el bus USB (de ~1000 Mbps en YUY2 sin comprimir a 25–40 Mbps en MJPEG).
-  - Permite conectar 4 o más cámaras simultáneas en el mismo controlador o hub USB sin saturación de ancho de banda.
+### 🔌 Negociación Inteligente DirectShow MJPEG por Silicio con Fallback Automático a YUYV/NV12
+- **Descompresión en el Chip Interno de la Cámara con Fallback de Alta Resiliencia**:
+  - Sonda preventiva en memoria (`probe_device_mjpeg_support`) de soporte de compresión MJPEG en DirectShow.
+  - Conmutación automática instantánea a formato nativo sin compresión (`YUYV`/`NV12`) cuando la cámara no soporta hardware MJPEG (webcams integradas de laptops), eliminando caídas por `Could not set video options`.
+  - Fallback reactivo en tiempo de ejecución ante fallos de negociación en DirectShow.
+  - Reducción de más del 95% del consumo de ancho de banda en el bus USB en webcams con sensor MJPEG (de ~1000 Mbps en YUY2 sin comprimir a 25–40 Mbps en MJPEG).
+
+### 🎨 Refinamiento Visual y Estético en el Panel Web
+- **Badge de Versión Independiente en Barra Superior**:
+  - Desacoplamiento de `<span class="version-tag">` del contenedor degradado con recorte de texto `-webkit-background-clip: text`.
+  - Diseño de píldora moderno, nítido y perfectamente centrado para `v2.6.0` en WebView2.
 
 ### 🛡️ Seguridad Continua con Snyk Security y Resolución de Dependabot
 - **Escaneo Automatizado SAST & SCA**:
