@@ -174,7 +174,21 @@ def _touch_file_cleanly(file_path: Path) -> bool:
 
     suffix = file_path.suffix.lower()
     try:
-        if suffix in [".py", ".md", ".yml", ".yaml", ".json", ".txt", ".bat", ".vbs", ".config", ".html", ".js", ".css", ".ps1"]:
+        if suffix in [
+            ".py",
+            ".md",
+            ".yml",
+            ".yaml",
+            ".json",
+            ".txt",
+            ".bat",
+            ".vbs",
+            ".config",
+            ".html",
+            ".js",
+            ".css",
+            ".ps1",
+        ]:
             content = file_path.read_text(encoding="utf-8")
             # Normalizar salto de línea al final
             normalized = content.rstrip("\r\n") + "\n"
