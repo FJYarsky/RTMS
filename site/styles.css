@@ -980,6 +980,8 @@ body::before {
 }
 
 .code-box-code-wrapper {
+    width: 100%;
+    box-sizing: border-box;
     background: rgba(0, 0, 0, 0.45);
     border: 1px solid rgba(56, 189, 248, 0.16);
     border-radius: 6px;
