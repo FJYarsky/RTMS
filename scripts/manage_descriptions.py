@@ -190,8 +190,11 @@ def _touch_file_cleanly(file_path: Path) -> bool:
             ".ps1",
         ]:
             content = file_path.read_text(encoding="utf-8")
-            # Normalizar salto de línea al final
-            normalized = content.rstrip("\r\n") + "\n"
+            # Alternar salto neutro al final para asegurar que git detecte un diff real
+            if content.endswith("\n\n"):
+                normalized = content.rstrip("\r\n") + "\n"
+            else:
+                normalized = content.rstrip("\r\n") + "\n\n"
             file_path.write_text(normalized, encoding="utf-8", newline="\n")
             return True
         elif file_path.name == "icon.ico":
