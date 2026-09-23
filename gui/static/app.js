@@ -263,69 +263,173 @@ async function fetchStatus() {
     }
 }
 
-// HUD DE TELEMETRÍA EN TIEMPO REAL
+// HUD DE TELEMETRÍA EN TIEMPO REAL Y PROCESAMIENTO REACTIVO
+function applyTelemetryData(data) {
+    if (!data) return;
+    const sys = data.system || data;
+
+    // CPU
+    const cpuEl = document.getElementById('hud-cpu-val');
+    if (cpuEl && sys.cpu_percent !== undefined) cpuEl.textContent = `${Math.round(sys.cpu_percent)}%`;
+
+    // GPU
+    const gpuEl = document.getElementById('hud-gpu-val');
+    const gpuItem = document.getElementById('hud-gpu-item');
+    if (gpuEl) {
+        if (sys.gpu_available && sys.gpu_percent !== null && sys.gpu_percent !== undefined) {
+            gpuEl.textContent = `${Math.round(sys.gpu_percent)}%`;
+            if (gpuItem && sys.gpu_name) {
+                const vram = (sys.gpu_memory_used_mb !== null && sys.gpu_memory_total_mb !== null)
+                    ? ` (VRAM: ${Math.round(sys.gpu_memory_used_mb)} / ${Math.round(sys.gpu_memory_total_mb)} MB)`
+                    : '';
+                gpuItem.title = `${sys.gpu_name}${vram}`;
+            }
+        } else {
+            gpuEl.textContent = 'N/A';
+            if (gpuItem) gpuItem.title = 'Sin GPU dedicada detectada o métricas no disponibles';
+        }
+    }
+
+    // RAM
+    const ramEl = document.getElementById('hud-ram-val');
+    if (ramEl && sys.memory_percent !== undefined) ramEl.textContent = `${Math.round(sys.memory_percent)}%`;
+
+    // RED
+    const netEl = document.getElementById('hud-net-val');
+    const netItem = document.getElementById('hud-net-item');
+    if (netEl) {
+        const total = sys.net_system_total_kbps || sys.net_total_kbps || 0;
+        const sent = sys.net_system_sent_kbps || sys.net_sent_kbps || 0;
+        const recv = sys.net_system_recv_kbps || sys.net_recv_kbps || 0;
+        if (total >= 1000) {
+            netEl.textContent = `${(total / 1000).toFixed(1)} Mbps`;
+        } else {
+            netEl.textContent = `${Math.round(total)} kbps`;
+        }
+        if (netItem) {
+            const sStr = sent >= 1000 ? `${(sent / 1000).toFixed(1)} Mbps` : `${Math.round(sent)} kbps`;
+            const rStr = recv >= 1000 ? `${(recv / 1000).toFixed(1)} Mbps` : `${Math.round(recv)} kbps`;
+            netItem.title = `Red del Sistema: ↑ ${sStr} (Subida) / ↓ ${rStr} (Bajada)`;
+        }
+    }
+
+    // BITRATE
+    const brEl = document.getElementById('hud-bitrate-val');
+    if (brEl && sys.total_bitrate_kbps !== undefined) {
+        if (sys.total_bitrate_kbps > 1000) {
+            brEl.textContent = `${(sys.total_bitrate_kbps / 1000).toFixed(1)} Mbps`;
+        } else {
+            brEl.textContent = `${Math.round(sys.total_bitrate_kbps)} kbps`;
+        }
+    }
+
+    // Actualización granular de métricas en tarjetas de cámara (10 Hz sin re-renderizar)
+    if (Array.isArray(data.streams)) {
+        data.streams.forEach(s => {
+            const matchIndex = _streams.findIndex(item => item.device_path === s.device_path);
+            if (matchIndex !== -1) {
+                _streams[matchIndex].status.current_fps = s.fps;
+                _streams[matchIndex].status.current_bitrate_kbps = s.bitrate_kbps;
+                _streams[matchIndex].status.current_speed = s.speed;
+
+                const liveFps = s.fps ? `${s.fps.toFixed(1)} FPS` : '–';
+                const liveBitrate = s.bitrate_kbps ? `${Math.round(s.bitrate_kbps)} kbps` : '–';
+
+                const fpsEl = document.getElementById(`live-fps-${matchIndex}`);
+                if (fpsEl) fpsEl.textContent = liveFps;
+
+                const bitrateEl = document.getElementById(`live-bitrate-${matchIndex}`);
+                if (bitrateEl) bitrateEl.textContent = liveBitrate;
+            }
+        });
+    }
+}
+
 async function fetchMetrics() {
     try {
         const res = await apiFetch('/api/system/metrics');
         if (!res.ok) return;
         const data = await res.json();
-        
-        // CPU
-        const cpuEl = document.getElementById('hud-cpu-val');
-        if (cpuEl) cpuEl.textContent = `${Math.round(data.cpu_percent)}%`;
-
-        // GPU
-        const gpuEl = document.getElementById('hud-gpu-val');
-        const gpuItem = document.getElementById('hud-gpu-item');
-        if (gpuEl) {
-            if (data.gpu_available && data.gpu_percent !== null && data.gpu_percent !== undefined) {
-                gpuEl.textContent = `${Math.round(data.gpu_percent)}%`;
-                if (gpuItem && data.gpu_name) {
-                    const vram = (data.gpu_memory_used_mb !== null && data.gpu_memory_total_mb !== null)
-                        ? ` (VRAM: ${Math.round(data.gpu_memory_used_mb)} / ${Math.round(data.gpu_memory_total_mb)} MB)`
-                        : '';
-                    gpuItem.title = `${data.gpu_name}${vram}`;
-                }
-            } else {
-                gpuEl.textContent = 'N/A';
-                if (gpuItem) gpuItem.title = 'Sin GPU dedicada detectada o métricas no disponibles';
-            }
-        }
-        
-        // RAM
-        const ramEl = document.getElementById('hud-ram-val');
-        if (ramEl) ramEl.textContent = `${Math.round(data.memory_percent)}%`;
-
-        // RED
-        const netEl = document.getElementById('hud-net-val');
-        const netItem = document.getElementById('hud-net-item');
-        if (netEl) {
-            const total = data.net_total_kbps || 0;
-            const sent = data.net_sent_kbps || 0;
-            const recv = data.net_recv_kbps || 0;
-            if (total >= 1000) {
-                netEl.textContent = `${(total / 1000).toFixed(1)} Mbps`;
-            } else {
-                netEl.textContent = `${Math.round(total)} kbps`;
-            }
-            if (netItem) {
-                const sStr = sent >= 1000 ? `${(sent / 1000).toFixed(1)} Mbps` : `${Math.round(sent)} kbps`;
-                const rStr = recv >= 1000 ? `${(recv / 1000).toFixed(1)} Mbps` : `${Math.round(recv)} kbps`;
-                netItem.title = `Red del Sistema: ↑ ${sStr} (Subida) / ↓ ${rStr} (Bajada)`;
-            }
-        }
-        
-        // BITRATE
-        const brEl = document.getElementById('hud-bitrate-val');
-        if (brEl) {
-            if (data.total_bitrate_kbps > 1000) {
-                brEl.textContent = `${(data.total_bitrate_kbps / 1000).toFixed(1)} Mbps`;
-            } else {
-                brEl.textContent = `${Math.round(data.total_bitrate_kbps)} kbps`;
-            }
-        }
+        applyTelemetryData(data);
     } catch (e) {
         // Silencioso
+    }
+}
+
+// CANAL WEBSOCKET DE TELEMETRÍA REACTIVA A 10 HZ
+let _telemetrySocket = null;
+let _reconnectTimer = null;
+
+function handleReactiveEvent(msg) {
+    if (!msg || !msg.event) return;
+    const evt = msg.event;
+    const d = msg.data || {};
+
+    if (evt === 'device_lost') {
+        showToast(`Dispositivo desconectado: ${d.friendly_name || d.device_path}`, 'warning');
+        fetchStatus();
+    } else if (evt === 'device_recovered') {
+        showToast(`Dispositivo reconectado: ${d.friendly_name || d.device_path}`, 'success');
+        fetchStatus();
+    } else if (evt === 'stream_started') {
+        showToast(`Transmisión iniciada: ${d.friendly_name || d.device_path}`, 'success');
+        fetchStatus();
+    } else if (evt === 'stream_stopped') {
+        fetchStatus();
+    }
+}
+
+function initTelemetryWebSocket() {
+    if (_telemetrySocket && (_telemetrySocket.readyState === WebSocket.OPEN || _telemetrySocket.readyState === WebSocket.CONNECTING)) {
+        return;
+    }
+
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const token = getApiToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+    const wsUrl = `${protocol}//${location.host}/ws/telemetry${tokenParam}`;
+
+    try {
+        _telemetrySocket = new WebSocket(wsUrl);
+
+        _telemetrySocket.onopen = () => {
+            console.log("[RTMS] Canal WebSocket de telemetría conectado a 10 Hz.");
+            if (_metricsTicker) {
+                clearInterval(_metricsTicker);
+                _metricsTicker = null;
+            }
+        };
+
+        _telemetrySocket.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'telemetry') {
+                    applyTelemetryData(msg);
+                } else if (msg.type === 'event') {
+                    handleReactiveEvent(msg);
+                }
+            } catch (e) {
+                // Silencioso
+            }
+        };
+
+        _telemetrySocket.onerror = (err) => {
+            console.debug("[RTMS] Evento de error en WebSocket:", err);
+        };
+
+        _telemetrySocket.onclose = () => {
+            console.debug("[RTMS] WebSocket cerrado. Reintentando en 3s...");
+            if (!_metricsTicker) {
+                _metricsTicker = setInterval(fetchMetrics, 2000);
+            }
+            if (_reconnectTimer) clearTimeout(_reconnectTimer);
+            _reconnectTimer = setTimeout(initTelemetryWebSocket, 3000);
+        };
+    } catch (err) {
+        console.warn("[RTMS] No se pudo inicializar WebSocket:", err);
+        if (!_metricsTicker) {
+            _metricsTicker = setInterval(fetchMetrics, 2000);
+        }
     }
 }
 
@@ -519,7 +623,7 @@ function createCameraCardElement(stream, index) {
 
         <div class="stream-meta-row">
             <span>Uptime: <strong id="uptime-val-${index}">${uptimeStr}</strong></span>
-            <span>En vivo: <strong>${liveFps}</strong> | <strong>${liveBitrate}</strong></span>
+            <span>En vivo: <strong id="live-fps-${index}">${liveFps}</strong> | <strong id="live-bitrate-${index}">${liveBitrate}</strong></span>
         </div>
         
         <div class="actions-row" style="flex-wrap: wrap;">
@@ -1179,6 +1283,7 @@ window.addEventListener('DOMContentLoaded', () => {
     fetchMetrics();
     loadSystemSettings();
     loadIgnoredDevices();
+    initTelemetryWebSocket();
     
     setInterval(fetchStatus, 3000);
     _metricsTicker = setInterval(fetchMetrics, 2000);
@@ -1285,7 +1390,9 @@ function triggerImportConfiguration() {
     input.click();
 }
 
-// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND CON TICKETS EFÍMEROS
+// CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND (WebRTC WHEP CON FALLBACK MJPEG)
+let _whepPeerConnection = null;
+
 async function openPreviewModal(index) {
     const stream = _streams[index];
     if (!stream) return;
@@ -1293,11 +1400,12 @@ async function openPreviewModal(index) {
     const modal = document.getElementById('preview-modal');
     const titleEl = document.getElementById('preview-modal-title');
     const imgEl = document.getElementById('preview-modal-img');
+    const videoEl = document.getElementById('preview-video');
     const infoEl = document.getElementById('preview-modal-info');
     const ffplayBtn = document.getElementById('preview-ffplay-btn');
     const loader = document.getElementById('preview-loader');
 
-    if (!modal || !imgEl) return;
+    if (!modal) return;
 
     titleEl.textContent = `Vista Previa — ${stream.friendly_name}`;
     const isRunning = stream.status.state === 'running';
@@ -1308,48 +1416,106 @@ async function openPreviewModal(index) {
         : `UDP :${escapeHtml(stream.port)} (${stream.udp_mode === 'unicast' ? 'Unicast' : 'Multicast'})`;
     const stoppedText = isVirtual ? 'Generador Virtual' : 'Encuadre DirectShow (Detenido)';
     infoEl.innerHTML = isRunning 
-        ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo (${portDisplay})</span>`
+        ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo WebRTC (${portDisplay})</span>`
         : `<span class="status-badge stopped"><span class="status-dot"></span>${stoppedText}</span>`;
 
     loader.style.display = 'flex';
-    imgEl.style.display = 'none';
+    if (imgEl) { imgEl.style.display = 'none'; imgEl.src = ''; }
+    if (videoEl) { videoEl.style.display = 'none'; videoEl.srcObject = null; }
     modal.classList.add('active');
 
-    let ticket = null;
-    try {
-        const ticketRes = await apiFetch('/api/preview/ticket', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device_path: stream.device_path, ttl_seconds: 60 })
-        });
-        if (ticketRes.ok) {
-            const ticketData = await ticketRes.json();
-            ticket = ticketData.ticket;
+    // 1. Intentar primero WebRTC WHEP de ultra baja latencia (<40ms) si el flujo está activo
+    let whepStarted = false;
+    if (isRunning && videoEl && window.RTCPeerConnection) {
+        try {
+            if (_whepPeerConnection) {
+                try { _whepPeerConnection.close(); } catch (e) {}
+                _whepPeerConnection = null;
+            }
+
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            _whepPeerConnection = pc;
+
+            pc.addTransceiver('video', { direction: 'recvonly' });
+
+            pc.ontrack = (event) => {
+                if (event.streams && event.streams[0]) {
+                    videoEl.srcObject = event.streams[0];
+                } else {
+                    videoEl.srcObject = new MediaStream([event.track]);
+                }
+                videoEl.onloadedmetadata = () => {
+                    videoEl.play().catch(() => {});
+                    loader.style.display = 'none';
+                    videoEl.style.display = 'block';
+                };
+            };
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            const whepRes = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/whep`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/sdp' },
+                body: offer.sdp
+            });
+
+            if (whepRes.ok) {
+                const answerSdp = await whepRes.text();
+                await pc.setRemoteDescription(new RTCSessionDescription({
+                    type: 'answer',
+                    sdp: answerSdp
+                }));
+                whepStarted = true;
+            }
+        } catch (webrtcErr) {
+            console.debug("WebRTC WHEP no disponible, utilizando generador MJPEG fallback:", webrtcErr);
+            if (_whepPeerConnection) {
+                try { _whepPeerConnection.close(); } catch (e) {}
+                _whepPeerConnection = null;
+            }
         }
-    } catch (e) {
-        console.warn("No se pudo obtener ticket efímero de preview, recurriendo a fallback:", e);
     }
 
-    // Generar URL con ticket efímero (o token fallback) y cache-buster
-    let previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?t=${Date.now()}`;
-    if (ticket) {
-        previewUrl += `&ticket=${encodeURIComponent(ticket)}`;
-    } else {
-        const token = getApiToken();
-        if (token) previewUrl += `&token=${encodeURIComponent(token)}`;
+    // 2. Fallback a MJPEG si WebRTC no se pudo iniciar o la cámara está detenida
+    if (!whepStarted && imgEl) {
+        let ticket = null;
+        try {
+            const ticketRes = await apiFetch('/api/preview/ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_path: stream.device_path, ttl_seconds: 60 })
+            });
+            if (ticketRes.ok) {
+                const ticketData = await ticketRes.json();
+                ticket = ticketData.ticket;
+            }
+        } catch (e) {
+            console.warn("No se pudo obtener ticket efímero de preview, recurriendo a fallback:", e);
+        }
+
+        let previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?t=${Date.now()}`;
+        if (ticket) {
+            previewUrl += `&ticket=${encodeURIComponent(ticket)}`;
+        } else {
+            const token = getApiToken();
+            if (token) previewUrl += `&token=${encodeURIComponent(token)}`;
+        }
+
+        imgEl.onload = () => {
+            loader.style.display = 'none';
+            imgEl.style.display = 'block';
+        };
+
+        imgEl.onerror = () => {
+            loader.style.display = 'none';
+            infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">(No disponible o límite alcanzado)</span>`;
+        };
+
+        imgEl.src = previewUrl;
     }
-
-    imgEl.onload = () => {
-        loader.style.display = 'none';
-        imgEl.style.display = 'block';
-    };
-
-    imgEl.onerror = () => {
-        loader.style.display = 'none';
-        infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">(No disponible o límite alcanzado)</span>`;
-    };
-
-    imgEl.src = previewUrl;
 
     if (ffplayBtn) {
         ffplayBtn.onclick = () => launchFFplayExternal(stream.device_path);
@@ -1359,9 +1525,19 @@ async function openPreviewModal(index) {
 function closePreviewModal() {
     const modal = document.getElementById('preview-modal');
     const imgEl = document.getElementById('preview-modal-img');
+    const videoEl = document.getElementById('preview-video');
+    if (_whepPeerConnection) {
+        try { _whepPeerConnection.close(); } catch (e) {}
+        _whepPeerConnection = null;
+    }
+    if (videoEl) {
+        try { videoEl.pause(); } catch (e) {}
+        videoEl.srcObject = null;
+        videoEl.style.display = 'none';
+    }
     if (imgEl) {
-        // Cortar la conexión inmediatamente para que el generador termine y libere el 100% de CPU/GPU
         imgEl.src = '';
+        imgEl.style.display = 'none';
     }
     if (modal) {
         modal.classList.remove('active');

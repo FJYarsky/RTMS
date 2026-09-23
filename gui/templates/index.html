@@ -602,9 +602,10 @@
                 <div class="preview-container">
                     <div class="preview-loader" id="preview-loader">
                         <div class="spinner"></div>
-                        <p>Iniciando monitor de video...</p>
+                        <p>Iniciando monitor de video WebRTC...</p>
                     </div>
-                    <img id="preview-modal-img" class="preview-video-element" alt="Vista previa en vivo">
+                    <video id="preview-video" class="preview-video-element" autoplay muted playsinline style="display:none;"></video>
+                    <img id="preview-modal-img" class="preview-video-element" alt="Vista previa en vivo" style="display:none;">
                 </div>
             </div>
             <div class="modal-foot" style="justify-content: space-between; flex-wrap: wrap; gap: 10px;">
