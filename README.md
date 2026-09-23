@@ -4,10 +4,10 @@
 
 [![Website](https://img.shields.io/badge/Sitio%20Web-fjyarsky.github.io%2FRTMS-0ea5e9?logo=googlechrome&logoColor=white)](https://fjyarsky.github.io/RTMS/)
 [![Platform](https://img.shields.io/badge/Plataforma-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)](https://microsoft.com)
-[![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
+[![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20WebRTC%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Seguridad-DPAPI%20%7C%20Token-10b981)](#-seguridad)
+[![Snyk](https://img.shields.io/badge/Snyk-Monitoreo%20Continuo-4c1?logo=snyk&logoColor=white)](SECURITY.md)
 [![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Pruebas-152%20Aprobadas-10b981)](tests/)
 [![License](https://img.shields.io/badge/Licencia-MIT-gray.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Autor-Joaqu%C3%ADn%20Yarsky-f59e0b)](mailto:joaquinyarsky@gmail.com)
 
