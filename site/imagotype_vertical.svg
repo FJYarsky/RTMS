@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 290" width="100%" height="100%">
+  <defs>
+    <linearGradient id="rtmsApertureGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="45%" stop-color="#22d3ee" />
+      <stop offset="85%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#0d9488" />
+    </linearGradient>
+  </defs>
+  <!-- Isotipo (Aperture) -->
+  <g id="isotype">
+    <path d="M 207.69 57.08 A 75.00 75.00 0 0 1 220.35 131.00 L 165.01 131.00 Z" fill="url(#rtmsApertureGrad)" stroke="#0b0f19" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 220.35 131.00 A 75.00 75.00 0 0 1 162.66 178.92 L 134.99 131.00 Z" fill="url(#rtmsApertureGrad)" stroke="#0b0f19" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 162.66 178.92 A 75.00 75.00 0 0 1 92.31 152.92 L 119.98 105.00 Z" fill="url(#rtmsApertureGrad)" stroke="#0b0f19" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 92.31 152.92 A 75.00 75.00 0 0 1 79.65 79.00 L 134.99 79.00 Z" fill="url(#rtmsApertureGrad)" stroke="#0b0f19" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 79.65 79.00 A 75.00 75.00 0 0 1 137.34 31.08 L 165.01 79.00 Z" fill="url(#rtmsApertureGrad)" stroke="#0b0f19" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 137.34 31.08 A 75.00 75.00 0 0 1 207.69 57.08 L 180.02 105.00 Z" fill="url(#rtmsApertureGrad)" stroke="#0b0f19" stroke-width="3" stroke-linejoin="round" />
+  </g>
+  <!-- Logotipo RTMS blanco puro -->
+  <text x="150" y="232" text-anchor="middle" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="60" font-weight="800" letter-spacing="-1">RTMS</text>
+  <!-- Subtítulo descriptivo -->
+  <text x="150" y="260" text-anchor="middle" fill="#9ca3af" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="12" font-weight="600" letter-spacing="3.5">REAL-TIME MULTICAM SYSTEM</text>
+</svg>
