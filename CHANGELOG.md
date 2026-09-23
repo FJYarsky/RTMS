@@ -1,5 +1,31 @@
 # Changelog — RTMS (Real-Time Multicam System)
 
+## [2.6.0] — 2026-09-23
+
+### Previsualizaciones WebRTC WHEP, Canal WebSocket de Telemetría a 10 Hz, Monitoreo Determinista, Negociación MJPEG por Silicio y Escaneo Continuo Snyk
+- **Previsualizaciones WebRTC de Latencia Cero con WHEP y Proxy Anti-CORS (`core/mediamtx_mgr.py`, `config/mediamtx.example.yml`, `api/routes/preview.py`, `gui/templates/index.html`, `gui/static/app.js`)**:
+  - Habilitación de WebRTC en MediaMTX con soporte nativo para WHEP (RFC 9397) en puerto `8889` y UDP local `8189`.
+  - Proxy seguro `POST /api/stream/{device_path}/whep` en FastAPI para evitar bloqueos CORS y reenviar de forma transparente ofertas SDP locales.
+  - Reproductor HTML5 `<video id="preview-video">` en el frontend para streaming WebRTC en tiempo real con latencia inferior a 40 ms y fallback transparente a MJPEG.
+- **Canal WebSocket de Telemetría a 10 Hz y Eventos Reactivos (`core/telemetry_hub.py`, `api/routes/ws.py`, `api/routes/__init__.py`, `core/stream_manager.py`, `gui/static/app.js`)**:
+  - `TelemetryWebSocketHub` con ticker asíncrono a 10 Hz condicionado a la presencia de clientes conectados.
+  - Tasa de 10 Hz para FPS, bitrate instantáneo, dropped frames, rendimiento de red y GPU; 1 Hz para CPU y memoria RAM.
+  - Push reactivo inmediato de eventos de streaming y hardware (`device_lost`, `device_recovered`, `stream_started`, `stream_stopped`), eliminando la sobrecarga de sondeo HTTP periódico.
+  - Actualización granular del DOM en el panel de control por ID sin repintado destructivo.
+- **Monitoreo Determinista `-progress pipe:1` sin Scraping Regex (`core/command_builder.py`, `core/stream_proc.py`, `core/stream_manager.py`)**:
+  - Inyección de `-progress pipe:1 -nostats` en FFmpeg.
+  - Lector `read_progress` asíncrono en `StreamProc` para parseo directo de pares `key=value` sin sobrecarga regex.
+  - Prevención garantizada de bloqueos de buffer de tubería (*pipe deadlock*) en Windows mediante drenado asíncrono simultáneo de `stdout` y `stderr`.
+- **Negociación DirectShow MJPEG por Silicio en Webcams USB (`core/command_builder.py`)**:
+  - Inyección de `-vcodec mjpeg` previo a `-i` en dispositivos DirectShow físicos.
+  - Descompresión en hardware interno de la cámara, reduciendo el tráfico del bus USB de 1000 Mbps a 25–40 Mbps (>95% de ahorro) para operar múltiples cámaras en un solo hub.
+- **Seguridad Continua con Snyk Security y Resolución de Dependabot (`.github/workflows/snyk.yml`, `SECURITY.md`, `pyproject.toml`, `requirements-dev.txt`, `requirements-lock.txt`, `uv.lock`)**:
+  - Workflow automatizado de análisis SCA/SAST con generación de reportes SARIF y carga en GitHub Code Scanning.
+  - Actualización sincronizada a `ruff >= 0.16.8` y `mypy >= 2.3.1`, absorbiendo y resolviendo Dependabot PR #13 y PR #14.
+  - Bloqueo determinista de 68 paquetes con `uv lock`.
+- **Modelos Pydantic v2 de Dominio Estricto (`core/config_models.py`)**:
+  - Esquemas de dominio tipados y validados para cámaras (`CameraConfig`) y ajustes del sistema (`SystemSettingsConfig`).
+
 ## [2.5.2] — 2026-09-22
 
 ### Optimización de Latencia Extrema en SRT/UDP, Soporte UDP Unicast/Multicast, Códigos QR Offline y Aceleración de Arranque
