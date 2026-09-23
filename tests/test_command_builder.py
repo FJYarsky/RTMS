@@ -112,6 +112,12 @@ def test_build_command_without_local_binary(monkeypatch):
     """Valida que build_command pueda construir los parámetros incluso si bin/ffmpeg.exe no existe en disco (entorno CI)."""
 
     async def _run():
+        from core.hardware import hardware_detector
+
+        # Resetear caché de capacidades para simular arranque en frío sin binario en CI
+        hardware_detector._tested = False
+        hardware_detector._capabilities.clear()
+
         # Parchear solo la referencia dentro de core.hardware (NO el singleton global os.path)
         monkeypatch.setattr("core.hardware.os.path.exists", lambda p: False)
         monkeypatch.setattr("core.hardware.shutil.which", lambda cmd: None)
