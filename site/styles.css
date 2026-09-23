@@ -129,28 +129,29 @@ body::before {
     opacity: 0.92;
 }
 
-.logo-icon {
-    width: 10px;
-    height: 10px;
-    background-color: var(--teal);
-    border-radius: 50%;
-    box-shadow: 0 0 10px var(--teal);
-    animation: pulse-glow 2s infinite;
+.brand-logo-svg {
+    width: 26px;
+    height: 26px;
+    filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.4));
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
 }
 
-@keyframes pulse-glow {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 0 6px var(--teal);
-    }
-    50% {
-        transform: scale(1.25);
-        box-shadow: 0 0 16px var(--teal);
-    }
+.brand:hover .brand-logo-svg {
+    transform: rotate(18deg) scale(1.08);
+    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.6));
+}
+
+.footer-logo-svg {
+    width: 22px;
+    height: 22px;
 }
 
 .brand-text {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: #ffffff;
     display: flex;
     align-items: center;
     gap: 8px;
