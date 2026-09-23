@@ -67,6 +67,10 @@ class MediaMTXManager:
         """Retorna el puerto central SRT configurado para MediaMTX."""
         return self.srt_port
 
+    def get_webrtc_port(self) -> int:
+        """Retorna el puerto central WebRTC / WHEP configurado para MediaMTX."""
+        return self.webrtc_port
+
     def get_bin_path(self) -> str:
         """Retorna la ruta al ejecutable de MediaMTX, con fallback al PATH del sistema."""
         if os.path.exists(self.bin_path):
@@ -100,7 +104,10 @@ class MediaMTXManager:
             "rtmp: no\n"
             "hls: no\n\n"
             "webrtc: yes\n"
-            f"webrtcAddress: :{self.webrtc_port}\n\n"
+            f"webrtcAddress: :{self.webrtc_port}\n"
+            "webrtcEncryption: no\n"
+            "webrtcLocalUDPAddress: :8189\n"
+            'webrtcAllowOrigin: "*"\n\n'
             "srt: yes\n"
             f"srtAddress: :{self.srt_port}\n\n"
             "paths:\n"

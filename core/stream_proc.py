@@ -160,6 +160,7 @@ class StreamProc:
         self.logs: deque = deque(maxlen=300)
         self._stop_evt = asyncio.Event()
         self._log_task: Optional[asyncio.Task] = None
+        self._stdout_task: Optional[asyncio.Task] = None
         self.config: Dict[str, Any] = {}
         self.lock = asyncio.Lock()
 
@@ -167,12 +168,75 @@ class StreamProc:
         self.current_fps: float = 0.0
         self.current_bitrate_kbps: float = 0.0
         self.current_speed: str = "1.0x"
+        self.current_dropped_frames: int = 0
+        self.total_frames: int = 0
         self.using_fallback_cpu: bool = False
         self.is_connected: bool = True
         self.per_stream_encoder: Optional[str] = None
         self.last_error_category: ErrorCategory = ErrorCategory.UNKNOWN
         self.last_transition: Optional[datetime] = None
         self.zero_fps_since: Optional[datetime] = None
+
+    async def read_progress(self, stream: asyncio.StreamReader) -> None:
+        """
+        Lee continuamente el stream stdout de FFmpeg generado por '-progress pipe:1'.
+        Parsea líneas 'key=value' deterministas sin expresiones regulares.
+        Evita bloqueos de buffer del sistema operativo (pipe deadlock en Windows).
+        """
+        current_data: Dict[str, str] = {}
+        try:
+            while not self._stop_evt.is_set():
+                line = await stream.readline()
+                if not line:
+                    break
+                line_str = line.decode("utf-8", errors="replace").strip()
+                if not line_str:
+                    continue
+
+                if "=" in line_str:
+                    k, v = line_str.split("=", 1)
+                    current_data[k.strip()] = v.strip()
+
+                if line_str.startswith("progress="):
+                    # Bloque de progreso emitido por FFmpeg
+                    fps_val = current_data.get("fps")
+                    if fps_val:
+                        try:
+                            self.current_fps = float(fps_val)
+                        except ValueError:
+                            pass
+
+                    bitrate_val = current_data.get("bitrate")
+                    if bitrate_val:
+                        try:
+                            clean_br = bitrate_val.replace("kbits/s", "").replace("k", "").strip()
+                            self.current_bitrate_kbps = float(clean_br)
+                        except ValueError:
+                            pass
+
+                    speed_val = current_data.get("speed")
+                    if speed_val:
+                        self.current_speed = speed_val
+
+                    drop_val = current_data.get("drop_frames")
+                    if drop_val:
+                        try:
+                            self.current_dropped_frames = int(drop_val)
+                        except ValueError:
+                            pass
+
+                    frame_val = current_data.get("frame")
+                    if frame_val:
+                        try:
+                            self.total_frames = int(frame_val)
+                        except ValueError:
+                            pass
+
+                    current_data.clear()
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.debug(f"[{self.device_path}] Lector de progreso finalizado: {e}")
 
     def transition_to(self, new_state: State) -> None:
         """Formaliza la transición de estados de la máquina de estados del stream."""

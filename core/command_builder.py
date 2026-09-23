@@ -10,6 +10,7 @@ import logging
 import re
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from core.config_mgr import is_virtual_device
 from core.hardware import get_ffmpeg_bin, hardware_detector
 from core.sanitizer import sanitize_url
 from core.stream_proc import StreamProc, build_stream_url
@@ -33,7 +34,8 @@ async def build_ffmpeg_command(
 ) -> Tuple[List[str], str, str]:
     """
     Construye la lista de argumentos para FFmpeg, la URL sanitizada y el encoder a utilizar.
-    Soporta generador virtual lavfi (virtual://, testsrc2) y aceleración por hardware (NVENC, QSV, AMF, CPU).
+    Soporta generador virtual lavfi (virtual://, testsrc2), aceleración por hardware (NVENC, QSV, AMF, CPU)
+    y telemetría determinista estructurada vía stdout (-progress pipe:1).
     """
     video_size = RESOLUTION_MAP.get(cfg.get("resolution", "720p"), "1280x720")
     fps = cfg.get("fps", 30)
@@ -52,17 +54,25 @@ async def build_ffmpeg_command(
         raw_device.startswith("virtual://")
         or raw_device.startswith("testsrc")
         or cfg.get("is_virtual_generator", False)
+        or is_virtual_device(raw_device)
     )
 
-    cmd = [ffmpeg_bin, "-hide_banner", "-stats", "-stats_period", "1"]
+    # Telemetría determinista a través de stdout (-progress pipe:1) suprimiendo stats en stderr
+    cmd = [ffmpeg_bin, "-hide_banner", "-progress", "pipe:1", "-nostats"]
 
     if is_virtual:
         cmd += ["-re", "-f", "lavfi", "-i", f"testsrc2=size={video_size}:rate={fps}"]
     else:
         escaped_device = raw_device.replace(":", "\\:")
-        cmd += [
-            "-f",
-            "dshow",
+        dshow_args = ["-f", "dshow"]
+        # Optimización de Silicio USB (v2.6.0):
+        # Si el dispositivo no es virtual y use_mjpeg_input no está deshabilitado explícitamente,
+        # inyectamos -vcodec mjpeg para compresión por hardware en el sensor DirectShow (>95% ahorro de bus).
+        use_mjpeg = cfg.get("use_mjpeg_input", True)
+        if use_mjpeg:
+            dshow_args += ["-vcodec", "mjpeg"]
+
+        dshow_args += [
             "-rtbufsize",
             "150M",
             "-video_size",
@@ -72,6 +82,7 @@ async def build_ffmpeg_command(
             "-i",
             f"video={escaped_device}",
         ]
+        cmd += dshow_args
 
     cmd += ["-pix_fmt", "yuv420p"]
 

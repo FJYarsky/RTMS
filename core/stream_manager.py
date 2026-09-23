@@ -132,7 +132,7 @@ class StreamManager:
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 creationflags=_WIN_FLAGS,
             )
@@ -163,6 +163,23 @@ class StreamManager:
         if proc._log_task and not proc._log_task.done():
             proc._log_task.cancel()
         proc._log_task = asyncio.create_task(self._collect_logs(proc.device_path, process))
+
+        if proc._stdout_task and not proc._stdout_task.done():
+            proc._stdout_task.cancel()
+        if process.stdout is not None:
+            proc._stdout_task = asyncio.create_task(proc.read_progress(process.stdout))
+
+        try:
+            from core.telemetry_hub import telemetry_hub
+
+            asyncio.create_task(
+                telemetry_hub.broadcast_event(
+                    "stream_started",
+                    {"device_path": proc.device_path, "friendly_name": proc.config.get("friendly_name")},
+                )
+            )
+        except Exception:
+            pass
 
     async def stop_stream(self, device_path: str, timeout: float = 2.5):
         """Detiene un flujo de forma limpia y ordenada enviando 'q' antes de terminate/kill."""
@@ -211,6 +228,8 @@ class StreamManager:
 
         if proc._log_task and not proc._log_task.done():
             proc._log_task.cancel()
+        if proc._stdout_task and not proc._stdout_task.done():
+            proc._stdout_task.cancel()
 
         proc.transition_to(State.STOPPED)
         proc.process = None
@@ -218,6 +237,18 @@ class StreamManager:
         proc.current_bitrate_kbps = 0.0
         proc.zero_fps_since = None
         proc.log("Stream detenido limpiamente.")
+
+        try:
+            from core.telemetry_hub import telemetry_hub
+
+            asyncio.create_task(
+                telemetry_hub.broadcast_event(
+                    "stream_stopped",
+                    {"device_path": proc.device_path, "friendly_name": proc.config.get("friendly_name")},
+                )
+            )
+        except Exception:
+            pass
 
     async def remove_stream(self, device_path: str) -> bool:
         """Detiene la transmisión, libera el puerto y elimina la cámara de forma permanente."""
@@ -237,6 +268,8 @@ class StreamManager:
                 port_manager.release_port(int(port))
             if proc._log_task and not proc._log_task.done():
                 proc._log_task.cancel()
+            if proc._stdout_task and not proc._stdout_task.done():
+                proc._stdout_task.cancel()
             if proc.recovery_task and not proc.recovery_task.done():
                 proc.recovery_task.cancel()
             self._procs.pop(device_path, None)
@@ -574,6 +607,17 @@ class StreamManager:
             if was_connected and not proc.is_connected:
                 logger.warning(f"Cámara {dp} desapareció del sistema. Marcando como DISCONNECTED.")
                 proc.transition_to(State.DISCONNECTED)
+                try:
+                    from core.telemetry_hub import telemetry_hub
+
+                    asyncio.create_task(
+                        telemetry_hub.broadcast_event(
+                            "device_lost",
+                            {"device_path": dp, "friendly_name": proc.config.get("friendly_name")},
+                        )
+                    )
+                except Exception:
+                    pass
                 if proc.is_alive:
                     asyncio.create_task(self.stop_stream(dp, timeout=1.0))
 
@@ -593,6 +637,17 @@ class StreamManager:
             if was_disconnected:
                 proc.clear_failure()
                 proc.zero_fps_since = None
+                try:
+                    from core.telemetry_hub import telemetry_hub
+
+                    asyncio.create_task(
+                        telemetry_hub.broadcast_event(
+                            "device_recovered",
+                            {"device_path": dp, "friendly_name": d["friendly_name"]},
+                        )
+                    )
+                except Exception:
+                    pass
                 if proc.config.get("auto_start", False) and not proc._stop_evt.is_set():
                     logger.info(f"Cámara {dp} reconectada físicamente. Restaurando transmisión...")
                     proc.log("Cámara reconectada. Restaurando transmisión automáticamente...")
