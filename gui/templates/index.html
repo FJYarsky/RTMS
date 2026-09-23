@@ -15,10 +15,9 @@
     ============================================================================== -->
     
     <div class="app">
-        <!-- HEADER CON HUD DE TELEMETRÍA Y CONTROLES GLOBALES -->
         <header>
             <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor">
-                <div class="logo-icon"></div>
+                <img src="/static/isotype.svg" class="logo-icon-svg" alt="RTMS Isotipo">
                 <div class="logo-text">RTMS</div>
                 <span class="version-tag">v{{ version }}</span>
             </div>
@@ -553,7 +552,7 @@
                 <button class="modal-close" onclick="closeAboutModal()">&times;</button>
             </div>
             <div class="modal-body" style="text-align: center; padding: 28px;">
-                <div class="about-logo-icon"></div>
+                <img src="/static/isotype.svg" class="about-logo-svg" alt="RTMS Logo">
                 <h2 style="font-size: 1.5rem; font-weight: 800; margin-top: 12px; color: var(--text-primary);">
                     Real-Time Multicam System
                 </h2>

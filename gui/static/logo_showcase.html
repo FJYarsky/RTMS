@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTMS — Brand Identity & Vector Assets Showcase</title>
+    <link rel="icon" type="image/x-icon" href="isotype.svg">
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --panel-bg: #111827;
+            --card-bg: #161f30;
+            --card-border: rgba(20, 184, 166, 0.2);
+            --teal: #14b8a6;
+            --teal-glow: rgba(20, 184, 166, 0.3);
+            --cyan: #38bdf8;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            padding: 40px 24px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header.showcase-header {
+            margin-bottom: 36px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .title-badge {
+            display: inline-block;
+            background: rgba(20, 184, 166, 0.12);
+            color: var(--teal);
+            border: 1px solid var(--card-border);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+        }
+
+        p.lead {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-top: 6px;
+        }
+
+        .bg-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--panel-bg);
+            padding: 6px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+        }
+
+        .bg-controls span {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-right: 4px;
+        }
+
+        .bg-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .bg-btn:hover {
+            transform: scale(1.15);
+            border-color: var(--teal);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 24px;
+            position: relative;
+            transition: border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: rgba(20, 184, 166, 0.4);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .card-header h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--cyan);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-pill {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--cyan);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .preview-box {
+            background-color: var(--bg-dark);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 220px;
+            margin-bottom: 16px;
+            transition: background-color 0.3s;
+        }
+
+        .preview-box.light-mode {
+            background-color: #e5e7eb !important;
+        }
+
+        .preview-box.slate-mode {
+            background-color: #1f2937 !important;
+        }
+
+        .preview-box.panel-mode {
+            background-color: #111827 !important;
+        }
+
+        .card-desc {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: rgba(20, 184, 166, 0.15);
+            border: 1px solid var(--teal);
+            color: #ffffff;
+            font-family: var(--font-sans);
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--teal);
+            color: #0b0f19;
+            box-shadow: 0 0 12px var(--teal-glow);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            box-shadow: none;
+        }
+
+        /* App Bar simulation */
+        .app-bar-sim {
+            background: #111827;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .app-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+
+        .app-telemetry {
+            display: flex;
+            gap: 12px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+        }
+
+        .tele-pill {
+            background: rgba(20, 184, 166, 0.1);
+            color: var(--teal);
+            border: 1px solid var(--card-border);
+            padding: 4px 10px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tele-pill .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 6px #10b981;
+        }
+
+        /* Scale test row */
+        .scale-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            width: 100%;
+            padding: 20px 0;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .scale-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .scale-item span {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Palette swatches */
+        .palette-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-top: 14px;
+        }
+
+        .swatch-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .swatch-color {
+            height: 60px;
+            width: 100%;
+        }
+
+        .swatch-info {
+            padding: 10px 12px;
+        }
+
+        .swatch-hex {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .swatch-name {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="showcase-header">
+            <div>
+                <span class="title-badge">RTMS BRAND IDENTITY SYSTEM</span>
+                <h1>Archivos Oficiales de Identidad Visual</h1>
+                <p class="lead">Isotipo de obturador dinámico puro • Tipografía blanca sólida • Cumplimiento estricto de paleta</p>
+            </div>
+            <div class="bg-controls">
+                <span>Fondo de prueba:</span>
+                <button class="bg-btn" style="background:#0b0f19;" onclick="setBg('default')" title="Obsidian #0b0f19"></button>
+                <button class="bg-btn" style="background:#111827;" onclick="setBg('panel-mode')" title="Panel #111827"></button>
+                <button class="bg-btn" style="background:#1f2937;" onclick="setBg('slate-mode')" title="Slate #1f2937"></button>
+                <button class="bg-btn" style="background:#f3f4f6;" onclick="setBg('light-mode')" title="Light #f3f4f6"></button>
+            </div>
+        </header>
+
+        <!-- GRID 1: ISOTIPO & LOGOTIPO -->
+        <div class="grid-2">
+            <!-- 1. ISOTIPO -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>
+                        <svg width="20" height="20" viewBox="0 0 200 200">
+                            <use href="isotype.svg#aperture-group"></use>
+                        </svg>
+                        1. Isotipo Oficial
+                    </h2>
+                    <span class="file-pill">gui/static/isotype.svg</span>
+                </div>
+                <div class="preview-box" id="pbox-iso">
+                    <img src="isotype.svg" alt="RTMS Isotype" style="width: 130px; height: 130px;">
+                </div>
+                <p class="card-desc">
+                    Diafragma de 6 aspas entrelazadas con gradiente Cyan (#38bdf8) a Teal (#14b8a6). Sin líneas de señal periféricas para máxima pureza geométrica y atemporalidad.
+                </p>
+                <div class="btn-group">
+                    <a href="isotype.svg" target="_blank" class="btn" download="rtms_isotype.svg">Descargar SVG</a>
+                    <button class="btn btn-secondary" onclick="copyFile('isotype.svg')">Copiar Código SVG</button>
+                </div>
+            </div>
+
+            <!-- 2. LOGOTIPO -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>2. Logotipo (Wordmark)</h2>
+                    <span class="file-pill">gui/static/logotype.svg</span>
+                </div>
+                <div class="preview-box" id="pbox-logo">
+                    <img src="logotype.svg" alt="RTMS Logotype" style="width: 240px; height: auto;">
+                </div>
+                <p class="card-desc">
+                    Tratamiento tipográfico en <strong>Blanco Puro (#ffffff)</strong> con curvas tecnológicas y esquinas suavizadas, garantizando lectura instantánea y alto contraste.
+                </p>
+                <div class="btn-group">
+                    <a href="logotype.svg" target="_blank" class="btn" download="rtms_logotype.svg">Descargar SVG</a>
+                    <button class="btn btn-secondary" onclick="copyFile('logotype.svg')">Copiar Código SVG</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRID 2: IMAGOTIPO HORIZONTAL & DESKTOP ICON -->
+        <div class="grid-2">
+            <!-- 3. IMAGOTIPO HORIZONTAL -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>3. Imagotipo Horizontal (Header / Navbar)</h2>
+                    <span class="file-pill">gui/static/imagotype.svg</span>
+                </div>
+                <div class="preview-box" id="pbox-imago">
+                    <img src="imagotype.svg" alt="RTMS Imagotype Horizontal" style="width: 100%; max-width: 440px; height: auto;">
+                </div>
+                <p class="card-desc">
+                    Disposición apaisada oficial para la barra superior del panel web local y la cabecera de la landing page.
+                </p>
+                <div class="btn-group">
+                    <a href="imagotype.svg" target="_blank" class="btn" download="rtms_imagotype.svg">Descargar SVG</a>
+                    <button class="btn btn-secondary" onclick="copyFile('imagotype.svg')">Copiar Código SVG</button>
+                </div>
+            </div>
+
+            <!-- 4. IMAGOTIPO VERTICAL -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>4. Imagotipo Vertical (Splash / Modal)</h2>
+                    <span class="file-pill">gui/static/imagotype_vertical.svg</span>
+                </div>
+                <div class="preview-box" id="pbox-vert">
+                    <img src="imagotype_vertical.svg" alt="RTMS Imagotipo Vertical" style="width: 170px; height: auto;">
+                </div>
+                <p class="card-desc">
+                    Composición apilada centrada para el diálogo modal "Acerca de RTMS", splash screens y documentación.
+                </p>
+                <div class="btn-group">
+                    <a href="imagotype_vertical.svg" target="_blank" class="btn" download="rtms_imagotype_vertical.svg">Descargar SVG</a>
+                    <button class="btn btn-secondary" onclick="copyFile('imagotype_vertical.svg')">Copiar Código SVG</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: ESCALABILIDAD DEL ICONO DE WINDOWS (icon.ico) -->
+        <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+                <h2>5. Icono Nativo de Windows (icon.ico) & Favicon</h2>
+                <span class="file-pill">icon.ico & site/favicon.ico</span>
+            </div>
+            <div class="preview-box" id="pbox-scale" style="min-height: 180px;">
+                <div class="scale-row">
+                    <div class="scale-item">
+                        <img src="brand_preview.png" style="width: 128px; height: 128px;" alt="128px">
+                        <span>128×128 px (Desktop)</span>
+                    </div>
+                    <div class="scale-item">
+                        <img src="brand_preview.png" style="width: 64px; height: 64px;" alt="64px">
+                        <span>64×64 px (Dialogs)</span>
+                    </div>
+                    <div class="scale-item">
+                        <img src="brand_preview.png" style="width: 48px; height: 48px;" alt="48px">
+                        <span>48×48 px (Explorer)</span>
+                    </div>
+                    <div class="scale-item">
+                        <img src="brand_preview.png" style="width: 32px; height: 32px;" alt="32px">
+                        <span>32×32 px (Taskbar)</span>
+                    </div>
+                    <div class="scale-item">
+                        <img src="brand_preview.png" style="width: 16px; height: 16px;" alt="16px">
+                        <span>16×16 px (Tray / Favicon)</span>
+                    </div>
+                </div>
+            </div>
+            <p class="card-desc">
+                Generado con anti-aliasing supersampleado en formato multi-capa de 32-bit RGBA transparente: 256, 128, 64, 48, 32 y 16 px. Elimina el fondo blanco antiguo y se funde armoniosamente con Windows 10/11.
+            </p>
+            <div class="btn-group">
+                <a href="../../icon.ico" class="btn" download="icon.ico">Descargar icon.ico</a>
+                <a href="../../site/favicon.ico" class="btn btn-secondary" download="favicon.ico">Descargar favicon.ico</a>
+            </div>
+        </div>
+
+        <!-- SECTION: SIMULACIÓN EN LA BARRA DE LA APLICACIÓN -->
+        <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+                <h2>6. Previsualización en Vivo en el Header de RTMS</h2>
+                <span class="file-pill">Integración GUI</span>
+            </div>
+            <div class="app-bar-sim">
+                <div class="app-brand" title="Ver información del software">
+                    <img src="isotype.svg" style="width: 28px; height: 28px;" alt="Isotype">
+                    <span style="font-weight: 800; font-size: 1.25rem; color: #ffffff; letter-spacing: -0.02em;">RTMS</span>
+                    <span style="font-family: var(--font-mono); font-size: 0.75rem; background: rgba(20, 184, 166, 0.15); color: var(--teal); border: 1px solid var(--card-border); padding: 2px 8px; border-radius: 12px; font-weight: 600;">v2.0</span>
+                </div>
+                <div class="app-telemetry">
+                    <div class="tele-pill">
+                        <div class="dot"></div>
+                        <span>SRT ACTIVE</span>
+                    </div>
+                    <div class="tele-pill" style="color: var(--cyan); border-color: rgba(56, 189, 248, 0.2); background: rgba(56, 189, 248, 0.08);">
+                        <span>127.0.0.1:8890</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: PALETA TÉCNICA -->
+        <div class="card">
+            <div class="card-header">
+                <h2>7. Matriz de Color Oficial Aplicada</h2>
+                <span class="file-pill">CSS Variables</span>
+            </div>
+            <div class="palette-row">
+                <div class="swatch-card">
+                    <div class="swatch-color" style="background: #0b0f19;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-hex">#0b0f19</div>
+                        <div class="swatch-name">--bg-dark</div>
+                    </div>
+                </div>
+                <div class="swatch-card">
+                    <div class="swatch-color" style="background: #111827;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-hex">#111827</div>
+                        <div class="swatch-name">--panel-bg</div>
+                    </div>
+                </div>
+                <div class="swatch-card">
+                    <div class="swatch-color" style="background: #14b8a6;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-hex">#14b8a6</div>
+                        <div class="swatch-name">--teal (Brand)</div>
+                    </div>
+                </div>
+                <div class="swatch-card">
+                    <div class="swatch-color" style="background: #38bdf8;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-hex">#38bdf8</div>
+                        <div class="swatch-name">--cyan (Acento)</div>
+                    </div>
+                </div>
+                <div class="swatch-card">
+                    <div class="swatch-color" style="background: #ffffff; border-bottom: 1px solid #ddd;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-hex">#ffffff</div>
+                        <div class="swatch-name">--text-white (Wordmark)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setBg(mode) {
+            const boxes = ['pbox-iso', 'pbox-logo', 'pbox-imago', 'pbox-vert', 'pbox-scale'];
+            boxes.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.className = 'preview-box ' + (mode === 'default' ? '' : mode);
+                }
+            });
+        }
+
+        async function copyFile(fileName) {
+            try {
+                const res = await fetch(fileName);
+                const text = await res.text();
+                await navigator.clipboard.writeText(text);
+                alert('Código SVG de ' + fileName + ' copiado al portapapeles con éxito.');
+            } catch (e) {
+                alert('Abre el archivo directamente para copiar el código.');
+            }
+        }
+    </script>
+</body>
+</html>

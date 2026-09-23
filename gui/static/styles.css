@@ -76,35 +76,34 @@ header {
     display: flex;
     align-items: center;
     gap: 10px;
+    transition: opacity 0.2s ease;
 }
 
-.logo-icon {
-    width: 12px;
-    height: 12px;
-    background-color: var(--teal);
-    border-radius: 50%;
-    box-shadow: 0 0 10px var(--teal);
-    animation: pulse-glow 2s infinite;
+.logo-section:hover {
+    opacity: 0.92;
 }
 
-@keyframes pulse-glow {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 0 6px var(--teal);
-    }
-    50% {
-        transform: scale(1.2);
-        box-shadow: 0 0 14px var(--teal);
-    }
+.logo-icon-svg {
+    width: 26px;
+    height: 26px;
+    filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.4));
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.logo-section:hover .logo-icon-svg {
+    transform: rotate(18deg) scale(1.08);
+    filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.6));
 }
 
 .logo-text {
     font-weight: 800;
     font-size: 1.25rem;
-    letter-spacing: -0.03em;
-    background: linear-gradient(90deg, #38bdf8, var(--teal));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.025em;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .header-status {
@@ -1220,14 +1219,24 @@ input[type="checkbox"]:checked + .switch-toggle::after {
     max-width: 500px;
 }
 
-.about-logo-icon {
-    width: 44px;
-    height: 44px;
-    background-color: var(--teal);
-    border-radius: 50%;
-    box-shadow: 0 0 20px var(--teal);
-    margin: 0 auto;
-    animation: pulse-glow 2s infinite;
+.about-logo-svg {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 8px auto;
+    display: block;
+    filter: drop-shadow(0 0 16px rgba(20, 184, 166, 0.45));
+    animation: aperture-subtle-pulse 3s infinite ease-in-out;
+}
+
+@keyframes aperture-subtle-pulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 14px rgba(20, 184, 166, 0.4));
+    }
+    50% {
+        transform: scale(1.04);
+        filter: drop-shadow(0 0 22px rgba(56, 189, 248, 0.6));
+    }
 }
 
 .about-author-box {
