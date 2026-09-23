@@ -7,7 +7,7 @@
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
 [![Security](https://img.shields.io/badge/Seguridad-DPAPI%20%7C%20Token-10b981)](#-seguridad)
 [![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Pruebas-139%20Aprobadas-10b981)](tests/)
+[![Tests](https://img.shields.io/badge/Pruebas-152%20Aprobadas-10b981)](tests/)
 [![License](https://img.shields.io/badge/Licencia-MIT-gray.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Autor-Joaqu%C3%ADn%20Yarsky-f59e0b)](mailto:joaquinyarsky@gmail.com)
 
@@ -54,7 +54,7 @@ python main.py
 2. **Desmarca** la opción `Archivo local`.
 3. En **Entrada** (`Input`), ingresa la URL de la cámara (multiplexada en el puerto central MediaMTX):
    ```text
-   srt://192.168.1.X:8890?streamid=read:CAM_ID&latency=120000
+   srt://192.168.1.X:8890/?streamid=read:CAM_ID
    ```
    *(Copia la dirección directamente con un clic desde el botón "Copiar URL" en RTMS)*.
 4. En **Formato de entrada** (`Input Format`), escribe:
