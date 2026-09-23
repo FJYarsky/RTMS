@@ -101,7 +101,7 @@ RTMS/
 ├── api/                   # API REST FastAPI y esquemas de validación Pydantic
 ├── core/                  # Motor de streaming, hardware DirectShow y telemetría
 ├── gui/                   # Panel de control web (SPA, plantillas y estilos)
-├── docs/                  # Guías de compatibilidad de hardware y troubleshooting
+├── docs/                  # Guías de hardware, troubleshooting y branding oficial (BRANDING.md)
 ├── scripts/               # Scripts de descarga y verificación de FFmpeg
 ├── tests/                 # Suite de pruebas automatizadas (113 tests)
 ├── config/                # Plantilla de configuración (config.example.json)
