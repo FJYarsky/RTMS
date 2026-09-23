@@ -150,24 +150,17 @@ body::before {
     }
 }
 
-.brand-content {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 3px;
-    line-height: 1;
-}
-
-.brand-top {
+.brand-text {
     display: flex;
     align-items: center;
     gap: 8px;
+    line-height: 1;
 }
 
 .brand-title {
-    font-size: 1.15rem;
-    font-weight: 800;
-    letter-spacing: -0.01em;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     color: #ffffff;
     line-height: 1;
 }
@@ -178,21 +171,30 @@ body::before {
     font-weight: 600;
     color: var(--cyan);
     background: rgba(56, 189, 248, 0.1);
-    border: 1px solid rgba(56, 189, 248, 0.25);
+    border: 1px solid rgba(56, 189, 248, 0.28);
     padding: 1px 6px;
     border-radius: 4px;
     line-height: 1.2;
     letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
-.brand-subtitle {
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+.brand-text span.accent {
     color: var(--text-secondary);
-    line-height: 1;
+    font-size: 0.82rem;
+    font-weight: 500;
+    border-left: 1px solid var(--border-color);
+    padding-left: 8px;
+    letter-spacing: 0;
+    white-space: nowrap;
 }
+
+@media (max-width: 768px) {
+    .brand-text span.accent {
+        display: none;
+    }
+}
+
 
 .nav-menu {
     display: flex;
@@ -1543,8 +1545,9 @@ body::before {
         font-size: 1.05rem;
     }
 
-    .brand-subtitle {
-        font-size: 0.62rem;
+    .version-pill {
+        font-size: 0.64rem;
+        padding: 1px 5px;
     }
 
     .btn-github span {
