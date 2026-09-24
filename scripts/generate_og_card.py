@@ -50,7 +50,7 @@ HTML_CARD_TEMPLATE = """<!DOCTYPE html>
     left: 0;
     width: 100%;
     height: 100%;
-    background-image: 
+    background-image:
       linear-gradient(to right, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
     background-size: 32px 32px;
@@ -265,7 +265,7 @@ HTML_CARD_TEMPLATE = """<!DOCTYPE html>
     background: #0c1220;
     border: 1px solid rgba(56, 189, 248, 0.28);
     border-radius: 12px;
-    box-shadow: 
+    box-shadow:
       0 25px 60px -10px rgba(0, 0, 0, 0.85),
       0 0 45px rgba(20, 184, 166, 0.22),
       inset 0 1px 0 rgba(255, 255, 255, 0.12);
@@ -654,35 +654,35 @@ HTML_CARD_TEMPLATE = """<!DOCTYPE html>
 </html>
 """
 
+
 def generate():
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    site_dir = os.path.join(root_dir, 'site')
-    temp_html = os.path.join(site_dir, '_temp_og_card.html')
-    output_png = os.path.join(site_dir, 'brand_preview.png')
+    site_dir = os.path.join(root_dir, "site")
+    temp_html = os.path.join(site_dir, "_temp_og_card.html")
+    output_png = os.path.join(site_dir, "brand_preview.png")
 
-    with open(temp_html, 'w', encoding='utf-8') as f:
+    with open(temp_html, "w", encoding="utf-8") as f:
         f.write(HTML_CARD_TEMPLATE)
 
-    file_url = 'file:///' + temp_html.replace('\\', '/')
+    file_url = "file:///" + temp_html.replace("\\", "/")
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(channel='msedge', headless=True)
-            page = browser.new_page(
-                viewport={'width': 1200, 'height': 630},
-                device_scale_factor=1
-            )
+            browser = p.chromium.launch(channel="msedge", headless=True)
+            page = browser.new_page(viewport={"width": 1200, "height": 630}, device_scale_factor=1)
             page.goto(file_url)
             page.wait_for_timeout(1000)
             screenshot_bytes = page.screenshot()
             browser.close()
 
-        with open(output_png, 'wb') as f:
+        with open(output_png, "wb") as f:
             f.write(screenshot_bytes)
         print(f"Social card generado exitosamente en: {output_png} (1200x630 px)")
     finally:
         if os.path.exists(temp_html):
             os.remove(temp_html)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     generate()
+
