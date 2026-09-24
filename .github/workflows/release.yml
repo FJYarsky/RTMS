@@ -131,6 +131,10 @@ jobs:
           python -c "import re, sys; tag = sys.argv[1].lstrip('v'); p = 'SECURITY.md'; c = open(p, encoding='utf-8').read(); c = re.sub(r'\|\s*>=\s*[\d\.]+\s*\|\s*:white_check_mark:\s*\|', f'| >= {tag} | :white_check_mark: |', c); c = re.sub(r'\|\s*<\s*[\d\.]+\s*\|\s*:x:\s*\|', f'| < {tag} | :x: |', c); open(p, 'w', encoding='utf-8', newline='\n').write(c)" $tag
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          python scripts/manage_descriptions.py --commit SECURITY.md -m "Detalle: soporte oficial desde $tag tras release oficial."
-          git push origin main
+          if (git status --porcelain SECURITY.md) {
+              python scripts/manage_descriptions.py --commit SECURITY.md -m "Detalle: soporte oficial desde $tag tras release oficial."
+              git push origin main
+          } else {
+              Write-Host "SECURITY.md ya se encuentra actualizado para $tag."
+          }
 
