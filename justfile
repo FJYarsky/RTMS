@@ -43,6 +43,23 @@ check-descriptions:
 sync-descriptions:
     python scripts/manage_descriptions.py --sync
 
+# Auditoría integral de salud, Git, ramas, linter y workflows
+audit:
+    python scripts/repo_sanitizer.py --audit
+
+# Sanitización y corrección automática (formato, linter, descripciones y poda local)
+sanitize:
+    python scripts/repo_sanitizer.py --fix --prune-local --prune-env
+
+# Auditoría, sanitización profunda y ejecución completa de pruebas
+sanitize-all:
+    python scripts/repo_sanitizer.py --full
+
+# Poda de ramas locales fusionadas, referencias remotas y worktrees inactivos
+prune-branches:
+    python scripts/repo_sanitizer.py --prune-local --prune-env
+
 # Construcción de empaquetado portable para Windows
 build:
     cmd /c build_portable.bat
+
