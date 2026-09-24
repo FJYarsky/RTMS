@@ -387,7 +387,6 @@ function setLanguage(lang) {
  * su tamaño en MB, fecha de publicación y el link directo al archivo zip de Windows.
  */
 async function initDynamicRelease() {
-    const navVersion = document.getElementById('nav-version');
     const downloadBtn = document.getElementById('primary-download-btn');
     const downloadSize = document.getElementById('download-size');
     const downloadTag = document.getElementById('download-tag');
@@ -410,8 +409,7 @@ async function initDynamicRelease() {
         latestReleaseData = release;
         const tagName = release.tag_name || 'v2.6.0';
 
-        // Actualizar badges de versión
-        if (navVersion) navVersion.textContent = tagName;
+        // Actualizar badge de versión en la sección de descarga
         if (downloadTag) downloadTag.textContent = tagName;
 
         // Buscar el archivo ZIP de Windows x64 en los assets del release
