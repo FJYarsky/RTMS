@@ -56,6 +56,7 @@ $RECYCLE.BIN/
 scratch/
 *-help.txt
 Docs 3.0.0/
+RTMS_AUDITORIA_*.txt
 
 # Test, linter & coverage caches
 .pytest_cache/

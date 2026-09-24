@@ -95,7 +95,7 @@ secret_filter = SecretFilter()
 file_handler = RotatingFileHandler(_LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
 file_handler.addFilter(secret_filter)
 
-handlers = [file_handler]
+handlers: list[logging.Handler] = [file_handler]
 if sys.stderr is not None and not isinstance(sys.stderr, _NullWriter):
     stream_handler = logging.StreamHandler(sys.stderr)
     stream_handler.addFilter(secret_filter)
@@ -443,7 +443,8 @@ if __name__ == "__main__":
             min_size=(980, 620),
             background_color="#0b0f19",
         )
-        _main_window.events.closing += on_window_closing
+        if _main_window is not None:
+            _main_window.events.closing += on_window_closing
         webview.start(func=on_window_ready, gui="edgechromium")
     except Exception as e:
         _main_window = None
