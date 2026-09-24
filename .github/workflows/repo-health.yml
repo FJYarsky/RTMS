@@ -1,0 +1,75 @@
+# ==============================================================================
+# RTMS — Auditoría, Salud y Sanitización Automatizada del Repositorio
+# Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
+# ==============================================================================
+
+name: RTMS Repository Health & Sanitizer
+
+on:
+  schedule:
+    # Auditoría automatizada semanal los lunes a las 05:00 UTC
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Acción a ejecutar en el repositorio"
+        required: true
+        default: "audit"
+        type: choice
+        options:
+          - "audit"
+          - "sanitize"
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  health-check-and-sanitize:
+    name: Repo Health Audit & Sanitizer
+    runs-on: windows-latest
+
+    steps:
+      - name: Clonar Repositorio con Historial Completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Entorno Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Instalar Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Ejecutar Auditoría General del Repositorio
+        if: ${{ github.event.inputs.action != 'sanitize' }}
+        run: |
+          python scripts/repo_sanitizer.py --audit
+
+      - name: Ejecutar Sanitización y Autocorrección
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'sanitize' }}
+        run: |
+          python scripts/repo_sanitizer.py --fix --prune-env
+
+      - name: Publicar Correcciones Sanitizadas (si hubo cambios)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'sanitize' }}
+        shell: powershell
+        run: |
+          $status = git status --porcelain
+          if ($status) {
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "ci: pipelines de integracion y release" -m "Mantenimiento automatizado: sanitización periódica de repositorio."
+            git push origin main
+            Write-Host "Cambios sanitizados aplicados y enviados a origin main." -ForegroundColor Green
+          } else {
+            Write-Host "Repositorio ya se encuentra 100% limpio y saludable. No se requirieron commits." -ForegroundColor Green
+          }
