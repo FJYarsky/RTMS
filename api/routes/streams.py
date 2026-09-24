@@ -6,6 +6,7 @@
 
 """Rutas REST para inicio, parada, configuración y estado de streams de video."""
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -124,7 +125,8 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
     udp_mode_val = config.udp_mode if config.udp_mode is not None else existing_cfg.get("udp_mode", "multicast")
     udp_host_val = config.udp_host if config.udp_host is not None else existing_cfg.get("udp_host", "127.0.0.1")
 
-    saved = update_camera_config(
+    saved = await asyncio.to_thread(
+        update_camera_config,
         device_path=dp,
         resolution=res,
         fps=fps_val,
@@ -201,7 +203,7 @@ async def apply_preset_endpoint(payload: ApplyPresetRequest):
     cam = find_camera_by_id_or_path(payload.device_path)
     dp = cam["device_path"] if cam else payload.device_path
 
-    updated_cam = apply_camera_preset(dp, payload.preset_key)
+    updated_cam = await asyncio.to_thread(apply_camera_preset, dp, payload.preset_key)
     if not updated_cam:
         raise HTTPException(
             status_code=404, detail="Perfil o cámara no encontrados, o error al persistir configuración."
@@ -223,7 +225,7 @@ async def toggle_cam_autostart(payload: CameraAutostartToggle):
     cam = find_camera_by_id_or_path(payload.device_path)
     dp = cam["device_path"] if cam else payload.device_path
 
-    saved = set_camera_autostart(dp, payload.auto_start)
+    saved = await asyncio.to_thread(set_camera_autostart, dp, payload.auto_start)
     if not saved:
         raise HTTPException(status_code=500, detail="Error al persistir el estado de autoarranque en disco.")
 
@@ -239,7 +241,7 @@ async def scan_hardware(restore_ignored: bool = False):
     if restore_ignored:
         from core.config_mgr import clear_ignored_devices
 
-        clear_ignored_devices()
+        await asyncio.to_thread(clear_ignored_devices)
     await sync_streams_with_hardware()
     return {"status": "ok", "message": "Escaneo de hardware completado"}
 
@@ -250,7 +252,7 @@ async def get_ignored_devices_endpoint():
     from core.config_mgr import get_ignored_devices
     from core.hardware import get_directshow_devices
 
-    raw_ignored = get_ignored_devices()
+    raw_ignored = await asyncio.to_thread(get_ignored_devices)
     try:
         cams = await get_directshow_devices()
         connected_cams = {c["device_path"]: (c.get("friendly_name") or c["device_path"]) for c in cams}
@@ -280,12 +282,12 @@ async def unignore_device_endpoint(payload: DeviceUnignoreRequest):
     """Restaura un dispositivo DirectShow ignorado/eliminado y sincroniza el hardware."""
     from core.config_mgr import unignore_device
 
-    success = unignore_device(payload.device_path)
+    success = await asyncio.to_thread(unignore_device, payload.device_path)
     if not success:
         # Intentar por si payload.device_path vino como ID
         cam = find_camera_by_id_or_path(payload.device_path)
         if cam and "device_path" in cam:
-            success = unignore_device(cam["device_path"])
+            success = await asyncio.to_thread(unignore_device, cam["device_path"])
 
     if not success:
         raise HTTPException(
@@ -303,7 +305,7 @@ async def unignore_all_devices_endpoint():
     """Restaura masivamente todos los dispositivos ignorados y sincroniza el hardware."""
     from core.config_mgr import clear_ignored_devices
 
-    clear_ignored_devices()
+    await asyncio.to_thread(clear_ignored_devices)
     await sync_streams_with_hardware()
     return {"status": "ok", "message": "Todos los dispositivos ignorados han sido restaurados exitosamente"}
 

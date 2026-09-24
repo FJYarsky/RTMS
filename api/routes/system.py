@@ -6,6 +6,7 @@
 
 """Rutas REST para telemetría del sistema, parada de emergencia, reinicio y autostart."""
 
+import asyncio
 import json
 import logging
 import os
@@ -31,11 +32,12 @@ router = APIRouter()
 @router.get("/api/system/metrics", dependencies=[Depends(verify_api_token)])
 async def get_system_metrics():
     """Retorna métricas de hardware (CPU, GPU, RAM), red y telemetría de streams en vivo para el HUD."""
-    statuses = get_all_stream_statuses()
+    statuses = await asyncio.to_thread(get_all_stream_statuses)
     running_streams = [s for s in statuses if s["status"]["state"] == "running"]
     total_bitrate = sum(s["status"]["current_bitrate_kbps"] for s in running_streams)
 
-    return telemetry_service.collect(
+    return await asyncio.to_thread(
+        telemetry_service.collect,
         active_streams_count=len(running_streams),
         total_bitrate_kbps=total_bitrate,
     )
@@ -155,7 +157,7 @@ async def set_autostart(toggle: AutostartToggle):
     """Habilita o deshabilita el autoarranque de RTMS con Windows (Protegido por Token)."""
     from core.autostart import enable_autostart
 
-    enable_autostart(toggle.enable)
+    await asyncio.to_thread(enable_autostart, toggle.enable)
     return {"status": "ok", "autostart": toggle.enable}
 
 
@@ -165,7 +167,7 @@ async def get_system_settings():
     from core.config_mgr import load_config
     from core.mediamtx_mgr import mediamtx_manager
 
-    cfg = load_config()
+    cfg = await asyncio.to_thread(load_config)
     return {
         "status": "ok",
         "mediamtx_srt_port": cfg.get("mediamtx_srt_port", mediamtx_manager.get_srt_port()),
@@ -181,7 +183,7 @@ async def update_system_settings(payload: SystemSettingsUpdate):
     from core.mediamtx_mgr import mediamtx_manager
     from core.port_mgr import port_manager
 
-    cfg = load_config()
+    cfg = await asyncio.to_thread(load_config)
     restarted_mediamtx = False
 
     if payload.mediamtx_srt_port is not None:
@@ -202,7 +204,7 @@ async def update_system_settings(payload: SystemSettingsUpdate):
                 )
 
             cfg["mediamtx_srt_port"] = new_port
-            save_config(cfg)
+            await asyncio.to_thread(save_config, cfg)
             success = await mediamtx_manager.restart(new_srt_port=new_port)
             if not success:
                 logger.warning(f"MediaMTX no pudo reiniciar de inmediato en el puerto {new_port}.")
@@ -210,7 +212,7 @@ async def update_system_settings(payload: SystemSettingsUpdate):
 
     if payload.unattended_autostart is not None:
         cfg["unattended_autostart"] = payload.unattended_autostart
-        save_config(cfg)
+        await asyncio.to_thread(save_config, cfg)
 
     return {
         "status": "ok",

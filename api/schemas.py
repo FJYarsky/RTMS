@@ -74,8 +74,8 @@ class SystemShutdownRequest(BaseModel):
 
 class CameraPersistedConfig(BaseModel):
     id: Optional[str] = ""
-    friendly_name: str
-    device_path: str
+    friendly_name: Optional[str] = ""
+    device_path: Optional[str] = ""
     port: int = Field(default=9000, ge=1024, le=65535)
     resolution: Literal["480p", "720p", "1080p", "1440p", "4K"] = "720p"
     fps: int = Field(default=30, ge=1, le=120)
@@ -94,7 +94,7 @@ class CameraPersistedConfig(BaseModel):
 class RTMSConfigModel(BaseModel):
     version: Optional[Union[str, int]] = None
     config_schema_version: Optional[int] = Field(default=4, ge=1)
-    cameras: Dict[str, Union[CameraPersistedConfig, Dict[str, Any]]] = Field(default_factory=dict)
+    cameras: Dict[str, CameraPersistedConfig] = Field(default_factory=dict)
     next_port: Optional[int] = Field(default=9000, ge=1024, le=65535)
     unattended_autostart: Optional[bool] = False
     mediamtx_srt_port: Optional[int] = Field(default=8890, ge=1024, le=65535)
