@@ -1,0 +1,7 @@
+# Robots.txt for RTMS — Real-Time Multicam System
+# https://fjyarsky.github.io/RTMS/
+
+User-agent: *
+Allow: /
+
+Sitemap: https://fjyarsky.github.io/RTMS/sitemap.xml
