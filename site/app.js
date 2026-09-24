@@ -515,4 +515,3 @@ function initCopyButtons() {
         });
     });
 }
-
