@@ -425,9 +425,7 @@ function initTelemetryWebSocket() {
     }
 
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const token = getApiToken();
-    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
-    const wsUrl = `${protocol}//${location.host}/ws/telemetry${tokenParam}`;
+    const wsUrl = `${protocol}//${location.host}/ws/telemetry`;
 
     try {
         _telemetrySocket = new WebSocket(wsUrl);
@@ -1020,6 +1018,11 @@ function configureStream(index) {
     document.getElementById('config-srt-latency').value = stream.srt_latency || 120;
     // Mostrar enmascarada si ya existe
     document.getElementById('config-srt-passphrase').value = stream.srt_passphrase || '';
+
+    const udpHostEl = document.getElementById('config-udp-host');
+    if (udpHostEl) {
+        udpHostEl.value = stream.udp_host || '127.0.0.1';
+    }
     
     handleProtocolChange(protoVal);
     document.getElementById('config-modal-overlay').classList.add('active');
@@ -1056,6 +1059,11 @@ async function deleteCurrentCamera() {
 function handleProtocolChange(protocol) {
     const advPanel = document.getElementById('config-advanced-panel');
     const advTrigger = document.querySelector('.advanced-trigger');
+    const udpHostGroup = document.getElementById('group-udp-host');
+    
+    if (udpHostGroup) {
+        udpHostGroup.style.display = (protocol === 'udp_unicast') ? 'block' : 'none';
+    }
     
     if (protocol === 'srt') {
         if (advTrigger) advTrigger.style.display = 'flex';
@@ -1128,6 +1136,14 @@ async function submitCameraConfig(event) {
         }
     }
     
+    const udpHost = (document.getElementById('config-udp-host')?.value || "127.0.0.1").trim() || "127.0.0.1";
+    let secretAction = "keep";
+    if (srtPassphrase === "") {
+        secretAction = "clear";
+    } else if (srtPassphrase !== "••••••••") {
+        secretAction = "set";
+    }
+
     const payload = {
         device_path: devicePath,
         resolution: resolution,
@@ -1135,10 +1151,11 @@ async function submitCameraConfig(event) {
         bitrate: bitrate,
         protocol: protocol,
         udp_mode: udpMode,
-        udp_host: "127.0.0.1",
+        udp_host: udpHost,
         encoder: encoder,
         srt_latency: srtLatency,
         srt_passphrase: srtPassphrase,
+        secret_action: secretAction,
         auto_start: autoStart,
         zerolatency: zeroLatency,
         is_virtual: isVirtual
@@ -1539,9 +1556,6 @@ async function openPreviewModal(index) {
         let previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?t=${Date.now()}`;
         if (ticket) {
             previewUrl += `&ticket=${encodeURIComponent(ticket)}`;
-        } else {
-            const token = getApiToken();
-            if (token) previewUrl += `&token=${encodeURIComponent(token)}`;
         }
 
         imgEl.onload = () => {
@@ -1609,13 +1623,25 @@ async function openQrModal(index) {
 
     const modal = document.getElementById('qr-modal-overlay');
     const nameEl = document.getElementById('qr-stream-name');
+    const badgeEl = document.getElementById('qr-protocol-badge');
     const urlInput = document.getElementById('qr-url-input');
     const qrContainer = document.getElementById('qr-code-display');
 
     if (!modal || !qrContainer) return;
 
     const protoTitle = stream.protocol === 'srt' ? 'SRT' : (stream.udp_mode === 'unicast' ? 'UDP Unicast' : 'UDP Multicast');
-    nameEl.textContent = `${stream.friendly_name} — ${protoTitle}`;
+    nameEl.textContent = `${stream.friendly_name}`;
+
+    if (badgeEl) {
+        if (stream.protocol === 'srt') {
+            const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
+            badgeEl.innerHTML = `<span class="badge" style="background:rgba(20,184,166,0.15); border:1px solid var(--teal); color:var(--teal); font-weight:700; padding:3px 10px; border-radius:var(--radius-full); font-size:0.75rem;">🔒 SRT Media Server (Puerto ${srtPort})</span>`;
+        } else if (stream.udp_mode === 'unicast') {
+            badgeEl.innerHTML = `<span class="badge" style="background:rgba(59,130,246,0.15); border:1px solid var(--blue); color:var(--cyan); font-weight:700; padding:3px 10px; border-radius:var(--radius-full); font-size:0.75rem;">📡 UDP Unicast LAN (Puerto ${stream.port})</span>`;
+        } else {
+            badgeEl.innerHTML = `<span class="badge" style="background:rgba(16,185,129,0.15); border:1px solid var(--status-green); color:var(--status-green); font-weight:700; padding:3px 10px; border-radius:var(--radius-full); font-size:0.75rem;">🌐 UDP Multicast LAN (Puerto ${stream.port})</span>`;
+        }
+    }
 
     // Obtener la URL más actualizada con autenticación/passphrase
     let targetUrl = '';
@@ -1633,11 +1659,12 @@ async function openQrModal(index) {
         if (stream.protocol === 'srt') {
             const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
             const cleanCamId = stream.clean_cam_id || stream.id;
-            targetUrl = `srt://${_localIp}:${srtPort}/?streamid=read:${cleanCamId}`;
+            targetUrl = `srt://${_localIp}:${srtPort}/?streamid=read:${cleanCamId}&latency=50000`;
         } else if (stream.udp_mode === 'unicast') {
-            targetUrl = `udp://@127.0.0.1:${stream.port}`;
+            targetUrl = `udp://@:${stream.port}`;
         } else {
-            const ipLastOctet = (stream.port % 200) + 1;
+            const p = parseInt(stream.port);
+            const ipLastOctet = (p >= 9000 && p <= 9200) ? ((p - 9000) + 1) : (((p - 1024) % 250) + 1);
             targetUrl = `udp://@239.255.0.${ipLastOctet}:${stream.port}`;
         }
     }

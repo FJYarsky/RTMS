@@ -51,15 +51,19 @@ class State(str, Enum):
 
 
 def build_multicast_url(port: int) -> str:
-    """Calcula y retorna la URL multicast UDP para el puerto indicado con buffer optimizado (4MB)."""
-    ip_last_octet = (int(port) % 200) + 1
-    return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=4194304&overrun_nonfatal=1&fifo_size=50000000"
+    """Calcula y retorna la URL multicast UDP para el puerto indicado con buffer optimizado de baja latencia."""
+    p = int(port)
+    if 9000 <= p <= 9200:
+        ip_last_octet = (p - 9000) + 1
+    else:
+        ip_last_octet = ((p - 1024) % 250) + 1
+    return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=131072&overrun_nonfatal=1&fifo_size=50000"
 
 
 def build_unicast_url(port: int, host: str = "127.0.0.1") -> str:
-    """Calcula y retorna la URL unicast UDP local/remota con buffer optimizado (4MB)."""
+    """Calcula y retorna la URL unicast UDP local/remota con buffer optimizado de baja latencia."""
     clean_host = host.strip() or "127.0.0.1"
-    return f"udp://{clean_host}:{port}?pkt_size=1316&buffer_size=4194304&overrun_nonfatal=1&fifo_size=50000000"
+    return f"udp://{clean_host}:{port}?pkt_size=1316&buffer_size=131072&overrun_nonfatal=1&fifo_size=50000"
 
 
 def build_stream_url(
@@ -122,7 +126,7 @@ def build_client_urls(
     clean_host = host.strip() or "127.0.0.1"
 
     if protocol == "srt":
-        query_parts = [f"streamid=read:{clean_cam_id}"]
+        query_parts = [f"streamid=read:{clean_cam_id}", "latency=50000"]
         if passphrase:
             query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
         query = "&".join(query_parts)
@@ -131,13 +135,18 @@ def build_client_urls(
 
     if protocol == "udp_unicast" or udp_mode == "unicast":
         target = "127.0.0.1" if clean_host in ("127.0.0.1", "localhost") else clean_host
+        vlc_target = "" if target != "127.0.0.1" else target
         return {
             "connect_url": f"udp://{target}:{port}",
-            "vlc_url": f"udp://@{target}:{port}",
+            "vlc_url": f"udp://@{vlc_target}:{port}" if vlc_target else f"udp://@:{port}",
         }
 
     # Default UDP Multicast
-    ip_last = (int(port) % 200) + 1
+    p = int(port)
+    if 9000 <= p <= 9200:
+        ip_last = (p - 9000) + 1
+    else:
+        ip_last = ((p - 1024) % 250) + 1
     mcast_ip = f"239.255.0.{ip_last}"
     return {
         "connect_url": f"udp://{mcast_ip}:{port}",
@@ -176,6 +185,7 @@ class StreamProc:
         self.last_error_category: ErrorCategory = ErrorCategory.UNKNOWN
         self.last_transition: Optional[datetime] = None
         self.zero_fps_since: Optional[datetime] = None
+        self.last_progress_at: Optional[datetime] = None
         self.mjpeg_supported: Optional[bool] = None
         self.mjpeg_input_failed: bool = False
 
@@ -201,6 +211,7 @@ class StreamProc:
 
                 if line_str.startswith("progress="):
                     # Bloque de progreso emitido por FFmpeg
+                    self.last_progress_at = datetime.now()
                     fps_val = current_data.get("fps")
                     if fps_val:
                         try:
@@ -260,6 +271,7 @@ class StreamProc:
         self.error_count = 0
         self.next_retry_at = None
         self.zero_fps_since = None
+        self.last_progress_at = None
         self.last_error_category = ErrorCategory.UNKNOWN
         if self.state in (State.ERROR, State.MANUAL_INTERVENTION_REQUIRED):
             self.transition_to(State.STOPPED)

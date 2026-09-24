@@ -311,7 +311,7 @@ def test_ffplay_launch_unprotects_dpapi_passphrase(client):
     cipher_pwd = protect_secret(plain_pwd, require_secure=False)
     update_camera_config(dp, "720p", 30, 3000, protocol="srt", srt_passphrase=cipher_pwd)
 
-    proc = stream_manager.get_proc(dp)
+    proc = stream_manager.ensure_proc(dp)
     proc.config = {
         "device_path": dp,
         "protocol": "srt",
@@ -343,7 +343,7 @@ def test_config_update_preserves_optional_booleans(client):
 
     cam = get_or_allocate_camera_config("@device_bool_test", "Bool Test")
     dp = cam["device_path"]
-    proc = stream_manager.get_proc(dp)
+    proc = stream_manager.ensure_proc(dp)
     proc.config = {"auto_start": True, "zerolatency": False, "is_virtual": True}
 
     res = client.post(

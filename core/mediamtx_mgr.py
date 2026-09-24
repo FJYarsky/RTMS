@@ -58,6 +58,8 @@ class MediaMTXManager:
         self.api_port = DEFAULT_MEDIAMTX_API_PORT
         self.webrtc_port = DEFAULT_MEDIAMTX_WEBRTC_PORT
 
+        self.log_path = os.path.join(self.base_dir, "config", "mediamtx.log")
+        self._log_file: Optional[Any] = None
         self._process: Optional[subprocess.Popen] = None
         self._watchdog_task: Optional[asyncio.Task] = None
         self._is_shutting_down = False
@@ -148,10 +150,26 @@ class MediaMTXManager:
 
             logger.info(f"Lanzando MediaMTX daemon [{bin_file}]...")
             try:
+                # Rotar / limpiar log de MediaMTX si excede 5MB
+                try:
+                    if os.path.exists(self.log_path) and os.path.getsize(self.log_path) > 5 * 1024 * 1024:
+                        with open(self.log_path, "w", encoding="utf-8") as lf:
+                            lf.truncate(0)
+                except Exception:
+                    pass
+
+                try:
+                    os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
+                    self._log_file = open(self.log_path, "a", encoding="utf-8")
+                except Exception as ex_lf:
+                    logger.debug(f"Aviso abriendo logfile para MediaMTX: {ex_lf}")
+                    self._log_file = None
+
+                out_target = self._log_file if self._log_file is not None else subprocess.DEVNULL
                 self._process = subprocess.Popen(
                     [bin_file, config_file],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    stdout=out_target,
+                    stderr=out_target,
                     creationflags=_WIN_FLAGS,
                 )
 
@@ -248,6 +266,13 @@ class MediaMTXManager:
                 logger.debug(f"Excepción al detener MediaMTX: {e}")
             finally:
                 self._process = None
+
+        if self._log_file:
+            try:
+                self._log_file.close()
+            except Exception:
+                pass
+            self._log_file = None
 
         logger.info("MediaMTX detenido limpiamente.")
 

@@ -77,16 +77,15 @@ async def handle_stream_action(action: StreamAction):
 
     elif action.action == "start":
         proc = stream_manager.get_proc(dp)
-        if proc:
+        if proc or cam:
             await stream_manager.start_stream(dp)
             return {"status": "ok", "message": "Flujo iniciado"}
         raise HTTPException(status_code=404, detail="Dispositivo no encontrado en el registro")
 
     elif action.action == "restart":
         proc = stream_manager.get_proc(dp)
-        if proc:
-            await stream_manager.stop_stream(dp)
-            await stream_manager.start_stream(dp)
+        if proc or cam:
+            await stream_manager.restart_stream(dp)
             return {"status": "ok", "message": "Flujo reiniciado"}
         raise HTTPException(status_code=404, detail="Dispositivo no encontrado en el registro")
 
@@ -95,57 +94,70 @@ async def handle_stream_action(action: StreamAction):
 
 @router.post("/api/stream/config", dependencies=[Depends(verify_api_token)])
 async def update_stream_config_endpoint(config: CameraConfigUpdate):
-    """Actualiza la configuración de una cámara (Protegido por Token)."""
+    """Actualiza la configuración de una cámara con semántica PATCH (Protegido por Token)."""
     cam = find_camera_by_id_or_path(config.device_path)
     dp = cam["device_path"] if cam else config.device_path
-
-    # Si la contraseña enviada es la enmascarada "••••••••", preservar la existente
-    passphrase_to_set = config.srt_passphrase
     proc = stream_manager.get_proc(dp)
-    if passphrase_to_set == "••••••••":
-        if proc and proc.config:
-            passphrase_to_set = proc.config.get("srt_passphrase", "")
-        elif cam:
-            passphrase_to_set = cam.get("srt_passphrase", "")
+
+    existing_cfg = (cam or (proc.config if proc else {})).copy()
+
+    # Resolver passphrase con soporte explícito de secret_action
+    passphrase_to_set = existing_cfg.get("srt_passphrase", "")
+    if config.secret_action == "clear":
+        passphrase_to_set = ""
+    elif config.secret_action == "set" or (config.secret_action is None and config.srt_passphrase is not None):
+        if config.srt_passphrase != "••••••••":
+            passphrase_to_set = config.srt_passphrase or ""
+    elif config.secret_action == "keep" or config.srt_passphrase == "••••••••":
+        passphrase_to_set = existing_cfg.get("srt_passphrase", "")
+
+    # Semántica PATCH: preservar valores existentes si no vienen en el payload
+    res = config.resolution if config.resolution is not None else existing_cfg.get("resolution", "720p")
+    fps_val = config.fps if config.fps is not None else existing_cfg.get("fps", 30)
+    bitrate_val = config.bitrate if config.bitrate is not None else existing_cfg.get("bitrate", 3000)
+    proto_val = config.protocol if config.protocol is not None else existing_cfg.get("protocol", "srt")
+    encoder_val = config.encoder if config.encoder is not None else existing_cfg.get("encoder", "auto")
+    srt_latency_val = config.srt_latency if config.srt_latency is not None else existing_cfg.get("srt_latency", 120)
+    auto_start_val = config.auto_start if config.auto_start is not None else existing_cfg.get("auto_start", False)
+    zero_val = config.zerolatency if config.zerolatency is not None else existing_cfg.get("zerolatency", True)
+    virtual_val = config.is_virtual if config.is_virtual is not None else existing_cfg.get("is_virtual", False)
+    udp_mode_val = config.udp_mode if config.udp_mode is not None else existing_cfg.get("udp_mode", "multicast")
+    udp_host_val = config.udp_host if config.udp_host is not None else existing_cfg.get("udp_host", "127.0.0.1")
 
     saved = update_camera_config(
         device_path=dp,
-        resolution=config.resolution,
-        fps=config.fps,
-        bitrate=config.bitrate,
-        protocol=config.protocol or "srt",
-        encoder=config.encoder or "auto",
-        srt_latency=config.srt_latency or 120,
-        srt_passphrase=passphrase_to_set or "",
-        auto_start=config.auto_start,
-        zerolatency=config.zerolatency if config.zerolatency is not None else True,
-        is_virtual=config.is_virtual if config.is_virtual is not None else False,
-        udp_mode=config.udp_mode or "multicast",
-        udp_host=config.udp_host or "127.0.0.1",
+        resolution=res,
+        fps=fps_val,
+        bitrate=bitrate_val,
+        protocol=proto_val,
+        encoder=encoder_val,
+        srt_latency=srt_latency_val,
+        srt_passphrase=passphrase_to_set,
+        auto_start=auto_start_val,
+        zerolatency=zero_val,
+        is_virtual=virtual_val,
+        udp_mode=udp_mode_val,
+        udp_host=udp_host_val,
     )
     if not saved:
         raise HTTPException(status_code=500, detail="Error al persistir la configuración de la cámara en disco.")
 
     if proc:
-        proc.config["resolution"] = config.resolution
-        proc.config["fps"] = config.fps
-        proc.config["bitrate"] = config.bitrate
-        proc.config["protocol"] = config.protocol or "srt"
-        proc.config["encoder"] = config.encoder or "auto"
-        proc.config["srt_latency"] = config.srt_latency or 120
-        proc.config["srt_passphrase"] = passphrase_to_set or ""
-        proc.config["udp_mode"] = config.udp_mode or "multicast"
-        proc.config["udp_host"] = config.udp_host or "127.0.0.1"
-        if config.auto_start is not None:
-            proc.config["auto_start"] = config.auto_start
-        if config.zerolatency is not None:
-            proc.config["zerolatency"] = config.zerolatency
-        if config.is_virtual is not None:
-            proc.config["is_virtual"] = config.is_virtual
+        proc.config["resolution"] = res
+        proc.config["fps"] = fps_val
+        proc.config["bitrate"] = bitrate_val
+        proc.config["protocol"] = proto_val
+        proc.config["encoder"] = encoder_val
+        proc.config["srt_latency"] = srt_latency_val
+        proc.config["srt_passphrase"] = passphrase_to_set
+        proc.config["udp_mode"] = udp_mode_val
+        proc.config["udp_host"] = udp_host_val
+        proc.config["auto_start"] = auto_start_val
+        proc.config["zerolatency"] = zero_val
+        proc.config["is_virtual"] = virtual_val
 
         if proc.is_alive:
-            await stream_manager.stop_stream(dp)
-            await stream_manager.start_stream(dp)
+            await stream_manager.restart_stream(dp)
 
     try:
         from core.mediamtx_mgr import mediamtx_manager

@@ -430,6 +430,8 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         cam.setdefault("zerolatency", True)
         cam.setdefault("is_virtual", virtual_flag)
         cam.setdefault("protocol", "srt")
+        cam.setdefault("udp_mode", "multicast")
+        cam.setdefault("udp_host", "127.0.0.1")
         if not cam.get("srt_passphrase") and not cam.get("decryption_failed"):
             cam["srt_passphrase"] = ""
 
@@ -467,6 +469,8 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         "zerolatency": True,
         "auto_start": False,
         "is_virtual": virtual_flag,
+        "udp_mode": "multicast",
+        "udp_host": "127.0.0.1",
     }
 
     cameras[device_path] = new_cam_config
@@ -496,7 +500,7 @@ def update_camera_config(
     protocol: str = "srt",
     encoder: str = "auto",
     srt_latency: int = 120,
-    srt_passphrase: str = "",
+    srt_passphrase: Optional[str] = None,
     auto_start: Optional[bool] = None,
     zerolatency: bool = True,
     is_virtual: bool = False,
@@ -513,7 +517,7 @@ def update_camera_config(
         cam["protocol"] = protocol
         cam["encoder"] = encoder
         cam["srt_latency"] = srt_latency
-        if srt_passphrase:
+        if srt_passphrase is not None:
             cam["srt_passphrase"] = srt_passphrase
         if auto_start is not None:
             cam["auto_start"] = auto_start

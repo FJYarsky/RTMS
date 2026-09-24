@@ -478,8 +478,14 @@
                         <select class="form-ctrl" id="config-protocol" onchange="handleProtocolChange(this.value)">
                             <option value="srt" selected>SRT Media Server (Desacoplado, ultrabaja latencia — Recomendado)</option>
                             <option value="udp_multicast">UDP Multicast (Emisión a múltiples receptores en red LAN)</option>
-                            <option value="udp_unicast">UDP Unicast (Localhost / Misma PC — VLC sin pérdidas ni router)</option>
+                            <option value="udp_unicast">UDP Unicast LAN (Hacia otra PC o Celular — VLC sin caídas)</option>
                         </select>
+                    </div>
+
+                    <div class="form-group" id="group-udp-host" style="display: none; margin-bottom: 16px;">
+                        <label class="form-label" for="config-udp-host">IP de Destino Unicast (PC o Dispositivo Remoto)</label>
+                        <input class="form-ctrl" type="text" id="config-udp-host" value="127.0.0.1" placeholder="Ej: 192.168.1.100 o 127.0.0.1">
+                        <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Ingrese la dirección IP del dispositivo receptor en su red local (o 127.0.0.1 si es en este mismo equipo).</small>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 16px;">
@@ -560,40 +566,42 @@
 
     <!-- MODAL: ACERCA DE RTMS Y AUTOR -->
     <div class="modal-overlay" role="dialog" aria-modal="true" id="about-modal-overlay">
-        <div class="modal-card about-card">
+        <div class="modal-card about-card" style="max-width: 480px;">
             <div class="modal-hdr">
                 <span>Acerca de RTMS</span>
                 <button class="modal-close" aria-label="Cerrar" onclick="closeAboutModal()">&times;</button>
             </div>
-            <div class="modal-body" style="text-align: center; padding: 28px;">
-                <img src="/static/isotype.svg" class="about-logo-svg" alt="RTMS Logo">
-                <h2 style="font-size: 1.5rem; font-weight: 800; margin-top: 12px; color: var(--text-primary);">
-                    Real-Time Multicam System
-                </h2>
-                <div style="font-size: 0.9rem; color: var(--teal); font-weight: 700; margin-bottom: 16px;">
-                    Versión {{ version }} • Producción y Streaming
+            <div class="modal-body" style="text-align: center; padding: 28px 24px;">
+                <div style="max-width: 200px; margin: 0 auto 14px auto;">
+                    <img src="/static/imagotype_vertical.svg" class="about-imagotype-svg" alt="RTMS Real-Time Multicam System" style="width: 100%; height: auto; filter: drop-shadow(0 0 18px rgba(20, 184, 166, 0.3));">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <span class="version-tag">v{{ version }} • Producción y Streaming</span>
                 </div>
 
                 <div class="about-author-box">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">
+                    <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-muted); font-weight: 600;">
                         Desarrollado y Diseñado por
                     </div>
-                    <div style="font-size: 1.3rem; font-weight: 900; color: #fff; margin: 4px 0;">
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #fff; margin: 6px 0;">
                         Joaquín Yarsky
                     </div>
-                    <div style="display: flex; justify-content: center; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
-                        <a href="mailto:joaquinyarsky@gmail.com" class="btn btn-ghost btn-sm" style="text-decoration:none;">
+                    <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
+                        <a href="https://fjyarsky.github.io/RTMS/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="text-decoration:none; display: inline-flex; align-items: center; gap: 6px;">
+                            🌐 Sitio Web Oficial
+                        </a>
+                        <a href="mailto:joaquinyarsky@gmail.com" class="btn btn-ghost btn-sm" style="text-decoration:none; display: inline-flex; align-items: center; gap: 6px;">
                             ✉️ joaquinyarsky@gmail.com
                         </a>
                     </div>
                 </div>
 
-                <div style="text-align: left; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); padding: 14px; margin-top: 18px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
+                <div style="text-align: left; background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 14px; margin-top: 18px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
                     <strong>Atribuciones y Componentes de Terceros:</strong><br>
-                    • <strong>FFmpeg & FFplay:</strong> Proyecto bajo licencia LGPL/GPL (soporte NVENC, QSV, AMF, SRT).<br>
-                    • <strong>FastAPI & Uvicorn:</strong> Framework web asíncrono de alto rendimiento bajo licencia MIT.<br>
-                    • <strong>pywebview:</strong> Motor de interfaz de usuario de escritorio multiplataforma.<br>
-                    • <strong>SRT (Secure Reliable Transport):</strong> Protocolo de transmisión de código abierto.
+                    • <strong>FFmpeg & FFplay:</strong> Motor multimedia bajo licencias LGPL/GPL.<br>
+                    • <strong>FastAPI & Uvicorn:</strong> Framework asíncrono bajo licencia MIT.<br>
+                    • <strong>pywebview:</strong> Interfaz gráfica de escritorio multiplataforma.<br>
+                    • <strong>MediaMTX:</strong> Servidor de retransmisión SRT/WebRTC de alta eficiencia.
                 </div>
             </div>
             <div class="modal-foot">
@@ -645,6 +653,7 @@
             </div>
             <div class="modal-body" style="padding: 24px 20px;">
                 <div id="qr-stream-name" style="font-weight: 700; font-size: 1rem; margin-bottom: 6px; color: var(--text-primary);"></div>
+                <div id="qr-protocol-badge" style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px;"></div>
                 <div id="qr-stream-desc" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 16px;">
                     Escanea este código con la cámara de tu teléfono para abrir la transmisión en VLC o reproducir en la red local.
                 </div>

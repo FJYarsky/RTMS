@@ -407,7 +407,7 @@ async function initDynamicRelease() {
 
         const release = await response.json();
         latestReleaseData = release;
-        const tagName = release.tag_name || 'v2.6.0';
+        const tagName = release.tag_name || 'v2.7.0';
 
         // Actualizar badge de versión en la sección de descarga
         if (downloadTag) downloadTag.textContent = tagName;
@@ -438,7 +438,7 @@ async function initDynamicRelease() {
     } catch (err) {
         console.warn('No se pudo consultar la API de GitHub, utilizando fallback canónico:', err);
         if (downloadBtn) downloadBtn.href = FALLBACK_URL;
-        if (downloadTag) downloadTag.textContent = 'v2.6.0';
+        if (downloadTag) downloadTag.textContent = 'v2.7.0';
         if (downloadSize) downloadSize.textContent = '~52 MB';
         const downloadDate = document.getElementById('download-date');
         if (downloadDate) downloadDate.textContent = currentLang === 'es' ? 'Oficial' : 'Official';

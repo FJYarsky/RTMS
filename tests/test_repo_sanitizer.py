@@ -8,6 +8,7 @@
 
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.manage_descriptions import get_repo_root
 from scripts.repo_sanitizer import (
@@ -112,9 +113,11 @@ def test_run_full_audit_healthy():
     assert "github_workflows" in res
 
 
-def test_fix_functions_idempotent():
-    """Valida que las funciones de autocorrección se ejecuten sin errores cuando todo está en orden."""
-    root = get_repo_root()
-    assert fix_code_formatting(root) is True
-    assert fix_code_linting(root) is True
-    assert fix_descriptions_drift(root) is True
+def test_fix_functions_idempotent(tmp_path: Path):
+    """Valida que las funciones de autocorrección se ejecuten sin errores en un espacio aislado."""
+    sample_file = tmp_path / "sample.py"
+    sample_file.write_text("x = 1\n", encoding="utf-8")
+    assert fix_code_formatting(tmp_path) is True
+    assert fix_code_linting(tmp_path) is True
+    with patch("scripts.repo_sanitizer.audit_descriptions", return_value={"drift_items": []}):
+        assert fix_descriptions_drift(tmp_path) is True

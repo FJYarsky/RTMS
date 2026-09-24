@@ -6,10 +6,8 @@ RTMS adopta una política de soporte activo restringida exclusivamente a la **ú
 
 | Versión | Soportada |
 | ------- | --------- |
-| Versión | Soportada |
-| ------- | --------- |
-| >= 2.6.0 | :white_check_mark: |
-| < 2.6.0 | :x: |
+| >= 2.7.0 | :white_check_mark: |
+| < 2.7.0 | :x: |
 
 > [!IMPORTANT]
 > Si estás ejecutando una versión anterior a la más reciente disponible en los [Releases oficiales de GitHub](https://github.com/FJYarsky/RTMS/releases), por favor actualiza tu instalación antes de reportar un posible problema de seguridad.

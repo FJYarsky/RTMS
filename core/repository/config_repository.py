@@ -43,7 +43,8 @@ class ConfigRepository:
             cursor = conn.execute(
                 """
                 SELECT device_path, id, friendly_name, resolution, fps, bitrate, encoder,
-                       port, protocol, srt_latency, srt_passphrase, zerolatency, auto_start
+                       port, protocol, srt_latency, srt_passphrase, zerolatency, auto_start,
+                       is_virtual, udp_mode, udp_host
                 FROM cameras
                 """
             )
@@ -62,6 +63,9 @@ class ConfigRepository:
                     "srt_passphrase": row["srt_passphrase"],
                     "zerolatency": bool(row["zerolatency"]),
                     "auto_start": bool(row["auto_start"]),
+                    "is_virtual": bool(row["is_virtual"]) if "is_virtual" in row.keys() else False,
+                    "udp_mode": row["udp_mode"] if "udp_mode" in row.keys() else "multicast",
+                    "udp_host": row["udp_host"] if "udp_host" in row.keys() else "127.0.0.1",
                 }
             return cameras
         finally:
@@ -76,8 +80,9 @@ class ConfigRepository:
                     """
                     INSERT INTO cameras (
                         device_path, id, friendly_name, resolution, fps, bitrate, encoder,
-                        port, protocol, srt_latency, srt_passphrase, zerolatency, auto_start, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        port, protocol, srt_latency, srt_passphrase, zerolatency, auto_start,
+                        is_virtual, udp_mode, udp_host, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON CONFLICT(device_path) DO UPDATE SET
                         id=excluded.id,
                         friendly_name=excluded.friendly_name,
@@ -91,6 +96,9 @@ class ConfigRepository:
                         srt_passphrase=excluded.srt_passphrase,
                         zerolatency=excluded.zerolatency,
                         auto_start=excluded.auto_start,
+                        is_virtual=excluded.is_virtual,
+                        udp_mode=excluded.udp_mode,
+                        udp_host=excluded.udp_host,
                         updated_at=CURRENT_TIMESTAMP
                     """,
                     (
@@ -107,6 +115,9 @@ class ConfigRepository:
                         cam.get("srt_passphrase", ""),
                         1 if cam.get("zerolatency", True) else 0,
                         1 if cam.get("auto_start", False) else 0,
+                        1 if cam.get("is_virtual", False) else 0,
+                        cam.get("udp_mode", "multicast"),
+                        cam.get("udp_host", "127.0.0.1"),
                     ),
                 )
         finally:
@@ -262,8 +273,9 @@ class ConfigRepository:
                         """
                         INSERT INTO cameras (
                             device_path, id, friendly_name, resolution, fps, bitrate, encoder,
-                            port, protocol, srt_latency, srt_passphrase, zerolatency, auto_start, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                            port, protocol, srt_latency, srt_passphrase, zerolatency, auto_start,
+                            is_virtual, udp_mode, udp_host, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                         """,
                         (
                             dp,
@@ -279,6 +291,9 @@ class ConfigRepository:
                             cam.get("srt_passphrase", ""),
                             1 if cam.get("zerolatency", True) else 0,
                             1 if cam.get("auto_start", False) else 0,
+                            1 if cam.get("is_virtual", False) else 0,
+                            cam.get("udp_mode", "multicast"),
+                            cam.get("udp_host", "127.0.0.1"),
                         ),
                     )
 
@@ -310,7 +325,8 @@ class ConfigRepository:
             cursor = await db.execute(
                 """
                 SELECT device_path, id, friendly_name, resolution, fps, bitrate, encoder,
-                       port, protocol, srt_latency, srt_passphrase, zerolatency, auto_start
+                       port, protocol, srt_latency, srt_passphrase, zerolatency, auto_start,
+                       is_virtual, udp_mode, udp_host
                 FROM cameras
                 """
             )
@@ -330,6 +346,9 @@ class ConfigRepository:
                     "srt_passphrase": row["srt_passphrase"],
                     "zerolatency": bool(row["zerolatency"]),
                     "auto_start": bool(row["auto_start"]),
+                    "is_virtual": bool(row["is_virtual"]) if "is_virtual" in row.keys() else False,
+                    "udp_mode": row["udp_mode"] if "udp_mode" in row.keys() else "multicast",
+                    "udp_host": row["udp_host"] if "udp_host" in row.keys() else "127.0.0.1",
                 }
             return cameras
 

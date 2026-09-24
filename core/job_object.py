@@ -133,6 +133,8 @@ class JobObjectManager:
         if not self.is_active():
             return False
 
+        opened_handle = False
+        h_process = None
         try:
             kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
 
@@ -141,8 +143,10 @@ class JobObjectManager:
                 h_process = getattr(proc, "_handle", None)
                 if h_process is None and proc.pid:
                     h_process = kernel32.OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, False, proc.pid)
+                    opened_handle = bool(h_process)
             elif isinstance(proc, int):
                 h_process = kernel32.OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, False, proc)
+                opened_handle = bool(h_process)
             else:
                 logger.warning(f"Tipo de proceso no soportado para Job Object: {type(proc)}")
                 return False
@@ -170,6 +174,13 @@ class JobObjectManager:
         except Exception as e:
             logger.debug(f"Excepción al asociar proceso a Job Object: {e}")
             return False
+        finally:
+            if opened_handle and h_process:
+                try:
+                    kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+                    kernel32.CloseHandle(h_process)
+                except Exception:
+                    pass
 
     def close(self) -> None:
         """Cierra el handle del Job Object de forma segura."""

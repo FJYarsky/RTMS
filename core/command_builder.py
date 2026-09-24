@@ -46,7 +46,7 @@ async def build_ffmpeg_command(
 
     bk = f"{bitrate}k"
     maxbk = f"{int(bitrate * 1.15)}k"
-    bufk = f"{bitrate * 2}k"
+    bufk = f"{int(bitrate * 0.5)}k" if zerolatency else f"{bitrate}k"
 
     ffmpeg_bin = get_ffmpeg_bin()
     raw_device = cfg.get("device_path", cfg.get("friendly_name", ""))
@@ -88,8 +88,7 @@ async def build_ffmpeg_command(
             f"video={escaped_device}",
         ]
         cmd += dshow_args
-
-    cmd += ["-pix_fmt", "yuv420p"]
+    cmd += ["-fps_mode", "cfr"]
 
     if force_cpu:
         encoder = "libx264"
@@ -104,6 +103,9 @@ async def build_ffmpeg_command(
                 encoder = await hardware_detector.get_best_encoder()
             if proc:
                 proc.per_stream_encoder = encoder
+
+    pix_fmt = "nv12" if encoder == "h264_nvenc" else "yuv420p"
+    cmd += ["-pix_fmt", pix_fmt]
 
     # Ajuste de flags del codificador según opción zerolatency
     if zerolatency:
@@ -123,15 +125,25 @@ async def build_ffmpeg_command(
                 "-c:v",
                 "h264_nvenc",
                 "-preset",
-                "p1",
+                "p2",
                 "-tune",
-                "ull",
+                "ll",
+                "-rc",
+                "cbr",
                 "-delay",
                 "0",
                 "-zerolatency",
                 "1",
                 "-forced-idr",
                 "1",
+                "-bf",
+                "0",
+                "-b_adapt",
+                "0",
+                "-spatial_aq",
+                "0",
+                "-temporal_aq",
+                "0",
             ]
         elif encoder == "h264_amf":
             cmd += ["-c:v", "h264_amf", "-quality", "speed", "-usage", "ultralowlatency"]

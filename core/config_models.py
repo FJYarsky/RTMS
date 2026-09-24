@@ -19,8 +19,8 @@ class CameraConfig(BaseModel):
     device_path: str
     port: int = Field(default=9000, ge=1024, le=65535)
     resolution: Literal["480p", "720p", "1080p", "1440p", "4K"] = "720p"
-    fps: int = Field(default=30, ge=15, le=120)
-    bitrate: int = Field(default=3000, ge=500, le=50000)
+    fps: int = Field(default=30, ge=1, le=120)
+    bitrate: int = Field(default=3000, ge=500, le=100000)
     protocol: Literal["srt", "udp"] = "srt"
     encoder: Literal["auto", "h264_nvenc", "h264_qsv", "h264_amf", "libx264"] = "auto"
     srt_latency: int = Field(default=120, ge=10, le=5000)

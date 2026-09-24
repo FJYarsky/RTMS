@@ -205,6 +205,7 @@ class VideoReceiverDigest:
                 proc.terminate()
                 await asyncio.sleep(0.2)
                 proc.kill()
+                await asyncio.wait_for(proc.wait(), timeout=1.0)
             except Exception:
                 pass
 
@@ -356,6 +357,7 @@ class VirtualCameraSource:
                 self.process.terminate()
                 await asyncio.sleep(0.2)
                 self.process.kill()
+                await asyncio.wait_for(self.process.wait(), timeout=1.0)
             except Exception:
                 pass
         self.process = None
@@ -604,13 +606,14 @@ class FFmpegDiagnosticSuite:
         Prueba completa de entablado y transmisión UDP (Multicast o Unicast).
         """
         if multicast:
-            ip_last = (port % 200) + 1
+            p = int(port)
+            ip_last = (p - 9000) + 1 if 9000 <= p <= 9200 else ((p - 1024) % 250) + 1
             ip_addr = f"239.255.0.{ip_last}"
         else:
             ip_addr = "127.0.0.1"
 
         sender_url = f"udp://{ip_addr}:{port}?pkt_size=1316&buffer_size={buffer_size}"
-        receiver_url = f"udp://{ip_addr}:{port}?overrun_nonfatal=1&fifo_size=50000000&buffer_size={buffer_size}"
+        receiver_url = f"udp://{ip_addr}:{port}?overrun_nonfatal=1&fifo_size=50000&buffer_size={buffer_size}"
 
         cam = VirtualCameraSource()
         started = await cam.start(

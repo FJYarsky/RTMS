@@ -177,7 +177,7 @@ def test_whep_preview_proxy_endpoint(client):
     from core.stream_manager import stream_manager
 
     dp = "@device_whep_test_cam"
-    proc = stream_manager.get_proc(dp)
+    proc = stream_manager.ensure_proc(dp)
     proc.config = {"id": "cam_whep_test", "device_path": dp}
     proc.state = State.RUNNING
     proc.process = MagicMock(returncode=None)
@@ -219,13 +219,20 @@ def test_whep_preview_proxy_endpoint(client):
 def test_telemetry_websocket_endpoint_unauthorized(client):
     """Valida que /ws/telemetry rechace clientes sin token o con token incorrecto."""
     with pytest.raises((WebSocketDisconnect, RuntimeError)):
-        with client.websocket_connect("/ws/telemetry?token=token_falso_invalido"):
+        with client.websocket_connect("/ws/telemetry"):
+            pass
+
+
+def test_telemetry_websocket_endpoint_query_token_forbidden(client):
+    """Valida que /ws/telemetry rechace el token en query parameter con código 1008."""
+    with pytest.raises((WebSocketDisconnect, RuntimeError)):
+        with client.websocket_connect("/ws/telemetry?token=test_v260_secret_token_123"):
             pass
 
 
 def test_telemetry_websocket_endpoint_authorized(client):
-    """Valida conexión autorizada al WebSocket /ws/telemetry y respuesta ping/pong."""
-    with client.websocket_connect("/ws/telemetry?token=test_v260_secret_token_123") as ws:
+    """Valida conexión autorizada al WebSocket /ws/telemetry vía cookie y respuesta ping/pong."""
+    with client.websocket_connect("/ws/telemetry", cookies={"rtms_session": "test_v260_secret_token_123"}) as ws:
         ws.send_text("ping")
         # El canal puede emitir telemetría reactiva en paralelo; leemos hasta recibir pong
         received_pong = False
@@ -362,7 +369,7 @@ async def test_stream_manager_mjpeg_fallback_recovery():
     from core.stream_manager import StreamManager
 
     sm = StreamManager()
-    proc = sm.get_proc("@device_options_rejected")
+    proc = sm.ensure_proc("@device_options_rejected")
     proc.state = State.RUNNING
     proc.mjpeg_supported = True
     proc.mjpeg_input_failed = False

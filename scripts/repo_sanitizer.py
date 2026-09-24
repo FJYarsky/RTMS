@@ -304,7 +304,7 @@ def prune_git_environment(repo_root: Path) -> Dict[str, Any]:
 # ==============================================================================
 
 
-def run_full_audit(repo_root: Path, skip_tests: bool = False) -> Dict[str, Any]:
+def run_full_audit(repo_root: Path, skip_tests: bool = False, strict: bool = False) -> Dict[str, Any]:
     """Ejecuta una auditoría integral de todos los subsistemas del repositorio."""
     results: Dict[str, Any] = {
         "git_status": audit_git_status(repo_root),
@@ -317,7 +317,11 @@ def run_full_audit(repo_root: Path, skip_tests: bool = False) -> Dict[str, Any]:
     if not skip_tests:
         results["pytest_suite"] = audit_pytest_suite(repo_root)
 
-    overall_pass = all(v.get("status") in ["pass", "warn"] for v in results.values() if isinstance(v, dict))
+    if strict:
+        overall_pass = all(v.get("status") == "pass" for v in results.values() if isinstance(v, dict))
+    else:
+        overall_pass = all(v.get("status") in ["pass", "warn"] for v in results.values() if isinstance(v, dict))
+
     if not skip_tests and not results["pytest_suite"]["passed"]:
         overall_pass = False
 
@@ -422,6 +426,11 @@ def main() -> int:
     parser.add_argument(
         "--full", action="store_true", help="Ejecuta auditoría, autocorrección, poda de ramas y pruebas."
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Modo estricto para CI: retorna fallo si existen advertencias en ramas o estado de Git.",
+    )
     parser.add_argument("--json", action="store_true", help="Imprime el resultado en formato JSON para CI/CD.")
 
     args = parser.parse_args()
@@ -452,7 +461,8 @@ def main() -> int:
         if pruned_local:
             print(f"Ramas locales eliminadas: {', '.join(pruned_local)}")
 
-    if args.full or args.prune_remote:
+    # La poda de ramas remotas en origin requiere flag explícito por seguridad
+    if args.prune_remote:
         pruned_remote = prune_remote_merged_branches(repo_root)
         if pruned_remote:
             print(f"Ramas remotas en origin eliminadas: {', '.join(pruned_remote)}")
@@ -462,7 +472,7 @@ def main() -> int:
         print("Poda de referencias remotas y worktrees completada.")
 
     # Ejecutar reporte de auditoría
-    report = run_full_audit(repo_root, skip_tests=not (args.full or args.test))
+    report = run_full_audit(repo_root, skip_tests=not (args.full or args.test), strict=args.strict)
     report["fix_applied"] = fix_applied
     report["pruned_local_branches"] = pruned_local
     report["pruned_remote_branches"] = pruned_remote

@@ -59,6 +59,10 @@ sanitize-all:
 prune-branches:
     python scripts/repo_sanitizer.py --prune-local --prune-env
 
+# Poda explícita y confirmada de ramas remotas fusionadas en origin
+prune-remote:
+    python scripts/repo_sanitizer.py --prune-remote
+
 # Construcción de empaquetado portable para Windows
 build:
     cmd /c build_portable.bat

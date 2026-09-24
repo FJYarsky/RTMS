@@ -39,7 +39,12 @@ class StreamManager:
         self._watchdog_task: Optional[asyncio.Task] = None
         self._handling_device_lost: Set[str] = set()
 
-    def get_proc(self, device_path: str) -> StreamProc:
+    def get_proc(self, device_path: str) -> Optional[StreamProc]:
+        """Retorna el StreamProc existente sin crear uno nuevo si no existe."""
+        return self._procs.get(device_path)
+
+    def ensure_proc(self, device_path: str) -> StreamProc:
+        """Retorna el StreamProc existente o crea uno nuevo si aún no existe."""
         if device_path not in self._procs:
             self._procs[device_path] = StreamProc(device_path)
         return self._procs[device_path]
@@ -65,8 +70,15 @@ class StreamManager:
 
     async def start_stream(self, device_path: str, force_cpu: bool = False):
         """Inicia un flujo asegurando exclusión mutua para evitar ejecuciones concurrentes."""
-        proc = self.get_proc(device_path)
+        proc = self.ensure_proc(device_path)
         async with proc.lock:
+            await self._start_stream_locked(proc, force_cpu=force_cpu)
+
+    async def restart_stream(self, device_path: str, force_cpu: bool = False):
+        """Reinicia un flujo de forma atómica bajo exclusión mutua."""
+        proc = self.ensure_proc(device_path)
+        async with proc.lock:
+            await self._stop_stream_locked(proc)
             await self._start_stream_locked(proc, force_cpu=force_cpu)
 
     async def _start_stream_locked(self, proc: StreamProc, force_cpu: bool = False):
@@ -200,9 +212,19 @@ class StreamManager:
         except Exception:
             pass
 
+        try:
+            from core.power_mgr import power_governor
+
+            active_count = sum(1 for p in self._procs.values() if p.is_alive)
+            power_governor.on_stream_started(active_count)
+        except Exception as e:
+            logger.debug(f"Aviso al notificar power_governor stream_started: {e}")
+
     async def stop_stream(self, device_path: str, timeout: float = 2.5):
         """Detiene un flujo de forma limpia y ordenada enviando 'q' antes de terminate/kill."""
         proc = self.get_proc(device_path)
+        if not proc:
+            return
         async with proc.lock:
             await self._stop_stream_locked(proc, timeout=timeout)
 
@@ -224,7 +246,7 @@ class StreamManager:
             try:
                 if proc.process.stdin:
                     proc.process.stdin.write(b"q\n")
-                    await proc.process.stdin.drain()
+                    await asyncio.wait_for(proc.process.stdin.drain(), timeout=1.0)
             except Exception as e:
                 logger.debug(f"Aviso al enviar 'q' a {proc.device_path}: {e}")
 
@@ -242,6 +264,7 @@ class StreamManager:
                     logger.error(f"Forzando kill() en FFmpeg {proc.device_path}...")
                     try:
                         proc.process.kill()
+                        await asyncio.wait_for(proc.process.wait(), timeout=1.0)
                     except Exception:
                         pass
 
@@ -255,6 +278,7 @@ class StreamManager:
         proc.current_fps = 0.0
         proc.current_bitrate_kbps = 0.0
         proc.zero_fps_since = None
+        proc.last_progress_at = None
         proc.log("Stream detenido limpiamente.")
 
         try:
@@ -268,6 +292,14 @@ class StreamManager:
             )
         except Exception:
             pass
+
+        try:
+            from core.power_mgr import power_governor
+
+            active_count = sum(1 for p in self._procs.values() if p.is_alive)
+            power_governor.on_stream_stopped(active_count)
+        except Exception as e:
+            logger.debug(f"Aviso al notificar power_governor stream_stopped: {e}")
 
     async def remove_stream(self, device_path: str) -> bool:
         """Detiene la transmisión, libera el puerto y elimina la cámara de forma permanente."""
@@ -308,6 +340,8 @@ class StreamManager:
     async def _fallback_to_cpu(self, device_path: str):
         """Maneja la transición explícita de fallo de GPU a CPU sin condiciones de carrera."""
         proc = self.get_proc(device_path)
+        if not proc:
+            return
         async with proc.lock:
             if proc.using_fallback_cpu:
                 return
@@ -321,6 +355,8 @@ class StreamManager:
     async def _fallback_from_mjpeg(self, device_path: str):
         """Maneja la transición ágil de fallo de negociación MJPEG a formato nativo YUYV/NV12."""
         proc = self.get_proc(device_path)
+        if not proc:
+            return
         async with proc.lock:
             proc.mjpeg_input_failed = True
             proc.mjpeg_supported = False
@@ -360,6 +396,8 @@ class StreamManager:
         self._handling_device_lost.add(device_path)
         try:
             proc = self.get_proc(device_path)
+            if not proc:
+                return
             devices = await get_directshow_devices()
             detected_paths = {d["device_path"] for d in devices}
             if device_path not in detected_paths:
@@ -400,8 +438,12 @@ class StreamManager:
                             logger.info(f"Flujo {dp} estable por {int(uptime)}s. Reseteando contadores de error.")
                             proc.clear_failure()
 
-                        # Detección de congelamiento por desconexión física de hardware (0 FPS sostenido)
-                        if uptime >= 8.0 and proc.current_fps == 0.0:
+                        # Detección de congelamiento por desconexión física de hardware o freeze de FFmpeg
+                        progress_frozen = False
+                        if proc.last_progress_at and (now - proc.last_progress_at).total_seconds() >= 10.0:
+                            progress_frozen = True
+
+                        if uptime >= 8.0 and (proc.current_fps == 0.0 or progress_frozen):
                             if proc.zero_fps_since is None:
                                 proc.zero_fps_since = now
                             elif (now - proc.zero_fps_since).total_seconds() >= 8.0:
@@ -409,7 +451,7 @@ class StreamManager:
                                 detected_paths = {d["device_path"] for d in devices}
                                 if dp not in detected_paths:
                                     logger.warning(
-                                        f"Cámara {dp} sin cuadros (0 fps) y no encontrada en DirectShow. Desconectando..."
+                                        f"Cámara {dp} sin cuadros/congelada y no encontrada en DirectShow. Desconectando..."
                                     )
                                     proc.is_connected = False
                                     proc.transition_to(State.DISCONNECTED)
@@ -417,6 +459,13 @@ class StreamManager:
                                     proc.error_count = 0
                                     proc.manual_intervention_required = False
                                     asyncio.create_task(self.stop_stream(dp, timeout=1.0))
+                                    continue
+                                elif progress_frozen:
+                                    logger.warning(
+                                        f"Cámara {dp} con encoder FFmpeg congelado (>10s sin progreso). Reiniciando..."
+                                    )
+                                    proc.zero_fps_since = None
+                                    asyncio.create_task(self.restart_stream(dp))
                                     continue
                         else:
                             proc.zero_fps_since = None
@@ -685,7 +734,7 @@ class StreamManager:
             dp = d["device_path"]
             if is_device_ignored(dp):
                 continue
-            proc = self.get_proc(dp)
+            proc = self.ensure_proc(dp)
             was_disconnected = not proc.is_connected or proc.state == State.DISCONNECTED
             proc.config = get_or_allocate_camera_config(dp, d["friendly_name"])
             proc.is_connected = True

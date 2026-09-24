@@ -73,7 +73,7 @@ def test_stream_manager_handle_device_lost_transitions_to_disconnected():
 
     mgr = StreamManager()
     dp = "@device_unplugged_cam"
-    proc = mgr.get_proc(dp)
+    proc = mgr.ensure_proc(dp)
     proc.state = State.RUNNING
     proc.is_connected = True
 

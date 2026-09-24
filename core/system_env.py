@@ -194,7 +194,7 @@ def setup_firewall_rules(port_range: str = "8889-8990,9000-9200") -> bool:
             "action=allow",
             "protocol=UDP",
             f"localport={port_range}",
-            "profile=private",
+            "profile=private,public,domain",
         ]
         res = subprocess.run(
             cmd_fw_srt, check=False, capture_output=True, text=True, timeout=10, creationflags=_WIN_NO_WINDOW
@@ -220,7 +220,7 @@ def setup_firewall_rules(port_range: str = "8889-8990,9000-9200") -> bool:
                     "action=allow",
                     f"program={mediamtx_path}",
                     "enable=yes",
-                    "profile=private,domain",
+                    "profile=private,public,domain",
                 ]
                 subprocess.run(cmd_app, check=False, capture_output=True, timeout=10, creationflags=_WIN_NO_WINDOW)
                 logger.info("Regla de firewall explícita añadida para bin/mediamtx.exe.")

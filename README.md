@@ -104,7 +104,7 @@ RTMS/
 ├── gui/                   # Panel de control web (SPA, plantillas y estilos)
 ├── docs/                  # Guías de hardware, troubleshooting y branding oficial (BRANDING.md)
 ├── scripts/               # Scripts de descarga y verificación de FFmpeg
-├── tests/                 # Suite de pruebas automatizadas (113 tests)
+├── tests/                 # Suite de pruebas automatizadas (186 tests)
 ├── config/                # Plantilla de configuración (config.example.json)
 ├── main.py                # Punto de entrada de la aplicación
 ├── run.bat                # Lanzador rápido para Windows

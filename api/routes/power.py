@@ -6,6 +6,7 @@
 
 """Rutas REST para control y auditoría de perfiles energéticos nativos de Windows."""
 
+import asyncio
 import logging
 import os
 
@@ -27,14 +28,14 @@ async def power_status():
 @router.post("/api/power/apply", dependencies=[Depends(verify_api_token)])
 async def apply_power():
     """Aplica las optimizaciones de energía y estabilidad en Windows y reporta el resultado real."""
-    result = setup_windows_environment()
+    result = await asyncio.to_thread(setup_windows_environment)
     return result
 
 
 @router.post("/api/power/restore", dependencies=[Depends(verify_api_token)])
 async def restore_power():
     """Restaura la configuración original de energía de Windows (Protegido por Token)."""
-    result = restore_original_power_settings()
+    result = await asyncio.to_thread(restore_original_power_settings)
     if result.get("status") == "ok":
         return result
     raise HTTPException(status_code=400, detail=result.get("message", "Error al restaurar"))

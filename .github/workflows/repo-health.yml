@@ -23,12 +23,14 @@ on:
     branches: [ "main" ]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   health-check-and-sanitize:
     name: Repo Health Audit & Sanitizer
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Clonar Repositorio con Historial Completo

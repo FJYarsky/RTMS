@@ -30,7 +30,11 @@ async def websocket_telemetry_endpoint(
     """
     expected_token = getattr(websocket.app.state, "api_token", _GLOBAL_API_TOKEN)
     if expected_token is not None:
-        provided = token or websocket.headers.get("x-rtms-token") or websocket.cookies.get("rtms_session")
+        if token is not None:
+            logger.warning("Conexión WebSocket rechazada: Token en query string prohibido por directiva de seguridad.")
+            await websocket.close(code=1008, reason="Query token forbidden")
+            return
+        provided = websocket.headers.get("x-rtms-token") or websocket.cookies.get("rtms_session")
         if not provided or not secrets.compare_digest(str(provided), str(expected_token)):
             logger.warning("Conexión WebSocket rechazada: Token inválido o ausente.")
             await websocket.close(code=1008, reason="Unauthorized")

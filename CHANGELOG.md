@@ -1,5 +1,39 @@
 # Changelog — RTMS (Real-Time Multicam System)
 
+## [2.7.0] — 2026-09-24
+
+### Ultra-Baja Latencia SRT/UDP, Zero GPU Bloat, Identidad Visual Oficial, Gobernanza Dinámica Energética y Seguridad Integral
+- **Motor Multimedia de Ultra-Baja Latencia y Mitigación de Saturación GPU (`core/stream_proc.py`, `core/command_builder.py`, `core/stream_manager.py`)**:
+  - Eliminación de VBV buffer bloat: tamaño de buffer ajustado a sub-segundo (`bufk = int(bitrate * 0.5)k`) eliminando encolamiento artificial en FFmpeg.
+  - Sintonización fina de hardware NVENC (`h264_nvenc`): configuración `-preset p2 -tune ll -rc cbr -delay 0 -zerolatency 1 -forced-idr 1 -bf 0 -b_adapt 0 -spatial_aq 0 -temporal_aq 0` con `-pix_fmt nv12`, previniendo saturación innecesaria al 100% de GPU y caídas en DirectShow con fuentes YUYV.
+  - Corrección de sincronía de reloj de entrada FFmpeg mediante `-fps_mode cfr` previo al codificador.
+  - Sintonización de sockets UDP y buffers de red: `buffer_size=131072` (128 KB) y `fifo_size=50000`, evitando retrasos y pérdida de paquetes.
+  - Mapeo inyectivo y determinista de multicast UDP: fórmula `(port - 9000) + 1` asignando IPs únicas `239.255.0.1`..`239.255.0.201` para puertos 9000..9200 sin riesgo de colisiones entre cámaras simultáneas.
+  - Sintonización de latencia en clientes SRT: URLs de recepción con `&latency=50000` (50 ms) para reproducción inmediata en OBS/vMix y VLC. Formato canónico para VLC UDP Unicast `udp://@:<port>`.
+  - Watchdog de congelamiento FFmpeg (`last_progress_at`): detección y recuperación automática ante transmisiones congeladas (>10s sin avance).
+  - Reglas de Windows Firewall expandidas a `profile=private,public,domain` con rango completo de puertos.
+- **Persistencia ACID SQLite v2 y Semántica API PATCH (`core/repository/database.py`, `core/repository/config_repository.py`, `core/config_models.py`, `api/schemas.py`, `core/config_mgr.py`, `api/routes/streams.py`, `api/routes/config.py`)**:
+  - Migración transaccional de esquema SQLite a v2: soporte idempotente para columnas `is_virtual`, `udp_mode` y `udp_host`.
+  - Semántica PATCH en API REST: actualización granular sin sobreescritura de campos omitidos, con control explícito de credenciales SRT (`secret_action = keep | set | clear`).
+  - Separación rigurosa de métodos `get_proc` (no mutante, retorna 404 ante rutas inexistentes) y `ensure_proc` en `StreamManager`.
+  - Reinicio atómico selectivo al importar configuraciones en caliente sólo para parámetros que impactan el pipeline de transcodificación.
+- **Identidad Visual Oficial, Estética y Branding Vectorial (`gui/templates/index.html`, `gui/static/styles.css`, `gui/static/app.js`)**:
+  - Píldora de versión `.version-tag` rediseñada con tipografía monospace fluorescente (JetBrains Mono/Consolas), efecto sutil de resplandor cian/azul y micro-interacción hover.
+  - HUD del encabezado con tarjetas de telemetría de alta resolución (`.header-hud`) y animación de pulso esmeralda `pulse-live` en tarjetas activas.
+  - Modal "Acerca de" modernizado: imagotipo vertical SVG oficial vectorial (`gui/static/imagotype_vertical.svg`), tarjeta glassmorphism de autor y enlace al portal oficial `https://fjyarsky.github.io/RTMS/`.
+  - Selector de protocolo y modal QR actualizados con soporte visual y de configuración para "UDP Unicast LAN" y host destino.
+- **Blindaje de Seguridad, Mitigación de Fuga de Recursos y Gobernador de Energía (`api/routes/preview.py`, `api/routes/ws.py`, `core/job_object.py`, `core/stream_manager.py`, `core/mediamtx_mgr.py`, `api/routes/power.py`, `main.py`)**:
+  - Eliminación estricta de tokens en query strings: rechazo con HTTP 403 en proxy WHEP y con código 1008 en `/ws/telemetry`, forzando uso de cookies de sesión HttpOnly `rtms_session` o cabeceras `X-RTMS-Token` (CWE-598).
+  - Corrección de fuga de handles en Windows Job Objects: invocación de `CloseHandle` en bloques `finally` garantizados tras `OpenProcess`.
+  - Integración del gobernador de energía dinámico (`DynamicPowerGovernor`): activación automática de Alto Rendimiento durante streaming y reversión al estado previo al finalizar.
+  - Inyección de cabeceras Content-Security-Policy (CSP) estrictas en middleware HTTP.
+  - Redirección de logs de MediaMTX hacia `config/mediamtx.log` con rotación preventiva contra desbordamiento de disco.
+  - Ejecución no bloqueante de comandos de energía `powercfg` mediante `asyncio.to_thread`.
+- **Tooling, Sanitización y Suite de Regresiones (`scripts/repo_sanitizer.py`, `justfile`, `tests/test_audit_v270_features.py`)**:
+  - Aislamiento de poda remota en repo sanitizer: ejecución únicamente con `--prune-remote` explícito, previniendo eliminación accidental en `--full`.
+  - Modo estricto `--strict` en auditoría de repositorio.
+  - 10 nuevas pruebas automatizadas dedicadas cubriendo la totalidad de funciones v2.7.0 (186/186 pruebas unitarias y de integración pasando al 100%).
+
 ## [2.6.0] — 2026-09-23
 
 ### Previsualizaciones WebRTC WHEP, Canal WebSocket de Telemetría a 10 Hz, Monitoreo Determinista, Negociación MJPEG por Silicio y Escaneo Continuo Snyk

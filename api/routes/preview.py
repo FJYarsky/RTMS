@@ -8,7 +8,6 @@
 
 import asyncio
 import logging
-import secrets
 import urllib.error
 import urllib.request
 from typing import Optional
@@ -16,7 +15,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 
-from api.deps import get_global_api_token, preview_ticket_mgr, verify_api_token
+from api.deps import preview_ticket_mgr, verify_api_token
 from api.schemas import PreviewTicketRequest
 from core.config_mgr import find_camera_by_id_or_path
 from core.mediamtx_mgr import clean_camera_id, mediamtx_manager
@@ -274,18 +273,17 @@ async def whep_proxy_endpoint(request: Request, device_path: str, ticket: Option
     cam_id = cam.get("id", dp) if cam else dp
     clean_cam_id = clean_camera_id(cam_id)
 
-    # 1. Autenticación (ticket efímero, token por query string o cabecera X-RTMS-Token)
+    # 1. Autenticación (ticket efímero, cookie rtms_session o cabecera X-RTMS-Token)
     if ticket:
         if not preview_ticket_mgr.consume_ticket(ticket, dp):
             raise HTTPException(status_code=403, detail="Ticket de previsualización inválido o expirado.")
     else:
-        token_q = request.query_params.get("token")
-        if token_q:
-            expected = getattr(request.app.state, "api_token", get_global_api_token())
-            if not expected or not secrets.compare_digest(str(token_q), str(expected)):
-                raise HTTPException(status_code=403, detail="Token inválido.")
-        else:
-            await verify_api_token(request)
+        if request.query_params.get("token"):
+            raise HTTPException(
+                status_code=403,
+                detail="El uso de token global por query parameter está deshabilitado por seguridad. Utilice tickets efímeros, cookie de sesión o la cabecera X-RTMS-Token.",
+            )
+        await verify_api_token(request)
 
     # 2. Lectura del cuerpo SDP de la oferta
     body_bytes = await request.body()
