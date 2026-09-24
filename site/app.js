@@ -134,7 +134,7 @@ const TRANSLATIONS = {
         footer_col_author: "Autor & Contacto",
         footer_profile: "Perfil de GitHub",
         footer_license_text: "Distribuido bajo la",
-        footer_credit: "Desarrollado con pasión para la comunidad de streaming por",
+        footer_credit: "Desarrollado en Argentina por un argentino, con pasión, por",
         faq_tag: "Dudas Frecuentes",
         faq_title: "Preguntas Frecuentes sobre RTMS",
         faq_desc: "Todo lo que necesitas saber sobre compatibilidad, configuración y arquitectura de streaming.",
@@ -274,7 +274,7 @@ const TRANSLATIONS = {
         footer_col_author: "Author & Contact",
         footer_profile: "GitHub Profile",
         footer_license_text: "Distributed under the",
-        footer_credit: "Built with passion for the streaming community by",
+        footer_credit: "Developed in Argentina by an Argentine, with passion, by",
         faq_tag: "Frequently Asked Questions",
         faq_title: "Frequently Asked Questions about RTMS",
         faq_desc: "Everything you need to know about compatibility, setup, and streaming architecture.",
@@ -321,12 +321,18 @@ let latestReleaseData = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initLanguage();
-    initDynamicRelease();
     initCopyButtons();
     initNavbarScroll();
     initSmoothScrollAndAnchors();
     initActiveNavSpy();
     initMobileMenu();
+
+    // Rendimiento Core Web Vitals: diferir llamada a API de GitHub a tiempo ocioso (desacopla ruta crítica)
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => initDynamicRelease());
+    } else {
+        setTimeout(initDynamicRelease, 120);
+    }
 });
 
 /**
@@ -544,30 +550,41 @@ function initCopyButtons() {
 
 /**
  * Detecta el scroll vertical para aplicar elevación y sombra al navbar fijo.
+ * Utiliza requestAnimationFrame y listener pasivo para prevenir reprocesamiento forzado (layout thrashing).
  */
 function initNavbarScroll() {
     const navbar = document.querySelector('.navbar');
     if (!navbar) return;
 
+    let ticking = false;
     const handleScroll = () => {
-        if (window.scrollY > 15) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                if (window.scrollY > 15) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+                ticking = false;
+            });
+            ticking = true;
         }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+    window.requestAnimationFrame(handleScroll);
 }
 
 /**
- * Centra perfectamente cada sección al hacer clic en las etiquetas de navegación,
- * compensando exactamente la altura del header fijo y aplicando foco accesible.
+ * Centra con precisión milimétrica cada sección al hacer clic en las etiquetas del header.
+ * Mide el bloque de contenido interior (.container) para evitar el vacío de 96px de padding superior.
+ * Si la sección cabe en pantalla, la centra verticalmente en el área visible debajo del header.
+ * Si la sección es más alta, sitúa el encabezado a 20px del header dejando visible el máximo de tarjetas.
  */
 function initSmoothScrollAndAnchors() {
     const navAnchors = document.querySelectorAll('a[href^="#"]');
-    const navbar = document.querySelector('.navbar');
+    const NAV_HEIGHT_DESKTOP = 64;
+    const NAV_HEIGHT_MOBILE = 60;
 
     navAnchors.forEach(anchor => {
         anchor.addEventListener('click', (e) => {
@@ -582,13 +599,28 @@ function initSmoothScrollAndAnchors() {
             const target = document.querySelector(href);
             if (target) {
                 e.preventDefault();
-                const navHeight = navbar ? navbar.offsetHeight : 64;
-                const extraPadding = 18; // Margen de respiración estética
-                const elementPosition = target.getBoundingClientRect().top + window.pageYOffset;
-                const offsetPosition = elementPosition - navHeight - extraPadding;
+                const currentNavH = window.innerWidth <= 640 ? NAV_HEIGHT_MOBILE : NAV_HEIGHT_DESKTOP;
+                const winH = window.innerHeight;
+                const availH = winH - currentNavH;
+
+                // Medir el contenedor de contenido real (sin el padding superior externo del section)
+                const content = target.querySelector('.container') || target;
+                const rect = content.getBoundingClientRect();
+                const contentAbsTop = rect.top + window.scrollY;
+                const contentH = rect.height;
+
+                let targetScroll;
+                if (contentH <= availH) {
+                    // La sección cabe completamente: centrarla verticalmente en el espacio disponible
+                    const vertPad = (availH - contentH) / 2;
+                    targetScroll = contentAbsTop - currentNavH - vertPad;
+                } else {
+                    // La sección es más alta: alinear la cabecera 20px debajo del navbar
+                    targetScroll = contentAbsTop - currentNavH - 20;
+                }
 
                 window.scrollTo({
-                    top: Math.max(0, offsetPosition),
+                    top: Math.max(0, Math.round(targetScroll)),
                     behavior: 'smooth'
                 });
 

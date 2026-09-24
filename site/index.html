@@ -43,7 +43,12 @@
 
     <link rel="icon" type="image/svg+xml" href="isotype.svg">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="styles.css">
+
+    <!-- RENDIMIENTO & NETWORK PRECONNECT (PageSpeed Insights: ahorra 130ms LCP y 140ms FCP) -->
+    <link rel="preconnect" href="https://api.github.com" crossorigin>
+    <link rel="dns-prefetch" href="https://api.github.com">
+    <link rel="preload" href="styles.css?v=2.8.0" as="style">
+    <link rel="stylesheet" href="styles.css?v=2.8.0">
 
     <!-- Structured Data (JSON-LD) for Google Rich Snippets -->
     <script type="application/ld+json">
@@ -141,9 +146,9 @@
     <!-- ACCESSIBILITY: SKIP LINK PARA NAVEGACIÓN POR TECLADO -->
     <a href="#main-content" class="skip-link" data-i18n="skip_to_content">Saltar al contenido principal</a>
 
-    <!-- NAVBAR NAVEGACIÓN -->
+    <!-- NAVBAR NAVEGACIÓN (Centrado simétrico y márgenes fluidos) -->
     <header class="navbar">
-        <div class="container navbar-inner">
+        <div class="navbar-inner">
             <a href="#" class="brand" aria-label="RTMS — Inicio">
                 <img src="isotype.svg" class="brand-logo-svg" alt="" aria-hidden="true" width="36" height="36">
                 <div class="brand-content">
@@ -961,13 +966,14 @@
                     &copy; 2026 <strong>Joaquín Yarsky</strong>. <span data-i18n="footer_license_text">Distribuido bajo la</span> <a href="https://github.com/FJYarsky/RTMS/blob/main/LICENSE" target="_blank" rel="noopener" class="footer-license-link">Licencia MIT</a>.
                 </div>
                 <div class="footer-author-badge">
-                    <span data-i18n="footer_credit">Desarrollado con pasión para la comunidad de streaming por</span> <a href="https://github.com/FJYarsky" target="_blank" rel="noopener" class="footer-author-link">Joaquín Yarsky</a>
+                    <span data-i18n="footer_credit">Desarrollado en Argentina por un argentino, con pasión, por</span> <a href="https://github.com/FJYarsky" target="_blank" rel="noopener" class="footer-author-link">Joaquín Yarsky</a>
                 </div>
             </div>
         </div>
     </footer>
 
-    <script src="app.js"></script>
+    <!-- Script principal diferido para máxima puntuación en Core Web Vitals -->
+    <script src="app.js?v=2.8.0" defer></script>
 </body>
 </html>
 

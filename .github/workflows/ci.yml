@@ -4,8 +4,16 @@ name: RTMS CI Pipeline
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - "site/**"
+      - "*.md"
+      - "docs/**"
   pull_request:
     branches: [ "main" ]
+    paths-ignore:
+      - "site/**"
+      - "*.md"
+      - "docs/**"
 
 permissions:
   contents: read
