@@ -44,11 +44,17 @@
     <link rel="icon" type="image/svg+xml" href="isotype.svg">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
 
-    <!-- RENDIMIENTO & NETWORK PRECONNECT (PageSpeed Insights: ahorra 130ms LCP y 140ms FCP) -->
-    <link rel="preconnect" href="https://api.github.com" crossorigin>
-    <link rel="dns-prefetch" href="https://api.github.com">
-    <link rel="preload" href="styles.css?v=2.8.2" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="styles.css?v=2.8.2"></noscript>
+    <!-- ESTILOS CRÍTICOS & HOJA DE ESTILOS (Previene 100% el parpadeo FOUC en F5 y carga inicial) -->
+    <style>
+        :root { color-scheme: dark; }
+        html, body {
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+    <link rel="stylesheet" href="styles.css">
 
     <!-- Structured Data (JSON-LD) for Google Rich Snippets -->
     <script type="application/ld+json">
