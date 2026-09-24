@@ -199,7 +199,8 @@ def _touch_file_cleanly(file_path: Path) -> bool:
             ".js",
             ".css",
             ".ps1",
-        ]:
+            ".toml",
+        ] or file_path.name == "justfile":
             content = file_path.read_text(encoding="utf-8")
             # Alternar salto neutro al final para asegurar que git detecte un diff real
             if content.endswith("\n\n"):
