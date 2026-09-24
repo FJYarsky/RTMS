@@ -108,6 +108,7 @@ RTMS/
 │   │   ├── logotype.svg                 # Logotipo vectorial blanco puro (RTMS)
 │   │   ├── imagotype.svg                # Imagotipo horizontal completo
 │   │   ├── imagotype_vertical.svg       # Imagotipo vertical apilado
+│   │   ├── favicon.ico                  # Favicon web multi-res para el panel web
 │   │   ├── logo_showcase.html           # Panel de previsualización interactiva de marca
 │   │   ├── brand_assets_sheet.png       # Hoja de muestra gráfica en alta resolución
 │   │   └── brand_preview.png            # Render 512px del icono de escritorio
@@ -118,6 +119,7 @@ RTMS/
 │   ├── isotype.svg                      # Isotipo sincronizado para landing page
 │   ├── logotype.svg                     # Logotipo sincronizado para landing page
 │   ├── logo.svg                         # Imagotipo horizontal para landing page
+│   ├── brand_preview.png                # Vista previa oficial para Open Graph y Twitter Cards
 │   └── index.html                       # Landing page oficial
 └── core/
     └── tray_icon.py                     # Generador nativo de icono fallback en System Tray
