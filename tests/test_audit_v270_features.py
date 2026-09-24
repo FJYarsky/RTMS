@@ -40,12 +40,12 @@ def test_injective_multicast_port_mapping():
 
 
 def test_client_urls_latency_and_unicast():
-    """Valida el formato de URL para SRT cliente (latency=50000) y UDP Unicast (udp://@:<port>)."""
+    """Valida el formato de URL para SRT cliente (sin latency= para evitar buffer bloat en VLC) y UDP Unicast (udp://@:<port>)."""
     # SRT
     srt_urls = build_client_urls("srt", "192.168.1.50", 9000, "cam_main")
-    assert "latency=50000" in srt_urls["connect_url"]
     assert "srt://192.168.1.50:8890" in srt_urls["connect_url"]
     assert "streamid=read:cam_main" in srt_urls["connect_url"]
+    assert "latency=" not in srt_urls["vlc_url"]
 
     # UDP Unicast
     udp_urls = build_client_urls("udp", "192.168.1.50", 9005, "cam_udp", udp_mode="unicast")
