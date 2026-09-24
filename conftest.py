@@ -35,6 +35,9 @@ def isolate_test_config(tmp_path, monkeypatch):
     monkeypatch.setattr("core.config_mgr.CONFIG_BAK_FILE", test_config_bak)
     monkeypatch.setattr("core.config_mgr.CONFIG_LEGACY_BAK_FILE", test_config_legacy_bak)
     monkeypatch.setattr("core.config_mgr.CONFIG_TMP_FILE", test_config_tmp)
+    test_db_path = str(test_config_dir / "rtms.db")
+    monkeypatch.setattr("core.repository.database._DB_DIR", str(test_config_dir))
+    monkeypatch.setattr("core.repository.database._DB_PATH", test_db_path)
     if hasattr(sys.modules.get("core.config_mgr"), "_LAST_SAVED_CONFIG"):
         monkeypatch.setattr("core.config_mgr._LAST_SAVED_CONFIG", None)
     yield
