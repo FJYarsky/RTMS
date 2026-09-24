@@ -5,11 +5,11 @@
 ### Ultra-Baja Latencia SRT/UDP, Zero GPU Bloat, Identidad Visual Oficial, Gobernanza Dinámica Energética y Seguridad Integral
 - **Motor Multimedia de Ultra-Baja Latencia y Mitigación de Saturación GPU (`core/stream_proc.py`, `core/command_builder.py`, `core/stream_manager.py`)**:
   - Eliminación de VBV buffer bloat: tamaño de buffer ajustado a sub-segundo (`bufk = int(bitrate * 0.5)k`) eliminando encolamiento artificial en FFmpeg.
-  - Sintonización fina de hardware NVENC (`h264_nvenc`): configuración `-preset p2 -tune ll -rc cbr -delay 0 -zerolatency 1 -forced-idr 1 -bf 0 -b_adapt 0 -spatial_aq 0 -temporal_aq 0` con `-pix_fmt nv12`, previniendo saturación innecesaria al 100% de GPU y caídas en DirectShow con fuentes YUYV.
+  - Sintonización fina de hardware NVENC (`h264_nvenc`): configuración `-preset p2 -tune ll -rc cbr -delay 0 -zerolatency 1 -forced-idr 1 -bf 0 -b_adapt 0` con `-pix_fmt nv12`, previniendo saturación innecesaria al 100% de GPU y caídas en DirectShow con fuentes YUYV.
   - Corrección de sincronía de reloj de entrada FFmpeg mediante `-fps_mode cfr` previo al codificador.
   - Sintonización de sockets UDP y buffers de red: `buffer_size=131072` (128 KB) y `fifo_size=50000`, evitando retrasos y pérdida de paquetes.
   - Mapeo inyectivo y determinista de multicast UDP: fórmula `(port - 9000) + 1` asignando IPs únicas `239.255.0.1`..`239.255.0.201` para puertos 9000..9200 sin riesgo de colisiones entre cámaras simultáneas.
-  - Sintonización de latencia en clientes SRT: URLs de recepción con `&latency=50000` (50 ms) para reproducción inmediata en OBS/vMix y VLC. Formato canónico para VLC UDP Unicast `udp://@:<port>`.
+  - Sintonización de latencia en clientes SRT: URLs de recepción limpias sin retardo de búfer para reproducción inmediata en OBS/vMix y VLC. Formato canónico para VLC UDP Unicast `udp://@:<port>`.
   - Watchdog de congelamiento FFmpeg (`last_progress_at`): detección y recuperación automática ante transmisiones congeladas (>10s sin avance).
   - Reglas de Windows Firewall expandidas a `profile=private,public,domain` con rango completo de puertos.
 - **Persistencia ACID SQLite v2 y Semántica API PATCH (`core/repository/database.py`, `core/repository/config_repository.py`, `core/config_models.py`, `api/schemas.py`, `core/config_mgr.py`, `api/routes/streams.py`, `api/routes/config.py`)**:
