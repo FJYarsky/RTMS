@@ -185,22 +185,33 @@ def _touch_file_cleanly(file_path: Path) -> bool:
 
     suffix = file_path.suffix.lower()
     try:
-        if suffix in [
-            ".py",
-            ".md",
-            ".yml",
-            ".yaml",
-            ".json",
-            ".txt",
-            ".bat",
-            ".vbs",
-            ".config",
-            ".html",
-            ".js",
-            ".css",
-            ".ps1",
-            ".toml",
-        ] or file_path.name == "justfile":
+        if suffix == ".py":
+            content = file_path.read_text(encoding="utf-8")
+            if content.endswith("\n# rtms-sync\n"):
+                normalized = content[: -len("# rtms-sync\n")]
+            else:
+                normalized = content.rstrip("\r\n") + "\n# rtms-sync\n"
+            file_path.write_text(normalized, encoding="utf-8", newline="\n")
+            return True
+        elif (
+            suffix
+            in [
+                ".md",
+                ".yml",
+                ".yaml",
+                ".json",
+                ".txt",
+                ".bat",
+                ".vbs",
+                ".config",
+                ".html",
+                ".js",
+                ".css",
+                ".ps1",
+                ".toml",
+            ]
+            or file_path.name == "justfile"
+        ):
             content = file_path.read_text(encoding="utf-8")
             # Alternar salto neutro al final para asegurar que git detecte un diff real
             if content.endswith("\n\n"):
