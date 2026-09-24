@@ -1675,3 +1675,4 @@ function copyQrUrl() {
         showToast("URL de red copiada para VLC / Celular");
     }
 }
+
