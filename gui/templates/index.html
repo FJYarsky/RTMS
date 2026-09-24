@@ -24,6 +24,15 @@
                 <span class="version-tag">v{{ version }}</span>
             </div>
 
+            <!-- Hamburger Menu (Mobile) -->
+            <button class="btn-hamburger" id="btn-hamburger" onclick="toggleMobileSidebar()" aria-label="Abrir menú de navegación">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+
             <!-- HUD de Telemetría en Tiempo Real -->
             <div class="header-hud hud-telemetry" id="hud-telemetry">
                 <div class="hud-item" title="Uso actual del procesador (CPU)">
@@ -54,11 +63,11 @@
                 </div>
                 <div class="ip-pill" id="header-ip-addr">–.–.–.–</div>
                 <!-- Botón de Detención Global -->
-                <button class="btn btn-emergency" onclick="confirmEmergencyStop()" title="Detener inmediatamente todas las transmisiones activas">
+                <button class="btn btn-emergency" onclick="confirmEmergencyStop()" title="Detener inmediatamente todas las transmisiones activas" aria-label="Detener todas las transmisiones">
                     ⏹️ Detener Todo
                 </button>
                 <!-- Botón de Finalizar Procesos -->
-                <button class="btn btn-kill-procs" onclick="confirmTerminateAllProcesses()" title="Finalizar totalmente todos los procesos de RTMS y streaming">
+                <button class="btn btn-kill-procs" onclick="confirmTerminateAllProcesses()" title="Finalizar totalmente todos los procesos de RTMS y streaming" aria-label="Finalizar todos los procesos">
                     ⚡ Salir / Finalizar
                 </button>
             </div>
@@ -67,7 +76,7 @@
         <!-- SIDEBAR -->
         <nav class="sidebar">
             <div class="nav-section-title">Principal</div>
-            <div class="nav-link active" data-page="connect" onclick="navigateToPage('connect')">
+            <div class="nav-link active" data-page="connect" onclick="navigateToPage('connect')" role="button" tabindex="0">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
                 </svg>
@@ -75,7 +84,7 @@
             </div>
             
             <div class="nav-section-title">Gestión</div>
-            <div class="nav-link" data-page="cameras" onclick="navigateToPage('cameras')">
+            <div class="nav-link" data-page="cameras" onclick="navigateToPage('cameras')" role="button" tabindex="0">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/>
                 </svg>
@@ -84,13 +93,13 @@
             </div>
 
             <div class="nav-section-title">Gestión del Sistema</div>
-            <div class="nav-link" data-page="power" onclick="navigateToPage('power')">
+            <div class="nav-link" data-page="power" onclick="navigateToPage('power')" role="button" tabindex="0">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2M9 3a2 2 0 002 2h2a2 2 0 002-2M9 3h6"/>
                 </svg>
                 Gestión de Energía
             </div>
-            <div class="nav-link" data-page="system" onclick="navigateToPage('system')">
+            <div class="nav-link" data-page="system" onclick="navigateToPage('system')" role="button" tabindex="0">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                 </svg>
@@ -108,12 +117,15 @@
             </div>
         </nav>
 
+        <!-- Mobile Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
+
         <!-- MAIN CONTENT AREA -->
         <main>
             <!-- 1. PAGE: CONECTAR OBS/VLC -->
             <div id="page-connect" class="page active">
-                <div class="page-title">Conectar con OBS / VLC</div>
-                <div class="page-subtitle">Direcciones de red optimizadas para recepción de video con ultra baja latencia.</div>
+                <h2 class="page-title">Conectar con OBS / VLC</h2>
+                <p class="page-subtitle">Direcciones de red optimizadas para recepción de video con ultra baja latencia.</p>
 
                 <div class="ip-display-box">
                     <div class="ip-info-text">
@@ -183,8 +195,8 @@
 
             <!-- 2. PAGE: CAMARAS Y CONFIGURACION -->
             <div id="page-cameras" class="page">
-                <div class="page-title">Dispositivos y Flujos</div>
-                <div class="page-subtitle">Control individual, autoarranque y optimización de hardware para cada cámara detectada.</div>
+                <h2 class="page-title">Dispositivos y Flujos</h2>
+                <p class="page-subtitle">Control individual, autoarranque y optimización de hardware para cada cámara detectada.</p>
 
                 <div style="display: flex; justify-content: flex-end; margin-bottom: 20px; gap: 10px;">
                     <button class="btn btn-primary" id="btn-scan-hw" onclick="scanHardwareDevices()">
@@ -231,8 +243,8 @@
 
             <!-- 3. PAGE: GESTION DE ENERGIA -->
             <div id="page-power" class="page">
-                <div class="page-title">Optimización Energética</div>
-                <div class="page-subtitle">Directivas silenciosas de Windows para evitar cortes de cámara por USB Selective Suspend.</div>
+                <h2 class="page-title">Optimización Energética</h2>
+                <p class="page-subtitle">Directivas silenciosas de Windows para evitar cortes de cámara por USB Selective Suspend.</p>
 
                 <div class="card">
                     <div class="card-header">Estado de Optimización Energética</div>
@@ -306,8 +318,8 @@
 
             <!-- 4. PAGE: SISTEMA Y AUTOARRANQUE -->
             <div id="page-system" class="page">
-                <div class="page-title">Sistema y Ejecución Desatendida</div>
-                <div class="page-subtitle">Configuración de tolerancia a reinicios del sistema sin intervención humana.</div>
+                <h2 class="page-title">Sistema y Ejecución Desatendida</h2>
+                <p class="page-subtitle">Configuración de tolerancia a reinicios del sistema sin intervención humana.</p>
 
                 <div class="card">
                     <div class="card-header">Autoarranque con Windows (Modo Desatendido)</div>
@@ -413,11 +425,11 @@
     </div>
 
     <!-- CONFIGURATION MODAL -->
-    <div class="modal-overlay" id="config-modal-overlay">
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="config-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr">
                 <span id="config-modal-title">Configuración de Cámara</span>
-                <button class="modal-close" onclick="closeConfigModal()">&times;</button>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeConfigModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="camera-config-form" onsubmit="submitCameraConfig(event)">
@@ -531,11 +543,11 @@
     </div>
 
     <!-- LOGS MODAL -->
-    <div class="modal-overlay" id="logs-modal-overlay">
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="logs-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr">
                 <span id="logs-modal-title">Logs de FFmpeg</span>
-                <button class="modal-close" onclick="closeLogsModal()">&times;</button>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeLogsModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="logs-box" id="logs-content-box">Cargando logs...</div>
@@ -547,11 +559,11 @@
     </div>
 
     <!-- MODAL: ACERCA DE RTMS Y AUTOR -->
-    <div class="modal-overlay" id="about-modal-overlay">
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="about-modal-overlay">
         <div class="modal-card about-card">
             <div class="modal-hdr">
                 <span>Acerca de RTMS</span>
-                <button class="modal-close" onclick="closeAboutModal()">&times;</button>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeAboutModal()">&times;</button>
             </div>
             <div class="modal-body" style="text-align: center; padding: 28px;">
                 <img src="/static/isotype.svg" class="about-logo-svg" alt="RTMS Logo">
@@ -591,14 +603,14 @@
     </div>
 
     <!-- MODAL: VISTA PREVIA DE VIDEO ON-DEMAND -->
-    <div class="modal-overlay" id="preview-modal">
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="preview-modal">
         <div class="modal-card preview-card">
             <div class="modal-hdr" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; flex: 1;">
                     <span id="preview-modal-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px;">Vista Previa de Video</span>
                     <span id="preview-modal-info" style="display: inline-flex; align-items: center;"></span>
                 </div>
-                <button class="modal-close" onclick="closePreviewModal()">&times;</button>
+                <button class="modal-close" aria-label="Cerrar" onclick="closePreviewModal()">&times;</button>
             </div>
             <div class="modal-body preview-modal-body">
                 <div class="preview-container">
@@ -625,11 +637,11 @@
     </div>
 
     <!-- MODAL: CÓDIGO QR PARA REPRODUCCIÓN MÓVIL (VLC / CELULAR) -->
-    <div class="modal-overlay" id="qr-modal-overlay">
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="qr-modal-overlay">
         <div class="modal-card" style="max-width: 440px; text-align: center;">
             <div class="modal-hdr">
                 <span>📱 Escanear con Celular (VLC Mobile)</span>
-                <button class="modal-close" onclick="closeQrModal()">&times;</button>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeQrModal()">&times;</button>
             </div>
             <div class="modal-body" style="padding: 24px 20px;">
                 <div id="qr-stream-name" style="font-weight: 700; font-size: 1rem; margin-bottom: 6px; color: var(--text-primary);"></div>
@@ -660,11 +672,11 @@
     </div>
 
     <!-- MODAL: CONFIRMACIÓN DE DETENCIÓN GLOBAL -->
-    <div class="modal-overlay" id="emergency-modal-overlay">
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="emergency-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr" style="color: #f59e0b;">
                 <span>⏹️ Confirmar Detención Global</span>
-                <button class="modal-close" onclick="closeEmergencyModal()">&times;</button>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeEmergencyModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 0.95rem; margin-bottom: 12px;">
@@ -682,11 +694,11 @@
     </div>
 
     <!-- MODAL: CONFIRMACIÓN DE FINALIZACIÓN TOTAL DE PROCESOS -->
-    <div class="modal-overlay" id="terminate-modal-overlay">
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="terminate-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr" style="color: var(--status-red);">
                 <span>⚡ Finalización Total de Procesos</span>
-                <button class="modal-close" onclick="closeTerminateModal()">&times;</button>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeTerminateModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 0.95rem; margin-bottom: 12px;">
@@ -704,11 +716,11 @@
     </div>
 
     <!-- MODAL: CONFIRMACIÓN DE RESTABLECIMIENTO A VALORES DE FÁBRICA -->
-    <div class="modal-overlay" id="reset-modal-overlay">
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="reset-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr" style="color: var(--status-red);">
                 <span>🗑️ Restablecer a Valores de Fábrica</span>
-                <button class="modal-close" onclick="closeResetModal()">&times;</button>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeResetModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="font-size: 0.95rem; margin-bottom: 12px;">
@@ -729,7 +741,7 @@
     </div>
 
     <!-- TOAST CONTAINER -->
-    <div id="toast-container"></div>
+    <div id="toast-container" aria-live="polite" role="status"></div>
 
     <script src="/static/qrcode.min.js"></script>
     <script src="/static/app.js"></script>

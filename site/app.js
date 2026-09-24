@@ -441,14 +441,35 @@ function initCopyButtons() {
             if (!targetEl) return;
 
             const textToCopy = targetEl.textContent.trim();
-            try {
-                await navigator.clipboard.writeText(textToCopy);
-                
+            let success = false;
+
+            // Intento primario: Clipboard API (requiere Secure Context: HTTPS o localhost)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(textToCopy);
+                    success = true;
+                } catch (_) { /* Fallback abajo */ }
+            }
+
+            // Fallback: execCommand para contextos no seguros (file://)
+            if (!success) {
+                try {
+                    const ta = document.createElement('textarea');
+                    ta.value = textToCopy;
+                    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    success = document.execCommand('copy');
+                    document.body.removeChild(ta);
+                } catch (_) { /* Silencioso */ }
+            }
+
+            if (success) {
                 const originalHtml = button.innerHTML;
                 const feedbackText = currentLang === 'es' ? '¡Plantilla copiada!' : 'Template copied!';
                 button.classList.add('copied');
                 button.innerHTML = `
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                     <span class="btn-copy-label">${feedbackText}</span>
@@ -458,8 +479,8 @@ function initCopyButtons() {
                     button.classList.remove('copied');
                     button.innerHTML = originalHtml;
                 }, 2200);
-            } catch (err) {
-                console.error('Fallo al copiar al portapapeles:', err);
+            } else {
+                console.error('No se pudo copiar al portapapeles en este entorno.');
             }
         });
     });

@@ -20,7 +20,7 @@
 
     --text-primary: #f3f4f6;
     --text-secondary: #9ca3af;
-    --text-muted: #6b7280;
+    --text-muted: #9ca3af;
 
     --teal: #14b8a6;
     --teal-hover: #0d9488;
@@ -47,6 +47,22 @@
 
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, system-ui, sans-serif;
     --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+
+    --transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    --space-20: 80px;
+    --space-24: 96px;
 }
 
 * {
@@ -57,6 +73,24 @@
 
 html {
     scroll-behavior: smooth;
+}
+
+*:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+}
+
+*:focus {
+    outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 body {
@@ -212,6 +246,12 @@ body::before {
 
 .nav-link:hover {
     color: var(--text-primary);
+}
+
+.nav-link:focus-visible {
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-underline-offset: 4px;
 }
 
 .nav-cta-group {
@@ -450,6 +490,13 @@ body::before {
     border-radius: var(--radius-full);
     font-size: 0.82rem;
     color: var(--text-secondary);
+    transition: border-color var(--transition-base), background var(--transition-base), transform var(--transition-base);
+}
+
+.spec-badge:hover {
+    border-color: var(--border-color);
+    background: rgba(17, 24, 39, 0.9);
+    transform: translateY(-1px);
 }
 
 .spec-badge svg {
@@ -653,7 +700,7 @@ body::before {
 
 .problem-card:hover {
     border-color: var(--border-color);
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-soft);
 }
 
@@ -823,6 +870,13 @@ body::before {
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
     padding: 18px;
+    transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.security-card:hover {
+    border-color: var(--border-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .sec-title {
@@ -943,7 +997,7 @@ body::before {
     font-family: var(--font-mono);
     font-size: 0.8rem;
     color: var(--cyan);
-    word-break: break-all;
+    overflow-wrap: break-word;
 }
 
 .code-box.code-box-simple {
@@ -1072,6 +1126,7 @@ body::before {
     border-radius: 3px;
     font-family: var(--font-mono);
     font-size: 0.85em;
+    word-break: break-word;
 }
 
 /* TECH STACK BADGES */
@@ -1148,9 +1203,9 @@ body::before {
 }
 
 .footer-links-group {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, auto);
     gap: 48px;
-    flex-wrap: wrap;
 }
 
 .footer-column-title {

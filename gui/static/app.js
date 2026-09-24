@@ -55,7 +55,47 @@ function navigateToPage(pageId) {
             page.classList.remove('active');
         }
     });
+
+    // Cerrar sidebar en mobile al navegar
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar && sidebar.classList.contains('mobile-open')) {
+        sidebar.classList.remove('mobile-open');
+        if (overlay) overlay.classList.remove('active');
+    }
 }
+
+// TOGGLE DEL SIDEBAR EN MOBILE
+function toggleMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (!sidebar) return;
+    sidebar.classList.toggle('mobile-open');
+    if (overlay) overlay.classList.toggle('active');
+}
+
+// SOPORTE DE TECLADO PARA NAV-LINKS (Enter/Space) Y ESCAPE PARA MODALES
+document.addEventListener('keydown', function(e) {
+    // Escape cierra modales abiertos
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+            modal.classList.remove('active');
+        });
+        // También cerrar sidebar mobile
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar && sidebar.classList.contains('mobile-open')) {
+            sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
+        }
+    }
+
+    // Enter/Space en nav-links con role="button"
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('nav-link')) {
+        e.preventDefault();
+        e.target.click();
+    }
+});
 
 // NOTIFICACIONES TOAST (Sanitizado seguro sin inyección de innerHTML)
 function showToast(message, type = 'info') {
