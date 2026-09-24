@@ -1,0 +1,10 @@
+# RTMS — Configuración y reglas de excepción para Gitleaks
+title = "RTMS Gitleaks Configuration"
+
+[allowlist]
+description = "Archivos de prueba y plantillas de configuración con valores ficticios"
+paths = [
+    '''tests/.*''',
+    '''config/config\.example\.json''',
+    '''config/mediamtx\.example\.yml''',
+]

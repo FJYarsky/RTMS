@@ -1,0 +1,60 @@
+# RTMS — Plantilla de discusión de Ideas y Mejoras de la Comunidad (GitHub Discussion Form)
+title: "💡 [Idea]: "
+labels: ["idea", "rfc", "enhancement"]
+description: "Propón nuevas ideas, protocolos, mejoras de arquitectura o interfaz para RTMS."
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 💡 Propuestas de Evolución y Nuevas Características — RTMS
+        ¿Tienes una propuesta para hacer que RTMS sea aún más potente, eficiente o intuitivo para transmisiones en vivo?
+        
+        > [!NOTE]
+        > Este espacio permite discutir la viabilidad técnica, arquitectura y diseño de nuevas características con el autor (**Joaquín Yarsky**) y la comunidad antes de formalizar un Issue de desarrollo.
+
+  - type: input
+    id: idea_summary
+    attributes:
+      label: Título Resumido de la Propuesta
+      placeholder: "ej. Soporte para protocolo NDI Bridge / Ingesta de audio independiente / Control de Tally por WebSocket"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Área de Impacto Principal
+      options:
+        - "Motor de Video y Streaming (MediaMTX / FFmpeg / Protocolos SRT, UDP, NDI)"
+        - "Aceleración por Hardware (NVIDIA NVENC, Intel QSV, AMD AMF)"
+        - "Interfaz de Usuario (Dark Mode UI, Dashboard Web, Visualización de Telemetría)"
+        - "Automatización & API (FastAPI, WebSockets, Webhooks, Integración Bitfocus Companion)"
+        - "Gestión de Hardware y Procesos (DirectShow, Hotplug, Win32 Job Objects)"
+        - "Empaquetado y Distribución (.exe portable, scripts de despliegue, Winget)"
+        - "Documentación y Ecosistema de Producción"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem_or_motivation
+    attributes:
+      label: ¿Qué necesidad o flujo de trabajo actual motivó esta propuesta?
+      description: Describe el escenario real de producción en vivo donde esta mejora marcaría una diferencia.
+      placeholder: "Durante una transmisión en vivo con 4 cámaras, se dificulta saber qué cámara está en el aire sin mirar la interfaz de OBS..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Solución y Comportamiento Sugerido
+      description: "Detalla cómo imaginas la implementación: parámetros de configuración, endpoints de API o elementos en la interfaz visual."
+      placeholder: "Se podría implementar un indicador de borde de color (Tally visual) en el preview de RTMS que cambie de gris a rojo según un mensaje WebSocket..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives_considered
+    attributes:
+      label: Alternativas o Soluciones Temporales Consideradas
+      description: ¿Has probado alguna herramienta externa o workaround para resolver este problema?

@@ -1,0 +1,76 @@
+# RTMS — Plantilla de discusión de Soporte y Consultas de Streaming (GitHub Discussion Form)
+title: "💬 [Q&A]: "
+labels: ["question", "support", "streaming"]
+description: "Consultas técnicas sobre configuración de streaming, OBS Studio, vMix, SRT, MediaMTX y redes locales."
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 💬 Centro de Consultas y Soporte Técnico — RTMS
+        ¿Tienes dudas sobre cómo conectar RTMS con OBS Studio, sincronizar múltiples cámaras, configurar SRT o resolver problemas de latencia y red?
+        
+        > [!TIP]
+        > Revisa antes la [Guía de Configuración de OBS Studio](https://github.com/FJYarsky/RTMS#-%EF%B8%8F-configuraci%C3%B3n-en-obs-studio) y la documentación de arquitectura en [`docs/ARCHITECTURE.md`](https://github.com/FJYarsky/RTMS/blob/main/docs/ARCHITECTURE.md).
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Verificaciones Rápidas
+      options:
+        - label: He verificado que los puertos de RTMS y MediaMTX (por defecto 8890 para SRT, 8554 para RTSP, 8889 para WebRTC) no estén bloqueados por el Firewall de Windows.
+          required: false
+        - label: He comprobado que tanto la máquina con RTMS como el receptor (OBS/vMix) estén en la misma subred local o con ruteo habilitado.
+          required: false
+
+  - type: dropdown
+    id: protocol_used
+    attributes:
+      label: Protocolo de Streaming Involucrado
+      options:
+        - "SRT (Secure Reliable Transport — Recomendado)"
+        - "WebRTC / WHEP (Baja latencia en navegador)"
+        - "UDP Multicast / Unicast"
+        - "RTSP / RTP"
+        - "Captura DirectShow local"
+        - "No estoy seguro / Necesito asesoramiento"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: target_software
+    attributes:
+      label: Software Receptor o Destino
+      options:
+        - "OBS Studio 30.x / 31.x (Media Source o VLC Source)"
+        - "vMix (SRT Ingestion)"
+        - "VLC Media Player"
+        - "Navegador Web (Chrome, Edge, Firefox vía WebRTC)"
+        - "GStreamer / FFplay directo"
+        - "Otro software"
+    validations:
+      required: true
+
+  - type: input
+    id: stream_url_syntax
+    attributes:
+      label: Sintaxis de URL o Comando Empleado
+      description: URL de conexión ingresada en el receptor o configuración de red.
+      placeholder: "ej. srt://192.168.1.100:8890/?streamid=read:CAM_01&latency=50"
+    validations:
+      required: false
+
+  - type: textarea
+    id: question_body
+    attributes:
+      label: Descripción Detallada de la Consulta
+      description: Explica tu objetivo, qué configuración tienes implementada y cuál es el resultado o comportamiento observado.
+      placeholder: "Estoy transmitiendo 3 cámaras web Logitech a 1080p30 hacia una máquina secundaria con OBS Studio. Al activar la tercera cámara noto que..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs_or_diagnostics
+    attributes:
+      label: Logs o Mensajes de Consola (Opcional)
+      description: Puedes pegar fragmentos de logs de RTMS o de la consola de OBS Studio (recuerda no incluir tokens ni datos confidenciales).
+      render: shell

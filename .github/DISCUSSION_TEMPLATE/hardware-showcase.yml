@@ -1,0 +1,119 @@
+# RTMS — Plantilla de discusión comunitaria de Hardware y Setups (GitHub Discussion Form)
+title: "🎥 [Setup]: "
+labels: ["hardware", "compatibility", "showcase"]
+description: "Comparte cámaras, capturadoras HDMI, buses USB/PCIe y setups de estudio verificados en RTMS."
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🎥 Base de Conocimiento de Hardware Verificado — RTMS
+        Bienvenido al espacio de la comunidad para documentar hardware y estaciones multicámara funcionando con **RTMS (Real-Time Multicam System)**.
+        
+        > [!TIP]
+        > Tus pruebas ayudan a otros creadores, realizadores de streaming y productores a seleccionar dispositivos estables y optimizar el rendimiento de baja latencia (<100ms) en Windows 10/11.
+
+  - type: input
+    id: setup_name
+    attributes:
+      label: Título del Setup o Dispositivo
+      description: Nombre representativo del dispositivo o de la estación multicámara probada.
+      placeholder: "ej. 4x Cámaras HDMI vía Magewell PCIe + OBS Studio en LAN Gigabit"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: device_type
+    attributes:
+      label: Categoría de Dispositivo Principal
+      description: Selecciona el tipo de hardware evaluado.
+      options:
+        - "Cámara Web USB (DirectShow / UVC nativo)"
+        - "Cámara Profesional / Mirrorless / Camcorder (vía Capturadora HDMI)"
+        - "Placa de Captura de Video PCIe (Multicanal 4x / 8x)"
+        - "Capturadora USB 3.0 / USB-C Externa (Elgato, AverMedia, CamLink, etc.)"
+        - "Cámara PTZ de Estudio (HDMI / IP / DirectShow)"
+        - "Cámara Virtual / Fuente de Software (OBS VirtualCam, vMix, etc.)"
+        - "Otro dispositivo de video"
+    validations:
+      required: true
+
+  - type: input
+    id: device_models
+    attributes:
+      label: Modelos y Fabricantes Exactos
+      description: Marca comercial y modelo de cada cámara o capturadora probada.
+      placeholder: "ej. 2x Sony ZV-E10 + 2x Elgato Cam Link 4K (Controladora USB ASMedia dedicada)"
+    validations:
+      required: true
+
+  - type: input
+    id: host_machine
+    attributes:
+      label: Estación de Trabajo Host (Windows)
+      description: CPU, memoria RAM, GPU dedicada y versión de Windows 10/11.
+      placeholder: "ej. Windows 11 Pro 23H2, Intel Core i7-13700K, 32GB DDR5, NVIDIA RTX 4070"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: encoder_used
+    attributes:
+      label: Codificador de Hardware / Aceleración en RTMS
+      description: Motor configurado en RTMS para la multiplexación y transmisión.
+      options:
+        - "h264_nvenc (NVIDIA NVENC H.264)"
+        - "hevc_nvenc (NVIDIA NVENC HEVC/H.265)"
+        - "h264_qsv (Intel Quick Sync H.264)"
+        - "hevc_qsv (Intel Quick Sync HEVC/H.265)"
+        - "h264_amf (AMD AMF H.264)"
+        - "hevc_amf (AMD AMF HEVC/H.265)"
+        - "libx264 (Software CPU H.264)"
+        - "Passthrough / Copia directa de flujo DirectShow"
+    validations:
+      required: true
+
+  - type: input
+    id: resolution_fps
+    attributes:
+      label: Perfil de Video y Tasa de Cuadros Verificada
+      description: Resolución nativa, framerate y bitrate configurados.
+      placeholder: "ej. 1920x1080 @ 60 FPS — 6000 kbps por cámara (Formato YUY2 / NV12)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: target_receiver
+    attributes:
+      label: Receptor de Ingesta Final
+      description: Software utilizado para consumir los flujos desde MediaMTX.
+      options:
+        - "OBS Studio (vía SRT / Media Source)"
+        - "vMix (vía SRT Caller / Listener)"
+        - "VLC Media Player (vía SRT / UDP)"
+        - "Navegador Web (vía WebRTC / WHEP)"
+        - "Múltiples receptores simultáneos en red local"
+        - "Otro software de producción"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stability_rating
+    attributes:
+      label: Evaluación de Estabilidad y Desempeño
+      description: Comportamiento en sesiones prolongadas de transmisión.
+      options:
+        - "⭐⭐⭐⭐⭐ Excelente: Cero pérdida de paquetes, sincronía A/V perfecta, latencia < 80ms"
+        - "⭐⭐⭐⭐ Muy Buena: Estable por > 4 horas, fluctuaciones mínimas de jitter"
+        - "⭐⭐⭐ Aceptable: Funciona bien pero requiere ajustes de buffer o ancho de banda"
+        - "⚠️ Con Observaciones: Requiere controlador específico o conexión a puertos USB independientes"
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: Detalles Técnicos, Consejos y Diagrama del Setup
+      description: Comparte trucos de configuración, cómo resolviste cuellos de botella de bus USB, temperaturas, o adjunta capturas de pantalla de la GUI de RTMS y OBS Studio.
+      placeholder: "Para evitar cuellos de botella en el bus USB, conectamos una cámara al puerto trasero USB 3.2 de la placa madre y la otra a una tarjeta PCIe con controladora Renesas independiente..."
+    validations:
+      required: true

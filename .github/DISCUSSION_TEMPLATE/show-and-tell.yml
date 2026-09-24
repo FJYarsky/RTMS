@@ -1,0 +1,44 @@
+# RTMS — Plantilla de demostración de producciones y casos de éxito (GitHub Discussion Form)
+title: "🚀 [Show & Tell]: "
+labels: ["showcase", "community", "production"]
+description: "Muestra tu producción en vivo, evento, estudio o configuración multicámara utilizando RTMS."
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🚀 Muro de Producciones Comunitarias — RTMS Show & Tell
+        ¡Nos encanta ver cómo se utiliza RTMS en el mundo real! Comparte fotos de tu cabina de control, capturas de OBS/vMix, diagramas de red o grabaciones de tu evento.
+        
+        > [!TIP]
+        > Puedes arrastrar y soltar fotos de tu mesa de producción o capturas de pantalla directamente en el editor.
+
+  - type: input
+    id: project_title
+    attributes:
+      label: Nombre del Proyecto o Evento
+      placeholder: "ej. Transmisión en vivo de Torneo Regional de Esports / Podcast Multicámara 4K"
+    validations:
+      required: true
+
+  - type: input
+    id: cameras_count
+    attributes:
+      label: Cantidad y Tipo de Fuentes de Video
+      placeholder: "ej. 3 cámaras mirrorless HDMI + 1 webcam de plano general + 1 cámara PTZ"
+    validations:
+      required: true
+
+  - type: textarea
+    id: project_story
+    attributes:
+      label: Cuéntanos sobre la Producción
+      description: ¿Cómo ayudó RTMS a resolver el flujo de captura? ¿Qué desafíos técnicos tuvieron y qué resultados obtuvieron?
+      placeholder: "Utilizamos RTMS en una laptop con Windows 11 para capturar 4 señales simultáneas y transmitirlas por SRT a través de la red local hacia la estación de mezcla de OBS..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: media_links
+    attributes:
+      label: Fotos, Videos o Enlaces (Opcional)
+      description: Puedes pegar enlaces de YouTube/Twitch o adjuntar imágenes de la producción.
