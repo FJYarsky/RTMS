@@ -5,26 +5,136 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="meta_title">RTMS — Real-Time Multicam System | Servidor de Streaming de Baja Latencia para Windows</title>
     <meta name="description" content="Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio y vMix. Captura DirectShow, aceleración GPU y telemetría en tiempo real.">
+    <meta name="keywords" content="RTMS, Real-Time Multicam System, multicam streaming, OBS Studio, vMix, SRT streaming, MediaMTX, DirectShow, webcam streaming Windows, ultra-low latency, GPU acceleration, NVENC, Intel QSV, AMD AMF, multicamara Windows, streaming video local">
+    <meta name="author" content="Joaquín Yarsky">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="google-site-verification" content="K4atht1hzto90bz8_x7NtOqwRNzvxsG-kuRyDSOb650">
+
+    <!-- Canonical URL & Hreflang Alternates -->
+    <link rel="canonical" href="https://fjyarsky.github.io/RTMS/">
+    <link rel="alternate" hreflang="es" href="https://fjyarsky.github.io/RTMS/">
+    <link rel="alternate" hreflang="en" href="https://fjyarsky.github.io/RTMS/">
+    <link rel="alternate" hreflang="x-default" href="https://fjyarsky.github.io/RTMS/">
     
     <!-- Open Graph / Meta Social -->
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="RTMS — Real-Time Multicam System">
     <meta property="og:title" content="RTMS — Real-Time Multicam System">
-    <meta property="og:description" content="Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio.">
+    <meta property="og:description" content="Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio y vMix.">
     <meta property="og:url" content="https://fjyarsky.github.io/RTMS/">
     <meta property="og:image" content="https://fjyarsky.github.io/RTMS/brand_preview.png">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="512">
     <meta property="og:image:height" content="512">
+    <meta property="og:image:alt" content="RTMS — Real-Time Multicam System para Windows">
+    <meta property="og:locale" content="es_ES">
+    <meta property="og:locale:alternate" content="en_US">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="RTMS — Real-Time Multicam System">
-    <meta name="twitter:description" content="Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio.">
+    <meta name="twitter:description" content="Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio y vMix.">
     <meta name="twitter:image" content="https://fjyarsky.github.io/RTMS/brand_preview.png">
+    <meta name="twitter:image:alt" content="RTMS — Real-Time Multicam System">
+
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="application-name" content="RTMS">
+    <meta name="apple-mobile-web-app-title" content="RTMS">
 
     <link rel="icon" type="image/svg+xml" href="isotype.svg">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
+
+    <!-- Structured Data (JSON-LD) for Google Rich Snippets -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://fjyarsky.github.io/RTMS/#website",
+          "url": "https://fjyarsky.github.io/RTMS/",
+          "name": "RTMS — Real-Time Multicam System",
+          "description": "Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio y vMix.",
+          "inLanguage": ["es", "en"],
+          "publisher": {
+            "@type": "Person",
+            "name": "Joaquín Yarsky",
+            "url": "https://github.com/FJYarsky"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://fjyarsky.github.io/RTMS/#software",
+          "name": "RTMS (Real-Time Multicam System)",
+          "operatingSystem": "Windows 10, Windows 11",
+          "applicationCategory": "MultimediaApplication",
+          "applicationSubCategory": "Broadcasting & Video Streaming",
+          "softwareVersion": "2.6.0",
+          "license": "https://github.com/FJYarsky/RTMS/blob/main/LICENSE",
+          "url": "https://fjyarsky.github.io/RTMS/",
+          "downloadUrl": "https://github.com/FJYarsky/RTMS/releases/latest",
+          "author": {
+            "@type": "Person",
+            "name": "Joaquín Yarsky",
+            "url": "https://github.com/FJYarsky"
+          },
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "description": "Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio y vMix. Captura DirectShow, aceleración GPU y telemetría en tiempo real."
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://fjyarsky.github.io/RTMS/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "¿Qué es RTMS y cómo se conecta con OBS Studio o vMix?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "RTMS (Real-Time Multicam System) es un servidor local para Windows que captura dispositivos DirectShow (cámaras web, capturadoras HDMI, cámaras virtuales) y los transmite como flujos SRT independientes a través de MediaMTX. En OBS Studio o vMix, simplemente agregas una 'Fuente Multimedia', desmarcas 'Archivo local' y pegas la URL SRT generada (ej. srt://127.0.0.1:8890?streamid=read:cam_1)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Qué diferencia a RTMS de capturar cámaras directamente en OBS o usar NDI?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Capturar múltiples cámaras DirectShow directamente en OBS suele congelar el software si un cable USB se desconecta y satura el bus USB. NDI consume gran ancho de banda de red (100-150 Mbps por cámara) y exige licencias propietarias. RTMS desacopla la captura del receptor mediante MediaMTX, cuenta con reconexión automática PnP ante desconexiones físicas, y utiliza SRT con compresión por hardware (NVENC/QSV/AMF), logrando latencia inferior a 100 ms con mínimo consumo de CPU."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Qué tarjetas gráficas y códecs de aceleración soporta RTMS?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "RTMS soporta codificación por hardware nativa: NVIDIA NVENC (h264_nvenc), Intel Quick Sync Video (h264_qsv) y AMD AMF (h264_amf). Si el equipo no cuenta con GPU compatible, activa automáticamente un fallback transparente a CPU (libx264)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Qué sucede si una cámara USB se desenchufa durante una transmisión en vivo?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "El watchdog y el monitor DirectShow de RTMS interceptan la desconexión sin congelar OBS ni bloquear los controladores de Windows. El stream entra en reposo y, en cuanto vuelves a conectar el USB, RTMS reanuda el flujo de video automáticamente en menos de 5 segundos sin reiniciar la aplicación ni interrumpir tu directo."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿RTMS es gratuito, seguro y de código abierto?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sí. RTMS es 100% de código abierto bajo la Licencia MIT. Su código fuente está auditado en GitHub, no recopila telemetría externa, funciona de forma totalmente aislada ('air-gapped') en red local y cifra credenciales sensibles mediante Windows DPAPI."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
 </head>
 <body>
 
@@ -32,7 +142,7 @@
     <header class="navbar">
         <div class="container navbar-inner">
             <a href="#" class="brand">
-                <img src="isotype.svg" class="brand-logo-svg" alt="RTMS Isotipo">
+                <img src="isotype.svg" class="brand-logo-svg" alt="RTMS — Real-Time Multicam System Isotipo Logo" width="36" height="36">
                 <div class="brand-content">
                     <div class="brand-top">
                         <span class="brand-title">RTMS</span>
@@ -48,6 +158,7 @@
                     <li><a href="#caracteristicas" class="nav-link" data-i18n="nav_features">Características</a></li>
                     <li><a href="#seguridad" class="nav-link" data-i18n="nav_security">Seguridad</a></li>
                     <li><a href="#como-usar" class="nav-link" data-i18n="nav_quickstart">Inicio Rápido</a></li>
+                    <li><a href="#faq" class="nav-link" data-i18n="nav_faq">FAQ</a></li>
                     <li><a href="#tecnologias" class="nav-link" data-i18n="nav_tech">Tecnologías</a></li>
                 </ul>
             </nav>
@@ -634,6 +745,71 @@
         </div>
     </section>
 
+    <!-- SECCIÓN: PREGUNTAS FRECUENTES (FAQ & SEO) -->
+    <section class="section" id="faq" aria-labelledby="faq-title">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag" data-i18n="faq_tag">Dudas Frecuentes</span>
+                <h2 class="section-title" id="faq-title" data-i18n="faq_title">Preguntas Frecuentes sobre RTMS</h2>
+                <p class="section-desc" data-i18n="faq_desc">
+                    Todo lo que necesitas saber sobre compatibilidad, configuración y arquitectura de streaming.
+                </p>
+            </div>
+
+            <div class="faq-grid">
+                <details class="faq-item" open>
+                    <summary class="faq-question">
+                        <span data-i18n="faq_q1">¿Qué es RTMS y cómo se conecta con OBS Studio o vMix?</span>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p data-i18n="faq_a1">RTMS (Real-Time Multicam System) es un servidor local para Windows que captura dispositivos DirectShow (cámaras web, capturadoras HDMI, cámaras virtuales) y los transmite como flujos SRT independientes a través de MediaMTX. En OBS Studio o vMix, simplemente agregas una "Fuente Multimedia", desmarcas "Archivo local" y pegas la URL SRT generada (ej. <code>srt://127.0.0.1:8890?streamid=read:cam_1</code>).</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span data-i18n="faq_q2">¿Qué diferencia a RTMS de capturar cámaras directamente en OBS o usar NDI?</span>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p data-i18n="faq_a2">Capturar múltiples cámaras DirectShow directamente en OBS suele congelar el software si un cable USB se desconecta y satura el bus USB. NDI consume gran ancho de banda de red (100-150 Mbps por cámara) y exige licencias propietarias. RTMS desacopla la captura del receptor mediante MediaMTX, cuenta con reconexión automática PnP ante desconexiones físicas, y utiliza SRT con compresión por hardware (NVENC/QSV/AMF), logrando latencia inferior a 100 ms con mínimo consumo de CPU.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span data-i18n="faq_q3">¿Qué tarjetas gráficas y códecs de aceleración soporta RTMS?</span>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p data-i18n="faq_a3">RTMS soporta codificación por hardware nativa: NVIDIA NVENC (<code>h264_nvenc</code>), Intel Quick Sync Video (<code>h264_qsv</code>) y AMD AMF (<code>h264_amf</code>). Si el equipo no cuenta con GPU compatible, activa automáticamente un fallback transparente a CPU (<code>libx264</code>).</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span data-i18n="faq_q4">¿Qué sucede si una cámara USB se desenchufa durante una transmisión en vivo?</span>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p data-i18n="faq_a4">El watchdog y el monitor DirectShow de RTMS interceptan la desconexión sin congelar OBS ni bloquear los controladores de Windows. El stream entra en reposo y, en cuanto vuelves a conectar el USB, RTMS reanuda el flujo de video automáticamente en menos de 5 segundos sin reiniciar la aplicación ni interrumpir tu directo.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary class="faq-question">
+                        <span data-i18n="faq_q5">¿RTMS es gratuito, seguro y de código abierto?</span>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </summary>
+                    <div class="faq-answer">
+                        <p data-i18n="faq_a5">Sí. RTMS es 100% de código abierto bajo la Licencia MIT. Su código fuente está auditado en GitHub, no recopila telemetría externa, funciona de forma totalmente aislada ("air-gapped") en red local y cifra credenciales sensibles mediante Windows DPAPI.</p>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
     <!-- SECCIÓN: TECNOLOGÍAS QUE INCLUYE -->
     <section class="section" id="tecnologias" aria-labelledby="tecnologias-title">
         <div class="container">
@@ -688,7 +864,7 @@
             <div class="footer-content">
                 <div class="footer-brand">
                     <div class="footer-brand-title">
-                        <img src="isotype.svg" class="brand-logo-svg footer-logo-svg" alt="RTMS Isotipo">
+                        <img src="isotype.svg" class="brand-logo-svg footer-logo-svg" alt="RTMS — Real-Time Multicam System Logo" width="32" height="32">
                         <span>RTMS — Real-Time Multicam System</span>
                     </div>
                     <p class="footer-brand-desc" data-i18n="footer_brand_desc">
@@ -710,6 +886,7 @@
                     <div>
                         <div class="footer-column-title" data-i18n="footer_col_docs">Documentación</div>
                         <ul class="footer-links">
+                            <li><a href="#faq" data-i18n="footer_faq">Preguntas Frecuentes</a></li>
                             <li><a href="https://github.com/FJYarsky/RTMS/blob/main/docs/HARDWARE.md" target="_blank" rel="noopener" data-i18n="footer_hw">Compatibilidad de Hardware</a></li>
                             <li><a href="https://github.com/FJYarsky/RTMS/blob/main/docs/TROUBLESHOOTING.md" target="_blank" rel="noopener" data-i18n="footer_trouble">Resolución de Problemas</a></li>
                             <li><a href="https://github.com/FJYarsky/RTMS/blob/main/docs/BRANDING.md" target="_blank" rel="noopener" data-i18n="footer_brand_guide">Identidad Visual & Branding</a></li>
