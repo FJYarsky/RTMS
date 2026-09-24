@@ -7,6 +7,7 @@
 """Gestión, auditoría y preservación de descripciones canónicas en GitHub."""
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -90,6 +91,16 @@ def get_latest_commit_subject(item_path: str) -> str:
         return ""
 
 
+def is_canonical_match(actual: str, canonical: str) -> bool:
+    """Verifica si el asunto coincide con el catálogo canónico, tolerando sufijos de PR (#123)."""
+    if actual == canonical:
+        return True
+    # Tolerar sufijo de merge de Pull Request de GitHub (#123)
+    if re.sub(r"\s*\(\#\d+\)$", "", actual) == canonical:
+        return True
+    return False
+
+
 def run_list() -> None:
     """Imprime el catálogo canónico de elementos y descripciones."""
     print("=" * 80)
@@ -111,7 +122,7 @@ def run_check() -> int:
 
     for item, canonical in sorted(DESCRIPTIONS_CATALOG.items()):
         actual = get_latest_commit_subject(item)
-        if actual == canonical:
+        if is_canonical_match(actual, canonical):
             matched_count += 1
         else:
             drift_items.append((item, canonical, actual))
@@ -217,7 +228,7 @@ def run_restore(targets: List[str]) -> int:
         # Detectar cuáles están desincronizados
         for item, canonical in DESCRIPTIONS_CATALOG.items():
             actual = get_latest_commit_subject(item)
-            if actual != canonical:
+            if not is_canonical_match(actual, canonical):
                 items_to_restore.append(item)
 
     if not items_to_restore:
