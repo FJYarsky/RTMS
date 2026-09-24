@@ -66,4 +66,3 @@ prune-remote:
 # Construcción de empaquetado portable para Windows
 build:
     cmd /c build_portable.bat
-
