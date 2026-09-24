@@ -38,9 +38,7 @@ class SystemTrayManager:
         draw = ImageDraw.Draw(img)
 
         # Base con esquinas redondeadas en pizarra oscura (#111827) y contorno teal suave
-        draw.rounded_rectangle(
-            [6, 6, 122, 122], radius=28, fill=(17, 24, 39, 255), outline=(20, 184, 166, 70), width=2
-        )
+        draw.rounded_rectangle([6, 6, 122, 122], radius=28, fill=(17, 24, 39, 255), outline=(20, 184, 166, 70), width=2)
 
         cx, cy = 64.0, 64.0
         R = 48.0
