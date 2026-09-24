@@ -88,12 +88,28 @@ jobs:
 
       - name: Append VirusTotal Results to Release Notes
         if: steps.virustotal.outcome == 'success' && steps.virustotal.outputs.analysis != ''
-        shell: powershell
+        shell: python
         run: |
-          $vtAnalysis = "${{ steps.virustotal.outputs.analysis }}"
-          $vtReport = "`r`n`r`n---`r`n### 🛡️ Verificación de Seguridad e Integridad (VirusTotal)`r`nEl binario oficial de esta distribución fue escaneado automáticamente contra múltiples motores antivirus:`r`n$vtAnalysis"
-          Add-Content -Path current_release_notes.md -Value $vtReport -Encoding utf8
-          Write-Host "VirusTotal analysis appended to release notes."
+          import os
+
+          vt_raw = """${{ steps.virustotal.outputs.analysis }}""".strip()
+          lines = []
+          for entry in vt_raw.splitlines():
+              entry = entry.strip()
+              if not entry:
+                  continue
+              if "=" in entry:
+                  fname, url = entry.split("=", 1)
+                  lines.append(f"- **{fname.strip()}**: [Ver reporte completo en VirusTotal]({url.strip()})")
+              else:
+                  lines.append(f"- {entry}")
+
+          items_md = "\n".join(lines)
+          report = f"\n\n---\n### \U0001f6e1\ufe0f Verificaci\u00f3n de Seguridad e Integridad (VirusTotal)\nEl binario oficial de esta distribuci\u00f3n fue analizado y validado contra m\u00faltiples motores antivirus:\n\n{items_md}\n"
+
+          with open("current_release_notes.md", "a", encoding="utf-8") as f:
+              f.write(report)
+          print("VirusTotal analysis appended to release notes successfully.")
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
