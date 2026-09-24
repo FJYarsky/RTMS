@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="gui/static/logotype.svg" alt="RTMS" width="260">
+<img src="gui/static/logotype.svg" alt="RTMS" width="360">
 
 <br><br>
 
