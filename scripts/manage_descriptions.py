@@ -210,7 +210,7 @@ def _touch_file_cleanly(file_path: Path) -> bool:
                 ".ps1",
                 ".toml",
             ]
-            or file_path.name == "justfile"
+            or file_path.name in ["justfile", ".gitignore", "LICENSE"]
         ):
             content = file_path.read_text(encoding="utf-8")
             # Alternar salto neutro al final para asegurar que git detecte un diff real
