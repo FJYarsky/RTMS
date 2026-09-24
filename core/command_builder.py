@@ -140,10 +140,6 @@ async def build_ffmpeg_command(
                 "0",
                 "-b_adapt",
                 "0",
-                "-spatial_aq",
-                "0",
-                "-temporal_aq",
-                "0",
             ]
         elif encoder == "h264_amf":
             cmd += ["-c:v", "h264_amf", "-quality", "speed", "-usage", "ultralowlatency"]

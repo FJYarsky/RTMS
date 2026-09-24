@@ -260,31 +260,6 @@ def load_config() -> Dict[str, Any]:
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                try:
-                    migrated = migrate_config(data)
-                except LegacyConfigSchemaError as lce:
-                    logger.warning(
-                        f"Configuración heredada detectada: {lce}. "
-                        f"Creando respaldo en {CONFIG_LEGACY_BAK_FILE} y reinicializando configuración limpia para v2.4.0."
-                    )
-                    try:
-                        import shutil
-
-                        shutil.copy2(CONFIG_FILE, CONFIG_LEGACY_BAK_FILE)
-                    except Exception as be:
-                        logger.error(f"Error creando respaldo de configuración heredada: {be}")
-                    _atomic_save_unlocked(default_config)
-                    return default_config
-
-                # Registrar puertos ya configurados en el PortManager
-                for cam in migrated.get("cameras", {}).values():
-                    p = cam.get("port")
-                    if p:
-                        try:
-                            port_manager.register_port(int(p))
-                        except (ValueError, TypeError) as pe:
-                            logger.warning(f"Puerto corrupto ignorado en configuración: {p!r} ({pe})")
-                return _unprotect_config_cameras(migrated)
         except (json.JSONDecodeError, OSError) as e:
             logger.error(
                 f"Configuración corrupta o ilegible ({e}). Intentando recuperación desde SQLite WAL o backup..."
@@ -303,23 +278,48 @@ def load_config() -> Dict[str, Any]:
             except Exception as dbe:
                 logger.debug(f"Recuperación desde SQLite WAL fallida: {dbe}")
 
+            # 2. Intentar recuperación desde backup (.bak)
             if os.path.exists(CONFIG_BAK_FILE):
                 try:
                     with open(CONFIG_BAK_FILE, "r", encoding="utf-8") as fb:
                         data = json.load(fb)
-                        migrated = migrate_config(data)
-                        _atomic_save_unlocked(migrated)
-                        return _unprotect_config_cameras(migrated)
+                        logger.warning("Restaurando configuración principal desde backup (.bak)...")
+                        _atomic_save_unlocked(data)
+                        return _unprotect_config_cameras(migrate_config(data))
                 except LegacyConfigSchemaError as lce_bak:
-                    logger.warning(
-                        f"Backup heredado detectado: {lce_bak}. Descartando y regenerando configuración por defecto."
-                    )
-                except Exception as eb:
-                    logger.error(f"Fallo también la lectura del backup: {eb}")
+                    logger.warning(f"Backup heredado (< 4) detectado: {lce_bak}. Reinicializando configuración limpia.")
+                except Exception as ex_bak:
+                    logger.error(f"Error restaurando desde backup: {ex_bak}")
 
-            # Fallback seguro
+            # 3. Fallback inicial con configuración por defecto
             _atomic_save_unlocked(default_config)
             return default_config
+
+        try:
+            migrated = migrate_config(data)
+        except LegacyConfigSchemaError as lce:
+            logger.warning(
+                f"Configuración heredada detectada: {lce}. "
+                f"Creando respaldo en {CONFIG_LEGACY_BAK_FILE} y reinicializando configuración limpia para v2.4.0."
+            )
+            try:
+                import shutil
+
+                shutil.copy2(CONFIG_FILE, CONFIG_LEGACY_BAK_FILE)
+            except Exception as be:
+                logger.error(f"Error creando respaldo de configuración heredada: {be}")
+            _atomic_save_unlocked(default_config)
+            return default_config
+
+        # Registrar puertos ya configurados en el PortManager
+        for cam in migrated.get("cameras", {}).values():
+            p = cam.get("port")
+            if p:
+                try:
+                    port_manager.register_port(int(p))
+                except (ValueError, TypeError) as pe:
+                    logger.warning(f"Puerto corrupto ignorado en configuración: {p!r} ({pe})")
+        return _unprotect_config_cameras(migrated)
 
 
 def _unprotect_config_cameras(config_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -359,7 +359,7 @@ def _prepare_config_for_disk(config_data: Dict[str, Any]) -> Dict[str, Any]:
 
 def _atomic_save_unlocked(config_data: Dict[str, Any]):
     """
-    Guarda en disco con escritura atómica (.tmp -> fsync -> .bak -> replace).
+    Guarda en disco con persistencia coordinada entre SQLite WAL (ACID) y JSON atómico.
     Sin lock interno. Deduplica en memoria contra la configuración lógica en claro
     para no generar operaciones de I/O ni fsync innecesarios cuando no hay cambios de contenido.
     """
@@ -373,33 +373,43 @@ def _atomic_save_unlocked(config_data: Dict[str, Any]):
 
     os.makedirs(CONFIG_DIR, exist_ok=True)
 
-    # 1. Escribir a archivo temporal
-    with open(CONFIG_TMP_FILE, "wb") as tf:
-        tf.write(json_bytes)
-        tf.flush()
-        os.fsync(tf.fileno())
-
-    # 2. Mantener copia de backup antes de reemplazar
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "rb") as src, open(CONFIG_BAK_FILE, "wb") as dst:
-                dst.write(src.read())
-                dst.flush()
-                os.fsync(dst.fileno())
-        except OSError as be:
-            logger.debug(f"Aviso al actualizar .bak: {be}")
-
-    # 3. Reemplazo atómico
-    os.replace(CONFIG_TMP_FILE, CONFIG_FILE)
-    _LAST_SAVED_CONFIG = current_serialized
-
-    # 4. Guardar en base de datos SQLite WAL transaccional
+    # 1. Guardar primero en base de datos SQLite WAL transaccional (ACID)
     try:
         from core.repository.config_repository import config_repository
 
         config_repository.save_full_config_sync(disk_data)
     except Exception as dbe:
-        logger.debug(f"Aviso guardando en SQLite WAL: {dbe}")
+        logger.error(f"Fallo en transacción SQLite WAL al persistir configuración: {dbe}")
+        raise ConfigPersistenceError(f"Fallo en base de datos SQLite: {dbe}") from dbe
+
+    # 2. Escribir a archivo temporal con fsync
+    try:
+        with open(CONFIG_TMP_FILE, "wb") as tf:
+            tf.write(json_bytes)
+            tf.flush()
+            os.fsync(tf.fileno())
+
+        # 3. Mantener copia de backup antes de reemplazar
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "rb") as src, open(CONFIG_BAK_FILE, "wb") as dst:
+                    dst.write(src.read())
+                    dst.flush()
+                    os.fsync(dst.fileno())
+            except OSError as be:
+                logger.debug(f"Aviso al actualizar .bak: {be}")
+
+        # 4. Reemplazo atómico
+        os.replace(CONFIG_TMP_FILE, CONFIG_FILE)
+        _LAST_SAVED_CONFIG = current_serialized
+    except Exception as io_err:
+        if os.path.exists(CONFIG_TMP_FILE):
+            try:
+                os.remove(CONFIG_TMP_FILE)
+            except Exception:
+                pass
+        logger.error(f"Fallo escribiendo archivo JSON de configuración: {io_err}")
+        raise ConfigPersistenceError(f"Fallo en I/O de archivo JSON: {io_err}") from io_err
 
 
 def save_config(config_data: Dict[str, Any], raise_on_error: bool = False) -> bool:

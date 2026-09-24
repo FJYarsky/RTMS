@@ -106,7 +106,7 @@ class MediaMTXManager:
             "rtmp: no\n"
             "hls: no\n\n"
             "webrtc: yes\n"
-            f"webrtcAddress: :{self.webrtc_port}\n"
+            f"webrtcAddress: 127.0.0.1:{self.webrtc_port}\n"
             "webrtcEncryption: no\n"
             "webrtcLocalUDPAddress: :8189\n"
             'webrtcAllowOrigin: "*"\n\n'
