@@ -135,6 +135,19 @@ if (-not (Test-Path $ffmpegExe) -or -not (Test-Path $ffplayExe) -or -not (Test-P
     exit 1
 }
 
+# Generar manifiesto determinista de hashes SHA256 para reproducibilidad de release
+$manifestPath = Join-Path $binDir "checksums.sha256"
+$ffmpegHash = (Get-FileHash -Path $ffmpegExe -Algorithm SHA256).Hash.ToLower()
+$ffplayHash = (Get-FileHash -Path $ffplayExe -Algorithm SHA256).Hash.ToLower()
+$mediamtxHash = (Get-FileHash -Path $mediamtxExe -Algorithm SHA256).Hash.ToLower()
+
+@"
+$ffmpegHash  ffmpeg.exe
+$ffplayHash  ffplay.exe
+$mediamtxHash  mediamtx.exe
+"@ | Set-Content -Path $manifestPath -Encoding utf8
+Write-Host "[OK] Manifiesto criptográfico generado en: $manifestPath" -ForegroundColor Green
+
 Write-Host "------------------------------------------------------------" -ForegroundColor Cyan
 Write-Host "[EXITO] Todos los binarios multimedia estan verificados y listos:" -ForegroundColor Green
 & $ffmpegExe -version | Select-Object -First 1
