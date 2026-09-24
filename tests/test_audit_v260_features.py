@@ -332,7 +332,10 @@ async def test_probe_device_mjpeg_support():
     assert await probe_device_mjpeg_support("testsrc") is False
 
     # Con mock de salida DirectShow que tiene pixel_format=mjpeg
-    with patch("core.hardware.has_ffmpeg_binary", return_value=True), patch("asyncio.create_subprocess_exec") as mock_exec:
+    with (
+        patch("core.hardware.has_ffmpeg_binary", return_value=True),
+        patch("asyncio.create_subprocess_exec") as mock_exec,
+    ):
         mock_proc = AsyncMock()
         mock_proc.communicate.return_value = (b"", b"Pin Capturar: pixel_format=mjpeg fps=30")
         mock_exec.return_value = mock_proc
@@ -341,7 +344,10 @@ async def test_probe_device_mjpeg_support():
         assert result is True
 
     # Con mock de salida DirectShow que NO tiene mjpeg (solo yuyv/nv12)
-    with patch("core.hardware.has_ffmpeg_binary", return_value=True), patch("asyncio.create_subprocess_exec") as mock_exec:
+    with (
+        patch("core.hardware.has_ffmpeg_binary", return_value=True),
+        patch("asyncio.create_subprocess_exec") as mock_exec,
+    ):
         mock_proc = AsyncMock()
         mock_proc.communicate.return_value = (b"", b"Pin Capturar: pixel_format=yuyv422 fps=30")
         mock_exec.return_value = mock_proc

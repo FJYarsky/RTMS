@@ -11,6 +11,7 @@ import pytest
 from scripts.manage_descriptions import (
     DESCRIPTIONS_CATALOG,
     get_repo_root,
+    is_canonical_match,
     is_shallow_repo,
     run_check,
 )
@@ -47,3 +48,13 @@ def test_run_check_current_repository():
         pytest.skip("Repositorio clonado superficialmente (shallow clone). Se requiere historial completo.")
     result = run_check()
     assert result == 0
+
+
+def test_is_canonical_match_tolerance():
+    """Valida que se toleren sufijos de squash-merge de GitHub manteniendo rechazo de desvíos reales."""
+    canonical = "web: sitio oficial y portal de descargas"
+    assert is_canonical_match(canonical, canonical)
+    assert is_canonical_match(f"{canonical} (#24)", canonical)
+    assert is_canonical_match(f"{canonical} (#999)", canonical)
+    assert not is_canonical_match("web: sitio desactualizado", canonical)
+    assert not is_canonical_match("chore: random change (#12)", canonical)
