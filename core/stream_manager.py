@@ -86,10 +86,32 @@ class StreamManager:
             logger.debug(f"Flujo {proc.device_path} ya está en ejecución.")
             return
 
+        if not proc.config:
+            from core.config_mgr import find_camera_by_id_or_path, get_or_allocate_camera_config
+
+            cam_cfg = find_camera_by_id_or_path(proc.device_path)
+            if cam_cfg:
+                proc.config = cam_cfg.copy()
+            else:
+                proc.config = get_or_allocate_camera_config(proc.device_path, proc.device_path)
+
         if not proc.is_connected:
-            logger.warning(f"Cámara {proc.device_path} desconectada físicamente. No se puede iniciar.")
-            proc.state = State.DISCONNECTED
-            return
+            # Revalidar presencia de hardware DirectShow antes de descartar
+            from core.config_mgr import is_virtual_device
+
+            if proc.config.get("is_virtual", False) or is_virtual_device(proc.device_path):
+                proc.is_connected = True
+            else:
+                devs = await get_directshow_devices()
+                dp_set = {d["device_path"] for d in devs} | {d["friendly_name"] for d in devs}
+                cfg_dp = proc.config.get("device_path", proc.device_path)
+                cfg_fn = proc.config.get("friendly_name", "")
+                if cfg_dp in dp_set or cfg_fn in dp_set or proc.device_path in dp_set:
+                    proc.is_connected = True
+                else:
+                    logger.warning(f"Cámara {proc.device_path} desconectada físicamente. No se puede iniciar.")
+                    proc.state = State.DISCONNECTED
+                    return
 
         if not has_ffmpeg_binary():
             proc.state = State.ERROR
@@ -705,11 +727,22 @@ class StreamManager:
 
         devices = await get_directshow_devices()
         detected_paths = {d["device_path"]: d["friendly_name"] for d in devices}
+        detected_names = {d["friendly_name"]: d["device_path"] for d in devices}
 
         # 1. Actualizar estado de desconexión para cámaras desaparecidas
         for dp, proc in self._procs.items():
             was_connected = proc.is_connected
-            proc.is_connected = dp in detected_paths
+            cfg_dp = proc.config.get("device_path", dp)
+            cfg_fn = proc.config.get("friendly_name", "")
+            is_virt = proc.config.get("is_virtual", False) or dp.startswith("virtual://") or dp.startswith("testsrc")
+            is_present = (
+                is_virt
+                or dp in detected_paths
+                or dp in detected_names
+                or cfg_dp in detected_paths
+                or cfg_fn in detected_names
+            )
+            proc.is_connected = is_present
             if was_connected and not proc.is_connected:
                 logger.warning(f"Cámara {dp} desapareció del sistema. Marcando como DISCONNECTED.")
                 proc.transition_to(State.DISCONNECTED)

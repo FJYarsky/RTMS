@@ -126,7 +126,7 @@ def build_client_urls(
     clean_host = host.strip() or "127.0.0.1"
 
     if protocol == "srt":
-        query_parts = [f"streamid=read:{clean_cam_id}", "latency=50000"]
+        query_parts = [f"streamid=read:{clean_cam_id}"]
         if passphrase:
             query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
         query = "&".join(query_parts)
@@ -135,10 +135,9 @@ def build_client_urls(
 
     if protocol == "udp_unicast" or udp_mode == "unicast":
         target = "127.0.0.1" if clean_host in ("127.0.0.1", "localhost") else clean_host
-        vlc_target = "" if target != "127.0.0.1" else target
         return {
             "connect_url": f"udp://{target}:{port}",
-            "vlc_url": f"udp://@{vlc_target}:{port}" if vlc_target else f"udp://@:{port}",
+            "vlc_url": f"udp://@:{port}",
         }
 
     # Default UDP Multicast
