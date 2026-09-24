@@ -63,4 +63,3 @@ RTMS_AUDITORIA_*.txt
 .ruff_cache/
 .coverage
 htmlcov/
-
