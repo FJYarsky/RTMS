@@ -11,14 +11,6 @@
     <meta property="og:title" content="RTMS — Real-Time Multicam System">
     <meta property="og:description" content="Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio.">
     <meta property="og:url" content="https://fjyarsky.github.io/RTMS/">
-    <meta property="og:image" content="https://fjyarsky.github.io/RTMS/brand_preview.png">
-    <meta property="og:image:width" content="512">
-    <meta property="og:image:height" content="512">
-    <meta property="og:image:alt" content="RTMS — Real-Time Multicam System">
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="RTMS — Real-Time Multicam System">
-    <meta name="twitter:description" content="Servidor de video multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX hacia OBS Studio.">
-    <meta name="twitter:image" content="https://fjyarsky.github.io/RTMS/brand_preview.png">
 
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
@@ -44,7 +36,6 @@
                     <li><a href="#seguridad" class="nav-link" data-i18n="nav_security">Seguridad</a></li>
                     <li><a href="#como-usar" class="nav-link" data-i18n="nav_quickstart">Inicio Rápido</a></li>
                     <li><a href="#tecnologias" class="nav-link" data-i18n="nav_tech">Tecnologías</a></li>
-                    <li><a href="#identidad" class="nav-link" data-i18n="nav_brand">Identidad</a></li>
                 </ul>
             </nav>
 
@@ -79,7 +70,7 @@
     <section class="hero">
         <div class="container">
             <div class="hero-pill">
-                <img src="isotype.svg" class="hero-pill-logo" alt="RTMS Isotipo">
+                <div class="hero-pill-dot"></div>
                 <span data-i18n="hero_pill">Servidor Multicámara Nativo para Windows</span>
             </div>
 
@@ -170,17 +161,10 @@
             <!-- MOCKUP VISUAL DEL PANEL DE CONTROL DE RTMS -->
             <div class="mockup-wrapper">
                 <div class="mockup-header">
-                    <div class="mockup-left-group">
-                        <div class="mockup-dots">
-                            <div class="mockup-dot red"></div>
-                            <div class="mockup-dot yellow"></div>
-                            <div class="mockup-dot green"></div>
-                        </div>
-                        <div class="mockup-brand">
-                            <img src="isotype.svg" class="mockup-logo-svg" alt="RTMS Isotipo">
-                            <span class="mockup-brand-name">RTMS</span>
-                            <span class="mockup-brand-ver">v2.6.0</span>
-                        </div>
+                    <div class="mockup-dots">
+                        <div class="mockup-dot red"></div>
+                        <div class="mockup-dot yellow"></div>
+                        <div class="mockup-dot green"></div>
                     </div>
                     <div class="mockup-hud">
                         <div class="mockup-hud-item">
@@ -685,136 +669,6 @@
         </div>
     </section>
 
-    <!-- SECCIÓN: IDENTIDAD VISUAL & SISTEMA DE DISEÑO -->
-    <section class="section section-darker" id="identidad">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag" data-i18n="brand_sec_tag">Identidad de Marca</span>
-                <h2 class="section-title" data-i18n="brand_sec_title">Sistema de Diseño & Vector Assets</h2>
-                <p class="section-desc" data-i18n="brand_sec_desc">
-                    Arquitectura visual optimizada para Windows en modo oscuro nativo: obturador mecánico de 6 aspas, gradiente cian-teal y tipografía blanca de alto contraste.
-                </p>
-            </div>
-
-            <div class="brand-showcase-grid">
-                <!-- Tarjeta 1: Imagotipo Horizontal Principal -->
-                <div class="brand-asset-card">
-                    <div class="brand-asset-preview">
-                        <img src="logo.svg" alt="RTMS Imagotipo Horizontal" class="asset-img-horizontal">
-                    </div>
-                    <div class="brand-asset-info">
-                        <div class="brand-asset-title-group">
-                            <span class="brand-asset-tag">Principal</span>
-                            <h3 class="brand-asset-name">Imagotipo Horizontal</h3>
-                        </div>
-                        <p class="brand-asset-desc" data-i18n="brand_card_imagotype_desc">
-                            Composición apaisada oficial para barras de navegación, encabezados de software y transmisiones en vivo.
-                        </p>
-                        <div class="brand-asset-actions">
-                            <a href="logo.svg" download="rtms_logo.svg" class="btn-asset-download">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                <span>SVG Vectorial</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tarjeta 2: Isotipo Puro (Obturador) -->
-                <div class="brand-asset-card">
-                    <div class="brand-asset-preview">
-                        <img src="isotype.svg" alt="RTMS Isotipo" class="asset-img-isotype">
-                    </div>
-                    <div class="brand-asset-info">
-                        <div class="brand-asset-title-group">
-                            <span class="brand-asset-tag">Símbolo</span>
-                            <h3 class="brand-asset-name">Isotipo (Obturador)</h3>
-                        </div>
-                        <p class="brand-asset-desc" data-i18n="brand_card_isotype_desc">
-                            Diafragma iris de 6 aspas con simetría rotacional de 60° y apertura hexagonal central en gradiente Sky Cyan y Neon Teal.
-                        </p>
-                        <div class="brand-asset-actions">
-                            <a href="isotype.svg" download="rtms_isotype.svg" class="btn-asset-download">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                <span>SVG Vectorial</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tarjeta 3: Imagotipo Vertical (Apilado) -->
-                <div class="brand-asset-card">
-                    <div class="brand-asset-preview">
-                        <img src="imagotype_vertical.svg" alt="RTMS Imagotipo Vertical" class="asset-img-vertical">
-                    </div>
-                    <div class="brand-asset-info">
-                        <div class="brand-asset-title-group">
-                            <span class="brand-asset-tag">Splash & Modales</span>
-                            <h3 class="brand-asset-name">Imagotipo Vertical</h3>
-                        </div>
-                        <p class="brand-asset-desc" data-i18n="brand_card_vertical_desc">
-                            Formato apilado y centrado para pantallas de inicio, modales de información y tarjetas de presentación.
-                        </p>
-                        <div class="brand-asset-actions">
-                            <a href="imagotype_vertical.svg" download="rtms_imagotype_vertical.svg" class="btn-asset-download">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                <span>SVG Vectorial</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tarjeta 4: Icono Multi-Resolución Windows -->
-                <div class="brand-asset-card">
-                    <div class="brand-asset-preview">
-                        <img src="brand_preview.png" alt="RTMS Windows Icon" class="asset-img-icon">
-                    </div>
-                    <div class="brand-asset-info">
-                        <div class="brand-asset-title-group">
-                            <span class="brand-asset-tag">Windows 10/11</span>
-                            <h3 class="brand-asset-name">Icono Multi-Resolución</h3>
-                        </div>
-                        <p class="brand-asset-desc" data-i18n="brand_card_ico_desc">
-                            Binario .ico oficial con 6 capas RGBA (256 a 16 px) para barra de tareas, bandeja de sistema y ejecutables.
-                        </p>
-                        <div class="brand-asset-actions">
-                            <a href="favicon.ico" download="rtms_icon.ico" class="btn-asset-download">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                <span>Icono (.ico)</span>
-                            </a>
-                            <a href="https://github.com/FJYarsky/RTMS/blob/main/docs/BRANDING.md" target="_blank" rel="noopener" class="btn-asset-docs">
-                                <span data-i18n="brand_btn_guide">Guía BRANDING.md &rarr;</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Banner Hoja de Marca y Muestra Gráfica -->
-            <div class="brand-sheet-banner">
-                <div class="brand-sheet-info">
-                    <span class="section-tag" data-i18n="brand_sheet_tag">Especificación Técnica</span>
-                    <h3 class="brand-sheet-title" data-i18n="brand_sheet_title">Hoja Maestra de Identidad y Tokens de Color</h3>
-                    <p class="brand-sheet-desc" data-i18n="brand_sheet_desc">
-                        Consulta la guía exhaustiva en <code>docs/BRANDING.md</code> con la matemática vectorial, tokens CSS, tipografías del sistema y pautas de empaquetado con PyInstaller.
-                    </p>
-                    <div class="brand-sheet-actions">
-                        <a href="https://github.com/FJYarsky/RTMS/blob/main/docs/BRANDING.md" target="_blank" rel="noopener" class="btn-brand-docs">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            <span data-i18n="brand_btn_view_guide">Leer Especificación Completa</span>
-                        </a>
-                        <a href="brand_assets_sheet.png" target="_blank" class="btn-brand-sheet">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                            <span data-i18n="brand_btn_view_sheet">Ver Hoja Gráfica de Muestra</span>
-                        </a>
-                    </div>
-                </div>
-                <div class="brand-sheet-preview">
-                    <img src="brand_assets_sheet.png" alt="RTMS Brand Assets Sheet" class="sheet-img">
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- FOOTER: DERECHOS, LICENCIAS Y AUTOR -->
     <footer class="footer">
         <div class="container">
@@ -837,7 +691,6 @@
                             <li><a href="https://github.com/FJYarsky/RTMS/releases" target="_blank" rel="noopener" data-i18n="footer_releases">Todos los Releases</a></li>
                             <li><a href="https://github.com/FJYarsky/RTMS/blob/main/CHANGELOG.md" target="_blank" rel="noopener" data-i18n="footer_changelog">Historial de Cambios</a></li>
                             <li><a href="https://github.com/FJYarsky/RTMS/blob/main/LICENSE" target="_blank" rel="noopener" data-i18n="footer_license">Licencia MIT</a></li>
-                            <li><a href="#identidad" data-i18n="footer_brand_assets">Logos & Assets de Marca</a></li>
                         </ul>
                     </div>
 
@@ -848,7 +701,6 @@
                             <li><a href="https://github.com/FJYarsky/RTMS/blob/main/docs/TROUBLESHOOTING.md" target="_blank" rel="noopener" data-i18n="footer_trouble">Resolución de Problemas</a></li>
                             <li><a href="https://github.com/FJYarsky/RTMS/blob/main/SECURITY.md" target="_blank" rel="noopener" data-i18n="footer_sec">Política de Seguridad</a></li>
                             <li><a href="https://github.com/FJYarsky/RTMS/issues" target="_blank" rel="noopener" data-i18n="footer_bug">Reportar un Bug</a></li>
-                            <li><a href="https://github.com/FJYarsky/RTMS/blob/main/docs/BRANDING.md" target="_blank" rel="noopener" data-i18n="footer_branding_doc">Guía de Identidad (BRANDING.md)</a></li>
                         </ul>
                     </div>
 
