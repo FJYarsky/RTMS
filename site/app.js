@@ -684,3 +684,4 @@ function closeMobileMenu() {
         toggleBtn.setAttribute('aria-label', currentLang === 'es' ? 'Abrir menú de navegación' : 'Open navigation menu');
     }
 }
+
