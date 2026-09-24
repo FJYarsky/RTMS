@@ -471,4 +471,3 @@ Historial completo y notas oficiales de lanzamiento organizadas cronológicament
 - Arquitectura desacoplada: backend FastAPI + ventana de escritorio WebView2 + motor FFmpeg DirectShow.
 - Transmisión en protocolos SRT y UDP Multicast.
 - Optimización de planes de energía de Windows y reglas de Windows Firewall.
-
