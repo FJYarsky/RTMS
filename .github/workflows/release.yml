@@ -75,7 +75,7 @@ jobs:
 
       - name: VirusTotal Analysis
         id: virustotal
-        uses: crazy-max/ghaction-virustotal@v4
+        uses: crazy-max/ghaction-virustotal@v5
         if: env.VT_API_KEY != ''
         continue-on-error: true
         env:
