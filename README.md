@@ -1,5 +1,5 @@
 <div align="center">
-<img src="gui/static/logotype.svg" alt="RTMS" width="600">
+<img src="gui/static/logo.svg" alt="RTMS" width="600">
    
 [![Website](https://img.shields.io/badge/Sitio%20Web-fjyarsky.github.io%2FRTMS-0ea5e9?logo=googlechrome&logoColor=white)](https://fjyarsky.github.io/RTMS/)
 [![Platform](https://img.shields.io/badge/Plataforma-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)](https://microsoft.com)
