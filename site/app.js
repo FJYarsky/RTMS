@@ -19,6 +19,9 @@ const TRANSLATIONS = {
         nav_quickstart: "Inicio Rápido",
         nav_faq: "FAQ",
         nav_tech: "Tecnologías",
+        nav_download: "Descargar",
+        skip_to_content: "Saltar al contenido principal",
+        s3_tip_label: "Consejo de producción:",
         hero_pill: "Servidor Multicámara Nativo para Windows",
         hero_title_1: "Streaming de Ultra-Baja Latencia",
         hero_title_2: "Directo a tu OBS Studio y vMix",
@@ -156,6 +159,9 @@ const TRANSLATIONS = {
         nav_quickstart: "Quickstart",
         nav_faq: "FAQ",
         nav_tech: "Tech Stack",
+        nav_download: "Download",
+        skip_to_content: "Skip to main content",
+        s3_tip_label: "Production Tip:",
         hero_pill: "Native Windows Multicam Server",
         hero_title_1: "Ultra-Low Latency Streaming",
         hero_title_2: "Directly to your OBS Studio & vMix",
@@ -317,6 +323,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initLanguage();
     initDynamicRelease();
     initCopyButtons();
+    initNavbarScroll();
+    initSmoothScrollAndAnchors();
+    initActiveNavSpy();
+    initMobileMenu();
 });
 
 /**
@@ -374,6 +384,23 @@ function setLanguage(lang) {
             langBtn.setAttribute('title', 'Cambiar a Español');
             langBtn.setAttribute('aria-label', 'Cambiar a Español');
         }
+    }
+
+    // Actualizar atributos de accesibilidad según el idioma
+    const githubLink = document.querySelector('.btn-github');
+    if (githubLink) {
+        const ghLabel = lang === 'es' ? 'Repositorio de RTMS en GitHub' : 'RTMS GitHub Repository';
+        githubLink.setAttribute('aria-label', ghLabel);
+        githubLink.setAttribute('title', ghLabel);
+    }
+    const brandLink = document.querySelector('.brand');
+    if (brandLink) {
+        brandLink.setAttribute('aria-label', lang === 'es' ? 'RTMS — Inicio' : 'RTMS — Home');
+    }
+    const copyBtn = document.querySelector('.btn-copy');
+    if (copyBtn) {
+        copyBtn.setAttribute('title', lang === 'es' ? 'Copiar plantilla de ejemplo' : 'Copy sample template');
+        copyBtn.setAttribute('aria-label', lang === 'es' ? 'Copiar plantilla de conexión SRT al portapapeles' : 'Copy SRT connection template to clipboard');
     }
 
     // Actualizar fecha dinámica según el idioma seleccionado
@@ -514,3 +541,146 @@ function initCopyButtons() {
     });
 }
 
+
+/**
+ * Detecta el scroll vertical para aplicar elevación y sombra al navbar fijo.
+ */
+function initNavbarScroll() {
+    const navbar = document.querySelector('.navbar');
+    if (!navbar) return;
+
+    const handleScroll = () => {
+        if (window.scrollY > 15) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+}
+
+/**
+ * Centra perfectamente cada sección al hacer clic en las etiquetas de navegación,
+ * compensando exactamente la altura del header fijo y aplicando foco accesible.
+ */
+function initSmoothScrollAndAnchors() {
+    const navAnchors = document.querySelectorAll('a[href^="#"]');
+    const navbar = document.querySelector('.navbar');
+
+    navAnchors.forEach(anchor => {
+        anchor.addEventListener('click', (e) => {
+            const href = anchor.getAttribute('href');
+            if (!href || href === '#') {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                closeMobileMenu();
+                return;
+            }
+
+            const target = document.querySelector(href);
+            if (target) {
+                e.preventDefault();
+                const navHeight = navbar ? navbar.offsetHeight : 64;
+                const extraPadding = 18; // Margen de respiración estética
+                const elementPosition = target.getBoundingClientRect().top + window.pageYOffset;
+                const offsetPosition = elementPosition - navHeight - extraPadding;
+
+                window.scrollTo({
+                    top: Math.max(0, offsetPosition),
+                    behavior: 'smooth'
+                });
+
+                // Actualizar historial URL de forma limpia sin salto brusco
+                if (history.pushState) {
+                    history.pushState(null, null, href);
+                } else {
+                    location.hash = href;
+                }
+
+                // Accesibilidad: transferir foco al elemento de destino
+                target.setAttribute('tabindex', '-1');
+                target.focus({ preventScroll: true });
+
+                closeMobileMenu();
+            }
+        });
+    });
+}
+
+/**
+ * Resalta en tiempo real la etiqueta del navbar correspondiente a la sección visible.
+ */
+function initActiveNavSpy() {
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.nav-menu .nav-link');
+    if (!sections.length || !navLinks.length) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const currentId = entry.target.getAttribute('id');
+                navLinks.forEach(link => {
+                    if (link.getAttribute('href') === `#${currentId}`) {
+                        link.classList.add('active');
+                        link.setAttribute('aria-current', 'true');
+                    } else {
+                        link.classList.remove('active');
+                        link.removeAttribute('aria-current');
+                    }
+                });
+            }
+        });
+    }, {
+        rootMargin: '-20% 0px -65% 0px',
+        threshold: 0
+    });
+
+    sections.forEach(sec => observer.observe(sec));
+}
+
+/**
+ * Controla el menú hamburguesa accesible en dispositivos móviles y tablets.
+ */
+function initMobileMenu() {
+    const toggleBtn = document.getElementById('nav-toggle-btn');
+    const navMenu = document.getElementById('nav-menu');
+    if (!toggleBtn || !navMenu) return;
+
+    toggleBtn.addEventListener('click', () => {
+        const isOpen = navMenu.classList.toggle('open');
+        toggleBtn.classList.toggle('active', isOpen);
+        toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        toggleBtn.setAttribute('aria-label', isOpen ? 
+            (currentLang === 'es' ? 'Cerrar menú de navegación' : 'Close navigation menu') : 
+            (currentLang === 'es' ? 'Abrir menú de navegación' : 'Open navigation menu')
+        );
+    });
+
+    // Cerrar al presionar Escape para accesibilidad
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && navMenu.classList.contains('open')) {
+            closeMobileMenu();
+            toggleBtn.focus();
+        }
+    });
+
+    // Cerrar al hacer clic fuera del menú
+    document.addEventListener('click', (e) => {
+        if (navMenu.classList.contains('open') && !navMenu.contains(e.target) && !toggleBtn.contains(e.target)) {
+            closeMobileMenu();
+        }
+    });
+}
+
+function closeMobileMenu() {
+    const toggleBtn = document.getElementById('nav-toggle-btn');
+    const navMenu = document.getElementById('nav-menu');
+    if (navMenu) navMenu.classList.remove('open');
+    if (toggleBtn) {
+        toggleBtn.classList.remove('active');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        toggleBtn.setAttribute('aria-label', currentLang === 'es' ? 'Abrir menú de navegación' : 'Open navigation menu');
+    }
+}

@@ -138,11 +138,14 @@
 </head>
 <body>
 
+    <!-- ACCESSIBILITY: SKIP LINK PARA NAVEGACIÓN POR TECLADO -->
+    <a href="#main-content" class="skip-link" data-i18n="skip_to_content">Saltar al contenido principal</a>
+
     <!-- NAVBAR NAVEGACIÓN -->
     <header class="navbar">
         <div class="container navbar-inner">
-            <a href="#" class="brand">
-                <img src="isotype.svg" class="brand-logo-svg" alt="RTMS — Real-Time Multicam System Isotipo Logo" width="36" height="36">
+            <a href="#" class="brand" aria-label="RTMS — Inicio">
+                <img src="isotype.svg" class="brand-logo-svg" alt="" aria-hidden="true" width="36" height="36">
                 <div class="brand-content">
                     <div class="brand-top">
                         <span class="brand-title">RTMS</span>
@@ -151,8 +154,8 @@
                 </div>
             </a>
 
-            <nav>
-                <ul class="nav-menu">
+            <nav aria-label="Navegación principal">
+                <ul class="nav-menu" id="nav-menu">
                     <li><a href="#que-resuelve" class="nav-link" data-i18n="nav_resolve">Qué Resuelve</a></li>
                     <li><a href="#caracteristicas" class="nav-link" data-i18n="nav_features">Características</a></li>
                     <li><a href="#seguridad" class="nav-link" data-i18n="nav_security">Seguridad</a></li>
@@ -165,7 +168,7 @@
             <div class="nav-cta-group">
                 <!-- Botón Selector de Idioma (Bandera UK por defecto para cambiar a EN) -->
                 <button id="lang-toggle-btn" class="btn-lang" title="Switch to English" aria-label="Switch to English">
-                    <svg class="flag-icon" viewBox="0 0 60 30" width="20" height="12" xmlns="http://www.w3.org/2000/svg">
+                    <svg class="flag-icon" viewBox="0 0 60 30" width="20" height="12" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <clipPath id="nav-uk-clip"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
                         <clipPath id="nav-uk-diag"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
                         <g clip-path="url(#nav-uk-clip)">
@@ -179,25 +182,45 @@
                     <span>EN</span>
                 </button>
 
-                <a href="https://github.com/FJYarsky/RTMS" target="_blank" rel="noopener" class="btn-github">
+                <a href="https://github.com/FJYarsky/RTMS" target="_blank" rel="noopener" class="btn-github" aria-label="Repositorio de RTMS en GitHub" title="Repositorio de RTMS en GitHub">
                     <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
                     </svg>
                     <span>GitHub</span>
                 </a>
+
+                <a href="#primary-download-btn" class="btn-nav-download" data-i18n="nav_download" aria-label="Descargar RTMS para Windows">
+                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Descargar</span>
+                </a>
+
+                <!-- Botón Menú Móvil Accesible -->
+                <button id="nav-toggle-btn" class="nav-toggle-btn" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="nav-menu">
+                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12" class="line-mid"></line>
+                        <line x1="3" y1="6" x2="21" y2="6" class="line-top"></line>
+                        <line x1="3" y1="18" x2="21" y2="18" class="line-bottom"></line>
+                    </svg>
+                </button>
             </div>
         </div>
     </header>
 
+    <main id="main-content" role="main">
+
     <!-- HERO SECTION: EL CENTRO DE DESCARGA -->
-    <section class="hero">
+    <section class="hero" id="hero" role="region" aria-labelledby="hero-title">
         <div class="container">
             <div class="hero-pill">
                 <div class="hero-pill-dot"></div>
                 <span data-i18n="hero_pill">Servidor Multicámara Nativo para Windows</span>
             </div>
 
-            <h1 class="hero-title">
+            <h1 class="hero-title" id="hero-title">
                 <span data-i18n="hero_title_1">Streaming de Ultra-Baja Latencia</span><br>
                 <span class="gradient-text" data-i18n="hero_title_2">Directo a tu OBS Studio y vMix</span>
             </h1>
@@ -390,7 +413,7 @@
     </section>
 
     <!-- SECCIÓN: QUÉ RESUELVE -->
-    <section class="section" id="que-resuelve" aria-labelledby="que-resuelve-title">
+    <section class="section" id="que-resuelve" role="region" aria-labelledby="que-resuelve-title">
         <div class="container">
             <div class="section-header">
                 <span class="section-tag" data-i18n="resolve_tag">Desafíos del DirectShow en Windows</span>
@@ -466,7 +489,7 @@
     </section>
 
     <!-- SECCIÓN: CON QUÉ CUENTA (GRID 100% SIMÉTRICO) -->
-    <section class="section" id="caracteristicas" aria-labelledby="caracteristicas-title" style="background: rgba(17, 24, 39, 0.4);">
+    <section class="section" id="caracteristicas" role="region" aria-labelledby="caracteristicas-title" style="background: rgba(17, 24, 39, 0.4);">
         <div class="container">
             <div class="section-header">
                 <span class="section-tag" data-i18n="bento_tag">Capacidades del Sistema</span>
@@ -481,7 +504,7 @@
                 <div class="bento-item">
                     <div class="bento-header">
                         <div class="bento-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <line x1="18" y1="20" x2="18" y2="10"></line>
                                 <line x1="12" y1="20" x2="12" y2="4"></line>
                                 <line x1="6" y1="20" x2="6" y2="14"></line>
@@ -493,7 +516,7 @@
                         Monitoreo continuo de latencia, tasa de cuadros por segundo, porcentaje de uso de CPU, tráfico total de red y telemetría nativa de tarjeta gráfica NVIDIA vía NVML directo (`nvml.dll`) con tiempo de consulta inferior a 1 milisegundo.
                     </p>
                     <div class="bento-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         <span data-i18n="b1_tag">NVML Nativo &bull; Cero sobrecarga</span>
                     </div>
                 </div>
@@ -502,7 +525,7 @@
                 <div class="bento-item">
                     <div class="bento-header">
                         <div class="bento-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <polygon points="10 8 16 12 10 16 10 8"></polygon>
                             </svg>
@@ -513,7 +536,7 @@
                         Servidor local integrado que independiza la captura del receptor. OBS o vMix pueden conectarse o desconectarse sin detener a FFmpeg ni causar reinicios de hardware en las cámaras.
                     </p>
                     <div class="bento-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         <span data-i18n="b2_tag">MediaMTX v1.9.3 &bull; Múltiples clientes</span>
                     </div>
                 </div>
@@ -522,7 +545,7 @@
                 <div class="bento-item">
                     <div class="bento-header">
                         <div class="bento-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                             </svg>
                         </div>
@@ -532,7 +555,7 @@
                         Soporte nativo para codificación por hardware en tarjetas NVIDIA (`nvenc`), procesadores Intel Core/Arc (`qsv`) y tarjetas AMD Radeon (`amf`), con fallback automático a CPU.
                     </p>
                     <div class="bento-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         <span data-i18n="b3_tag">NVENC &bull; QSV &bull; AMF &bull; libx264</span>
                     </div>
                 </div>
@@ -541,7 +564,7 @@
                 <div class="bento-item">
                     <div class="bento-header">
                         <div class="bento-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                             </svg>
                         </div>
@@ -551,7 +574,7 @@
                         Aislamiento y control estricto del árbol de procesos a nivel de sistema operativo. Al cerrar RTMS, el kernel de Windows liquida al instante cualquier proceso subordinado de FFmpeg o MediaMTX sin dejar tareas huérfanas consumiendo GPU o puertos en segundo plano.
                     </p>
                     <div class="bento-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         <span data-i18n="b4_tag">Cero procesos huérfanos en memoria</span>
                     </div>
                 </div>
@@ -560,7 +583,7 @@
                 <div class="bento-item">
                     <div class="bento-header">
                         <div class="bento-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
@@ -571,7 +594,7 @@
                         Watchdog optimizado que detecta congelamiento de cuadros a 0 FPS y sondeo automático DirectShow cada 5 segundos para reanudar transmisiones tras desconexión física.
                     </p>
                     <div class="bento-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         <span data-i18n="b5_tag">Resiliencia desatendida</span>
                     </div>
                 </div>
@@ -580,7 +603,7 @@
                 <div class="bento-item">
                     <div class="bento-header">
                         <div class="bento-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
                                 <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
                                 <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
@@ -592,7 +615,7 @@
                         Almacenamiento transaccional de alta concurrencia mediante SQLite con modo WAL (Write-Ahead Logging), garantizando integridad ante cierres repentinos sin archivos JSON corruptos.
                     </p>
                     <div class="bento-tag">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         <span data-i18n="b6_tag">Integridad transaccional &bull; WAL</span>
                     </div>
                 </div>
@@ -601,12 +624,12 @@
     </section>
 
     <!-- SECCIÓN: PILAR DE SEGURIDAD (SECURITY.MD & DPAPI) -->
-    <section class="section" id="seguridad" aria-labelledby="seguridad-title">
+    <section class="section" id="seguridad" role="region" aria-labelledby="seguridad-title">
         <div class="container">
             <div class="security-banner">
                 <div class="security-header">
                     <div class="security-icon">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                         </svg>
                     </div>
@@ -619,7 +642,7 @@
                 <div class="security-grid">
                     <div class="security-card">
                         <div class="sec-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                             <span data-i18n="sec_c1_title">Cifrado Nativo DPAPI</span>
                         </div>
                         <p class="sec-desc" data-i18n="sec_c1_desc">
@@ -629,7 +652,7 @@
 
                     <div class="security-card">
                         <div class="sec-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                             <span data-i18n="sec_c2_title">Sanitización de URLs y Logs</span>
                         </div>
                         <p class="sec-desc" data-i18n="sec_c2_desc">
@@ -639,7 +662,7 @@
 
                     <div class="security-card">
                         <div class="sec-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
                             <span data-i18n="sec_c3_title">Panel Web Air-Gapped</span>
                         </div>
                         <p class="sec-desc" data-i18n="sec_c3_desc">
@@ -649,7 +672,7 @@
 
                     <div class="security-card">
                         <div class="sec-title">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
                             <span data-i18n="sec_c4_title">Tickets Criptográficos Efímeros</span>
                         </div>
                         <p class="sec-desc" data-i18n="sec_c4_desc">
@@ -661,13 +684,13 @@
                 <div class="security-footer">
                     <div>
                         <a href="https://github.com/FJYarsky/RTMS/blob/main/SECURITY.md" target="_blank" rel="noopener" class="security-policy-link">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                             <span data-i18n="sec_policy_btn">Consultar Política de Seguridad Oficial (SECURITY.md)</span>
                         </a>
                     </div>
                     <div>
                         <a href="mailto:joaquinyarsky@gmail.com?subject=Vulnerabilidad%20de%20Seguridad%20-%20RTMS" class="security-report-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                             <span data-i18n="sec_report_btn">Reportar Vulnerabilidad Responsable (Email)</span>
                         </a>
                     </div>
@@ -677,7 +700,7 @@
     </section>
 
     <!-- SECCIÓN: INICIO RÁPIDO EN 3 PASOS -->
-    <section class="section" id="como-usar" aria-labelledby="como-usar-title" style="background: rgba(17, 24, 39, 0.4);">
+    <section class="section" id="como-usar" role="region" aria-labelledby="como-usar-title" style="background: rgba(17, 24, 39, 0.4);">
         <div class="container">
             <div class="section-header">
                 <span class="section-tag" data-i18n="step_tag">Puesta en Marcha en 2 Minutos</span>
@@ -690,62 +713,89 @@
             <div class="steps-grid">
                 <!-- Paso 1 -->
                 <div class="step-card">
-                    <div class="step-number">01</div>
-                    <h3 class="step-title" data-i18n="s1_title">Descomprimir el Archivo ZIP</h3>
+                    <div class="step-card-header">
+                        <span class="step-badge" aria-label="Paso 1">01</span>
+                        <h3 class="step-title" data-i18n="s1_title">Descomprimir el Archivo ZIP</h3>
+                    </div>
                     <p class="step-desc" data-i18n="s1_desc">
                         Descarga el archivo portable y descomprime el contenido en cualquier carpeta de tu disco (por ejemplo en tu escritorio o disco secundario).
                     </p>
                     <div class="code-box code-box-simple">
-                        <span>C:\RTMS\</span>
-                        <span style="color: var(--text-muted);" data-i18n="s1_box">Carpeta limpia</span>
+                        <div class="code-box-path">
+                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <code>C:\RTMS\</code>
+                        </div>
+                        <span class="code-box-status" data-i18n="s1_box">Carpeta limpia</span>
                     </div>
                 </div>
 
                 <!-- Paso 2 -->
                 <div class="step-card">
-                    <div class="step-number">02</div>
-                    <h3 class="step-title" data-i18n="s2_title">Iniciar RTMS</h3>
+                    <div class="step-card-header">
+                        <span class="step-badge" aria-label="Paso 2">02</span>
+                        <h3 class="step-title" data-i18n="s2_title">Iniciar RTMS</h3>
+                    </div>
                     <p class="step-desc" data-i18n="s2_desc">
                         Haz doble clic en <code>rtms.exe</code> para iniciar el servidor. Se abrirá automáticamente la ventana nativa de control y telemetría.
                     </p>
                     <div class="code-box code-box-simple">
-                        <span>rtms.exe</span>
-                        <span style="color: var(--status-green);" data-i18n="s2_box">● Ejecutable nativo</span>
+                        <div class="code-box-path">
+                            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            <code>rtms.exe</code>
+                        </div>
+                        <span class="code-box-status status-online" data-i18n="s2_box">● Ejecutable nativo</span>
                     </div>
                 </div>
 
                 <!-- Paso 3 -->
                 <div class="step-card">
-                    <div class="step-number">03</div>
-                    <h3 class="step-title" data-i18n="s3_title">Conectar en OBS Studio o vMix</h3>
+                    <div class="step-card-header">
+                        <span class="step-badge" aria-label="Paso 3">03</span>
+                        <h3 class="step-title" data-i18n="s3_title">Conectar en OBS Studio o vMix</h3>
+                    </div>
                     <p class="step-desc" data-i18n="s3_desc">
-                        En OBS Studio o vMix, agrega una <strong>Fuente multimedia</strong> (desmarcando <em>Archivo local</em>). Cada cámara en RTMS genera su URL directa, o puedes guiarte con la siguiente <strong>plantilla de conexión</strong>:
+                        En OBS Studio o vMix, agrega una <strong>Fuente multimedia</strong> (desmarcando <em>Archivo local</em>) y pega la URL directa generada para tu cámara:
                     </p>
                     <div class="code-box code-box-template">
                         <div class="code-box-header">
                             <span class="code-box-tag" data-i18n="s3_tag">Plantilla de Conexión (Ejemplo)</span>
+                            <button class="btn-copy" data-copy-target="obs-srt-sample" title="Copiar plantilla de ejemplo" aria-label="Copiar plantilla de conexión SRT al portapapeles">
+                                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                <span class="btn-copy-label" data-i18n="s3_copy_btn">Copiar</span>
+                            </button>
                         </div>
                         <div class="code-box-code-wrapper">
-                            <span id="obs-srt-sample" data-i18n="s3_sample_url">srt://127.0.0.1:8890?streamid=read:<span class="code-param">&lt;ID_CAMARA&gt;</span>&amp;latency=120000</span>
+                            <code id="obs-srt-sample" data-i18n="s3_sample_url">srt://127.0.0.1:8890?streamid=read:<span class="code-param">&lt;ID_CAMARA&gt;</span>&amp;latency=120000</code>
                         </div>
-                        <button class="btn-copy" data-copy-target="obs-srt-sample" title="Copiar plantilla de ejemplo">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                            <span class="btn-copy-label" data-i18n="s3_copy_btn">Copiar plantilla</span>
-                        </button>
                     </div>
-                    <div class="step-hint" data-i18n="s3_hint">
-                        💡 <strong>Tip:</strong> Dentro de RTMS puedes copiar el enlace exacto de cada cámara con un clic. Reemplaza <code>&lt;ID_CAMARA&gt;</code> por el identificador de tu cámara y <code>127.0.0.1</code> por la IP local si transmites hacia otra PC en tu red.
-                    </div>
+                </div>
+            </div>
+
+            <!-- CALLOUT BANNER DE TIP DE PRODUCCIÓN (EQUILIBRA LOS 3 PASOS) -->
+            <div class="step-hint-banner" role="note" aria-label="Consejo de producción">
+                <div class="step-hint-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </div>
+                <div class="step-hint-content" data-i18n="s3_hint">
+                    💡 <strong>Tip:</strong> Dentro de RTMS puedes copiar el enlace exacto de cada cámara con un clic. Reemplaza <code>&lt;ID_CAMARA&gt;</code> por el identificador de tu cámara y <code>127.0.0.1</code> por la IP local si transmites hacia otra PC en tu red.
                 </div>
             </div>
         </div>
     </section>
 
     <!-- SECCIÓN: PREGUNTAS FRECUENTES (FAQ & SEO) -->
-    <section class="section" id="faq" aria-labelledby="faq-title">
+    <section class="section" id="faq" role="region" aria-labelledby="faq-title">
         <div class="container">
             <div class="section-header">
                 <span class="section-tag" data-i18n="faq_tag">Dudas Frecuentes</span>
@@ -759,7 +809,7 @@
                 <details class="faq-item" open>
                     <summary class="faq-question">
                         <span data-i18n="faq_q1">¿Qué es RTMS y cómo se conecta con OBS Studio o vMix?</span>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </summary>
                     <div class="faq-answer">
                         <p data-i18n="faq_a1">RTMS (Real-Time Multicam System) es un servidor local para Windows que captura dispositivos DirectShow (cámaras web, capturadoras HDMI, cámaras virtuales) y los transmite como flujos SRT independientes a través de MediaMTX. En OBS Studio o vMix, simplemente agregas una "Fuente Multimedia", desmarcas "Archivo local" y pegas la URL SRT generada (ej. <code>srt://127.0.0.1:8890?streamid=read:cam_1</code>).</p>
@@ -769,7 +819,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">
                         <span data-i18n="faq_q2">¿Qué diferencia a RTMS de capturar cámaras directamente en OBS o usar NDI?</span>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </summary>
                     <div class="faq-answer">
                         <p data-i18n="faq_a2">Capturar múltiples cámaras DirectShow directamente en OBS suele congelar el software si un cable USB se desconecta y satura el bus USB. NDI consume gran ancho de banda de red (100-150 Mbps por cámara) y exige licencias propietarias. RTMS desacopla la captura del receptor mediante MediaMTX, cuenta con reconexión automática PnP ante desconexiones físicas, y utiliza SRT con compresión por hardware (NVENC/QSV/AMF), logrando latencia inferior a 100 ms con mínimo consumo de CPU.</p>
@@ -779,7 +829,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">
                         <span data-i18n="faq_q3">¿Qué tarjetas gráficas y códecs de aceleración soporta RTMS?</span>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </summary>
                     <div class="faq-answer">
                         <p data-i18n="faq_a3">RTMS soporta codificación por hardware nativa: NVIDIA NVENC (<code>h264_nvenc</code>), Intel Quick Sync Video (<code>h264_qsv</code>) y AMD AMF (<code>h264_amf</code>). Si el equipo no cuenta con GPU compatible, activa automáticamente un fallback transparente a CPU (<code>libx264</code>).</p>
@@ -789,7 +839,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">
                         <span data-i18n="faq_q4">¿Qué sucede si una cámara USB se desenchufa durante una transmisión en vivo?</span>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </summary>
                     <div class="faq-answer">
                         <p data-i18n="faq_a4">El watchdog y el monitor DirectShow de RTMS interceptan la desconexión sin congelar OBS ni bloquear los controladores de Windows. El stream entra en reposo y, en cuanto vuelves a conectar el USB, RTMS reanuda el flujo de video automáticamente en menos de 5 segundos sin reiniciar la aplicación ni interrumpir tu directo.</p>
@@ -799,7 +849,7 @@
                 <details class="faq-item">
                     <summary class="faq-question">
                         <span data-i18n="faq_q5">¿RTMS es gratuito, seguro y de código abierto?</span>
-                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </summary>
                     <div class="faq-answer">
                         <p data-i18n="faq_a5">Sí. RTMS es 100% de código abierto bajo la Licencia MIT. Su código fuente está auditado en GitHub, no recopila telemetría externa, funciona de forma totalmente aislada ("air-gapped") en red local y cifra credenciales sensibles mediante Windows DPAPI.</p>
@@ -810,7 +860,7 @@
     </section>
 
     <!-- SECCIÓN: TECNOLOGÍAS QUE INCLUYE -->
-    <section class="section" id="tecnologias" aria-labelledby="tecnologias-title">
+    <section class="section" id="tecnologias" role="region" aria-labelledby="tecnologias-title">
         <div class="container">
             <div class="section-header">
                 <span class="section-tag" data-i18n="tech_tag">Ecosistema & Silicio</span>
@@ -857,8 +907,10 @@
         </div>
     </section>
 
+    </main>
+
     <!-- FOOTER: DERECHOS, LICENCIAS Y AUTOR -->
-    <footer class="footer">
+    <footer class="footer" role="contentinfo">
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
@@ -906,10 +958,10 @@
 
             <div class="footer-bottom">
                 <div>
-                    &copy; 2026 <strong>Joaquín Yarsky</strong>. <span data-i18n="footer_license_text">Distribuido bajo la</span> <a href="https://github.com/FJYarsky/RTMS/blob/main/LICENSE" target="_blank" rel="noopener" style="color: var(--teal); text-decoration: none;">Licencia MIT</a>.
+                    &copy; 2026 <strong>Joaquín Yarsky</strong>. <span data-i18n="footer_license_text">Distribuido bajo la</span> <a href="https://github.com/FJYarsky/RTMS/blob/main/LICENSE" target="_blank" rel="noopener" class="footer-license-link">Licencia MIT</a>.
                 </div>
                 <div class="footer-author-badge">
-                    <span data-i18n="footer_credit">Desarrollado con pasión para la comunidad de streaming por</span> <a href="https://github.com/FJYarsky" target="_blank" rel="noopener">Joaquín Yarsky</a>
+                    <span data-i18n="footer_credit">Desarrollado con pasión para la comunidad de streaming por</span> <a href="https://github.com/FJYarsky" target="_blank" rel="noopener" class="footer-author-link">Joaquín Yarsky</a>
                 </div>
             </div>
         </div>
