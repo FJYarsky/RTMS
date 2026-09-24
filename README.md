@@ -8,12 +8,13 @@
 [![Security](https://img.shields.io/badge/Seguridad-DPAPI%20%7C%20Token-10b981)](#-seguridad)
 [![Snyk](https://img.shields.io/badge/Snyk-Monitoreo%20Continuo-4c1?logo=snyk&logoColor=white)](SECURITY.md)
 [![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
+[![Discussions](https://img.shields.io/badge/Discussions-Comunidad-7c3aed?logo=github&logoColor=white)](https://github.com/FJYarsky/RTMS/discussions)
 [![License](https://img.shields.io/badge/Licencia-MIT-gray.svg)](LICENSE)
 [![Author](https://img.shields.io/badge/Autor-Joaqu%C3%ADn%20Yarsky-f59e0b)](mailto:joaquinyarsky@gmail.com)
 
 **Servidor de video multicámara de baja latencia para Windows con ingesta desacoplada vía MediaMTX, SRT y UDP.**
 
-[Sitio Web Oficial](https://fjyarsky.github.io/RTMS/) • [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Estructura](#-estructura-del-proyecto) • [Contacto](#-contacto-y-soporte)
+[Sitio Web Oficial](https://fjyarsky.github.io/RTMS/) • [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Discusiones](https://github.com/FJYarsky/RTMS/discussions) • [Contacto](#-contacto-y-soporte)
 
 ---
 
