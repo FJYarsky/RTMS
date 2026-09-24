@@ -130,9 +130,9 @@ body::before {
 }
 
 .brand-logo-svg {
-    width: 26px;
-    height: 26px;
-    filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.4));
+    width: 34px;
+    height: 34px;
+    filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.45));
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
 }
@@ -147,11 +147,15 @@ body::before {
     height: 22px;
 }
 
-.brand-text {
-    font-size: 1.25rem;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    color: #ffffff;
+.brand-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    line-height: 1;
+}
+
+.brand-top {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -159,9 +163,9 @@ body::before {
 }
 
 .brand-title {
-    font-size: 1.2rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
     color: #ffffff;
     line-height: 1;
 }
@@ -170,30 +174,24 @@ body::before {
     font-size: 0.68rem;
     font-family: var(--font-mono);
     font-weight: 600;
-    color: var(--cyan);
-    background: rgba(56, 189, 248, 0.1);
-    border: 1px solid rgba(56, 189, 248, 0.28);
-    padding: 1px 6px;
-    border-radius: 4px;
+    color: var(--teal);
+    background: rgba(20, 184, 166, 0.12);
+    border: 1px solid rgba(20, 184, 166, 0.32);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
     line-height: 1.2;
     letter-spacing: 0.02em;
     white-space: nowrap;
 }
 
-.brand-text span.accent {
+.brand-subtitle {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--text-secondary);
-    font-size: 0.82rem;
-    font-weight: 500;
-    border-left: 1px solid var(--border-color);
-    padding-left: 8px;
-    letter-spacing: 0;
+    line-height: 1.1;
     white-space: nowrap;
-}
-
-@media (max-width: 768px) {
-    .brand-text span.accent {
-        display: none;
-    }
 }
 
 
@@ -1131,7 +1129,7 @@ body::before {
 }
 
 .footer-brand {
-    max-width: 360px;
+    max-width: 440px;
 }
 
 .footer-brand-title {
@@ -1569,16 +1567,26 @@ body::before {
 
 @media (max-width: 480px) {
     .navbar-inner {
-        height: 56px;
+        height: 58px;
+    }
+
+    .brand-logo-svg {
+        width: 30px;
+        height: 30px;
     }
 
     .brand-title {
-        font-size: 1.05rem;
+        font-size: 1.15rem;
     }
 
     .version-pill {
-        font-size: 0.64rem;
-        padding: 1px 5px;
+        font-size: 0.62rem;
+        padding: 1px 6px;
+    }
+
+    .brand-subtitle {
+        font-size: 0.58rem;
+        letter-spacing: 0.04em;
     }
 
     .btn-github span {
