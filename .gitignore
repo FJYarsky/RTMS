@@ -10,9 +10,8 @@ __pycache__/
 *.so
 .Python
 
-# Binarios pesados (>100MB no permitidos en GitHub)
-bin/*.exe
-bin/python/
+# Binarios pesados (>100MB no permitidos en GitHub) y artefactos locales
+bin/
 
 # Entornos virtuales
 venv/
