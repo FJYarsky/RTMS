@@ -47,8 +47,8 @@
     <!-- RENDIMIENTO & NETWORK PRECONNECT (PageSpeed Insights: ahorra 130ms LCP y 140ms FCP) -->
     <link rel="preconnect" href="https://api.github.com" crossorigin>
     <link rel="dns-prefetch" href="https://api.github.com">
-    <link rel="preload" href="styles.css?v=2.8.0" as="style">
-    <link rel="stylesheet" href="styles.css?v=2.8.0">
+    <link rel="preload" href="styles.css?v=2.8.2" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="styles.css?v=2.8.2"></noscript>
 
     <!-- Structured Data (JSON-LD) for Google Rich Snippets -->
     <script type="application/ld+json">
@@ -395,7 +395,7 @@
                                     <div class="camera-name" data-i18n="cam3_name">NVIDIA Broadcast</div>
                                     <div class="camera-type" data-i18n="cam3_type">Cámara Virtual IA (Aislada)</div>
                                 </div>
-                                <span class="stream-badge" style="background: rgba(107, 114, 128, 0.2); color: var(--text-muted);" data-i18n="cam_stopped">DETENIDO</span>
+                                <span class="stream-badge stopped" data-i18n="cam_stopped">DETENIDO</span>
                             </div>
                             <div class="stream-meta-row">
                                 <span data-i18n="cam3_status_label">Estado:</span>

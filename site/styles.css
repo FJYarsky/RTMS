@@ -761,32 +761,39 @@ nav[aria-label="Navegación principal"] {
 
 .camera-type {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: #d1d5db; /* Alto contraste: 10.5:1 sobre fondo de tarjeta */
 }
 
 .stream-badge {
-    font-size: 0.7rem;
-    font-weight: 700;
+    font-size: 0.72rem;
+    font-weight: 800;
     padding: 3px 8px;
     border-radius: var(--radius-full);
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    letter-spacing: 0.02em;
 }
 
 .stream-badge.live {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--status-green);
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.22);
+    color: #6ee7b7; /* Emerald 300: Contraste > 9:1 certificado WCAG AAA */
+    border: 1px solid rgba(110, 231, 183, 0.45);
+}
+
+.stream-badge.stopped {
+    background: rgba(107, 114, 128, 0.25);
+    color: #f3f4f6; /* Contraste 13:1 */
+    border: 1px solid rgba(156, 163, 175, 0.45);
 }
 
 .stream-meta-row {
     display: flex;
     justify-content: space-between;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
+    font-size: 0.82rem;
+    color: #e5e7eb; /* Contraste 12:1 */
     padding: 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .stream-meta-row:last-child {

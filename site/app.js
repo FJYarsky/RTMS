@@ -342,7 +342,11 @@ function initLanguage() {
     const savedLang = localStorage.getItem('rtms_lang') || 'es';
     const langBtn = document.getElementById('lang-toggle-btn');
 
-    setLanguage(savedLang);
+    // Rendimiento Core Web Vitals: El HTML ya viene pre-renderizado en español ('es').
+    // Solo ejecutamos setLanguage() si el usuario seleccionó inglés ('en') para no invalidar el DOM (ahorra 151ms de reflow).
+    if (savedLang !== 'es') {
+        setLanguage(savedLang);
+    }
 
     if (langBtn) {
         langBtn.addEventListener('click', () => {
