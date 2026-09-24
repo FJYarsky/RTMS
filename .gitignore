@@ -61,5 +61,6 @@ RTMS_AUDITORIA_*.txt
 # Test, linter & coverage caches
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
