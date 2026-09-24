@@ -168,3 +168,4 @@ Desarrollado y mantenido por **Joaquín Yarsky**:
 ## 📄 Licencia
 
 Este proyecto está distribuido bajo la licencia **MIT**. Consulta el archivo [LICENSE](LICENSE) para más detalles. Las licencias y avisos de componentes de terceros se encuentran disponibles en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
