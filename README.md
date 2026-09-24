@@ -1,34 +1,26 @@
-<p align="center">
-  <img src="gui/static/imagotype.svg" alt="RTMS — Real-Time Multicam System" width="540">
-</p>
+<div align="center">
 
-<p align="center">
-  <strong>RTMS Takes Multiple Streams</strong><br>
-  <em>Estación de Ingesta, Transducción y Distribución Multicámara de Baja Latencia para Windows</em>
-</p>
+<img src="gui/static/logotype.svg" alt="RTMS" width="240">
 
-<p align="center">
-  <a href="https://fjyarsky.github.io/RTMS/"><img src="https://img.shields.io/badge/Sitio%20Web-fjyarsky.github.io%2FRTMS-0ea5e9?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Sitio Web"></a>
-  <a href="https://github.com/FJYarsky/RTMS/releases/tag/v2.7.0"><img src="https://img.shields.io/badge/Release-v2.7.0%20Oficial-14b8a6?style=for-the-badge&logo=github&logoColor=white" alt="Release Oficial"></a>
-  <a href="https://microsoft.com"><img src="https://img.shields.io/badge/Plataforma-Windows%2010%20%7C%2011-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Plataforma"></a>
-  <a href="https://www.srtalliance.org/"><img src="https://img.shields.io/badge/Protocolo-SRT%20%7C%20WebRTC%20%7C%20UDP-0d9488?style=for-the-badge" alt="Protocolo"></a>
-  <a href="https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI%20Suite-186%20Passed-10b981?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-gray?style=for-the-badge" alt="Licencia"></a>
-</p>
+<br><br>
 
----
+[![Website](https://img.shields.io/badge/Sitio%20Web-fjyarsky.github.io%2FRTMS-0ea5e9?logo=googlechrome&logoColor=white)](https://fjyarsky.github.io/RTMS/)
+[![Platform](https://img.shields.io/badge/Plataforma-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)](https://microsoft.com)
+[![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20WebRTC%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
+[![Security](https://img.shields.io/badge/Seguridad-DPAPI%20%7C%20Token-10b981)](#-seguridad)
+[![Snyk](https://img.shields.io/badge/Snyk-Monitoreo%20Continuo-4c1?logo=snyk&logoColor=white)](SECURITY.md)
+[![CI](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml/badge.svg)](https://github.com/FJYarsky/RTMS/actions/workflows/ci.yml)
+[![Discussions](https://img.shields.io/badge/Discussions-Comunidad-7c3aed?logo=github&logoColor=white)](https://github.com/FJYarsky/RTMS/discussions)
+[![License](https://img.shields.io/badge/Licencia-MIT-gray.svg)](LICENSE)
+[![Author](https://img.shields.io/badge/Autor-Joaqu%C3%ADn%20Yarsky-f59e0b)](mailto:joaquinyarsky@gmail.com)
 
-<p align="center">
-  <a href="https://fjyarsky.github.io/RTMS/"><strong>🌐 Sitio Web Oficial</strong></a> •
-  <a href="#-inicio-rápido"><strong>⚡ Inicio Rápido</strong></a> •
-  <a href="#-configuración-en-obs-studio"><strong>📺 Configuración OBS</strong></a> •
-  <a href="#-características-principales"><strong>🚀 Características</strong></a> •
-  <a href="#-arquitectura-y-baja-latencia"><strong>⏱️ Baja Latencia</strong></a> •
-  <a href="#-seguridad-integral"><strong>🛡️ Seguridad</strong></a> •
-  <a href="#-soporte-y-autor"><strong>👨‍💻 Autor</strong></a>
-</p>
+**Servidor de video multicámara de baja latencia para Windows con ingesta desacoplada vía MediaMTX, SRT y UDP.**
+
+[Sitio Web Oficial](https://fjyarsky.github.io/RTMS/) • [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Discusiones](https://github.com/FJYarsky/RTMS/discussions) • [Contacto](#-contacto-y-soporte)
 
 ---
+
+</div>
 
 ## 📌 Descripción
 
@@ -160,7 +152,7 @@ Desarrollado y mantenido por **Joaquín Yarsky**:
 
 <div align="center">
   <br>
-  <sub>Desarrollado en Argentina con orgullo e identidad soberana • Las Malvinas son argentinas</sub>
+  <sub>Desarrollado en Argentina por un argentino</sub>
 </div>
 
 ---
