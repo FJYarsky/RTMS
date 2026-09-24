@@ -323,14 +323,16 @@ async def test_command_builder_mjpeg_silicon_fallback_when_unsupported_or_failed
 @pytest.mark.asyncio
 async def test_probe_device_mjpeg_support():
     """Valida la función probe_device_mjpeg_support para dispositivos virtuales y físicos."""
-    from core.hardware import probe_device_mjpeg_support
+    from core.hardware import _mjpeg_support_cache, probe_device_mjpeg_support
+
+    _mjpeg_support_cache.clear()
 
     # Virtual device siempre retorna False sin llamar a subprocess
     assert await probe_device_mjpeg_support("virtual://test") is False
     assert await probe_device_mjpeg_support("testsrc") is False
 
     # Con mock de salida DirectShow que tiene pixel_format=mjpeg
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
+    with patch("core.hardware.has_ffmpeg_binary", return_value=True), patch("asyncio.create_subprocess_exec") as mock_exec:
         mock_proc = AsyncMock()
         mock_proc.communicate.return_value = (b"", b"Pin Capturar: pixel_format=mjpeg fps=30")
         mock_exec.return_value = mock_proc
@@ -339,7 +341,7 @@ async def test_probe_device_mjpeg_support():
         assert result is True
 
     # Con mock de salida DirectShow que NO tiene mjpeg (solo yuyv/nv12)
-    with patch("asyncio.create_subprocess_exec") as mock_exec:
+    with patch("core.hardware.has_ffmpeg_binary", return_value=True), patch("asyncio.create_subprocess_exec") as mock_exec:
         mock_proc = AsyncMock()
         mock_proc.communicate.return_value = (b"", b"Pin Capturar: pixel_format=yuyv422 fps=30")
         mock_exec.return_value = mock_proc
