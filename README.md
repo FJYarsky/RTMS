@@ -137,3 +137,4 @@ Desarrollado y mantenido por **Joaquín Yarsky**:
 ## 📄 Licencia
 
 Distribuido bajo licencia **MIT**. Ver archivo [LICENSE](LICENSE). Licencias de terceros detalladas en [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
