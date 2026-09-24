@@ -35,7 +35,7 @@ dependencies = [
     "pystray>=0.19.5",
     "pillow>=10.4.0",
     "psutil>=6.0.0",
-    "aiosqlite>=0.20.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [project.optional-dependencies]
