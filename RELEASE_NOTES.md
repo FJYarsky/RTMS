@@ -9,10 +9,10 @@ Historial completo y notas oficiales de lanzamiento organizadas cronológicament
 
 ### 🚀 Motor Multimedia de Ultra-Baja Latencia y Mitigación de Saturación GPU
 - **Eliminación de VBV Buffer Bloat**: Reducción del buffer VBV a sub-segundo (`bufk = int(bitrate * 0.5)k`), eliminando colas y buffers inflados que generaban latencia progresiva de varios segundos.
-- **Sintonización Fina NVENC**: Ajuste exhaustivo de parámetros `h264_nvenc` (`-preset p2 -tune ll -rc cbr -delay 0 -zerolatency 1 -forced-idr 1 -bf 0 -b_adapt 0 -spatial_aq 0 -temporal_aq 0 -pix_fmt nv12`), erradicando la saturación artificial al 100% de la GPU dedicada y previniendo fallos con webcams DirectShow en formato YUYV.
+- **Sintonización Fina NVENC**: Ajuste exhaustivo de parámetros `h264_nvenc` (`-preset p2 -tune ll -rc cbr -delay 0 -zerolatency 1 -forced-idr 1 -bf 0 -b_adapt 0 -pix_fmt nv12`), erradicando la saturación artificial al 100% de la GPU dedicada y previniendo fallos con webcams DirectShow en formato YUYV.
 - **Cadencia Determinista CFR**: Forzado de `-fps_mode cfr` antes de la codificación para sincronía estricta de marcas de tiempo PTS/DTS.
 - **Optimización de Sockets UDP y Mapeo Multicast Inyectivo**: Buffers de red configurados a `buffer_size=131072` (128 KB) y `fifo_size=50000`. Fórmula inyectiva `(port - 9000) + 1` asignando IPs de multidifusión únicas (`239.255.0.1`..`239.255.0.201`) para puertos 9000..9200, garantizando cero colisiones.
-- **Latencia Sub-100ms en Clientes SRT y VLC**: Receptores SRT configurados con `&latency=50000` (50 ms). Formato canónico `udp://@:<port>` para VLC UDP Unicast LAN.
+- **Latencia Sub-100ms en Clientes SRT y VLC**: Receptores SRT con URLs de reproducción directa sin búfer retardado en OBS/vMix y VLC. Formato canónico `udp://@:<port>` para VLC UDP Unicast LAN.
 - **Watchdog Anti-Freeze**: Monitoreo de `last_progress_at` con reinicio automático si la transmisión se congela (>10s sin avance de frames).
 
 ### 💾 Persistencia Transaccional SQLite v2 y Semántica REST PATCH
