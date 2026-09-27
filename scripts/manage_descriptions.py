@@ -279,22 +279,22 @@ def run_restore(targets: List[str]) -> int:
         if touched:
             msg_body = "Mantenimiento automatizado: preservación de descripción canónica en GitHub."
             res = subprocess.run(
-                ["git", "commit", "-m", canonical, "-m", msg_body],
+                ["git", "commit", "-m", target_desc, "-m", msg_body],
                 capture_output=True,
                 text=True,
             )
             if res.returncode == 0:
-                print(f"[RESTORED] {item} -> '{canonical}'")
+                print(f"[RESTORED] {item} -> '{target_desc}'")
                 success_count += 1
             else:
                 # Si git no detectó cambios reales, forzar commit vacío de metadata
                 res_empty = subprocess.run(
-                    ["git", "commit", "--allow-empty", "-m", canonical, "-m", msg_body],
+                    ["git", "commit", "--allow-empty", "-m", target_desc, "-m", msg_body],
                     capture_output=True,
                     text=True,
                 )
                 if res_empty.returncode == 0:
-                    print(f"[RESTORED (meta)] {item} -> '{canonical}'")
+                    print(f"[RESTORED (meta)] {item} -> '{target_desc}'")
                     success_count += 1
                 else:
                     print(f"[ERROR] No se pudo restaurar {item}: {res.stderr.strip()}", file=sys.stderr)
