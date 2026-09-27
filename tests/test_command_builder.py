@@ -12,7 +12,7 @@ from core.stream_manager import StreamManager
 
 
 def test_build_command_zerolatency_true():
-    """Valida que zerolatency=True aplique los parámetros de ultra baja latencia."""
+    """Valida que zerolatency=True aplique los parámetros de baja latencia."""
 
     async def _run():
         mgr = StreamManager()
@@ -61,7 +61,7 @@ def test_build_command_zerolatency_false():
         # En broadcast/estándar no se fuerza muxdelay 0
         assert "-muxdelay" not in cmd
         assert "-flush_packets" not in cmd
-        assert "tlpktdrop=0" in url
+        assert "tlpktdrop=1" in url
 
     asyncio.run(_run())
 

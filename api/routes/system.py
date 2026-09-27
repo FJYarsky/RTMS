@@ -14,7 +14,7 @@ import threading
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
 from api.deps import verify_api_token
 from api.schemas import AutostartToggle, FactoryResetRequest, SystemSettingsUpdate, SystemShutdownRequest
@@ -27,6 +27,58 @@ from core.telemetry import telemetry_service
 
 logger = logging.getLogger("rtms.api.system")
 router = APIRouter()
+
+
+@router.get("/metrics")
+@router.get("/api/system/prometheus")
+async def get_prometheus_metrics():
+    """Endpoint de métricas en formato estándar Prometheus (RFC / OpenMetrics) para observabilidad industrial."""
+    statuses = await asyncio.to_thread(get_all_stream_statuses)
+    running_streams = [s for s in statuses if s["status"]["state"] == "running"]
+    total_bitrate = sum(s["status"]["current_bitrate_kbps"] for s in running_streams)
+
+    telemetry = await asyncio.to_thread(
+        telemetry_service.collect,
+        active_streams_count=len(running_streams),
+        total_bitrate_kbps=total_bitrate,
+    )
+
+    cpu_pct = telemetry.get("cpu_percent", 0.0)
+    ram_pct = telemetry.get("memory_percent", 0.0)
+    ram_used = telemetry.get("memory_used_mb", 0.0)
+    gpu_pct = telemetry.get("gpu_percent", 0.0)
+    vram_used = telemetry.get("gpu_memory_used_mb", 0.0)
+    active_count = len(running_streams)
+    total_count = len(statuses)
+
+    lines = [
+        "# HELP rtms_active_streams Cantidad de flujos de video actualmente en transmision",
+        "# TYPE rtms_active_streams gauge",
+        f"rtms_active_streams {active_count}",
+        "# HELP rtms_total_streams Cantidad total de camaras configuradas en el sistema",
+        "# TYPE rtms_total_streams gauge",
+        f"rtms_total_streams {total_count}",
+        "# HELP rtms_total_bitrate_kbps Tasa de bits total combinada de transmision en kbps",
+        "# TYPE rtms_total_bitrate_kbps gauge",
+        f"rtms_total_bitrate_kbps {total_bitrate}",
+        "# HELP rtms_cpu_percent Porcentaje de utilizacion de CPU del host",
+        "# TYPE rtms_cpu_percent gauge",
+        f"rtms_cpu_percent {cpu_pct}",
+        "# HELP rtms_memory_percent Porcentaje de utilizacion de memoria RAM del host",
+        "# TYPE rtms_memory_percent gauge",
+        f"rtms_memory_percent {ram_pct}",
+        "# HELP rtms_memory_used_mb Memoria RAM utilizada en megabytes",
+        "# TYPE rtms_memory_used_mb gauge",
+        f"rtms_memory_used_mb {ram_used}",
+        "# HELP rtms_gpu_percent Porcentaje de utilizacion de motor de codificacion GPU",
+        "# TYPE rtms_gpu_percent gauge",
+        f"rtms_gpu_percent {gpu_pct}",
+        "# HELP rtms_gpu_memory_used_mb Memoria VRAM de GPU utilizada en megabytes",
+        "# TYPE rtms_gpu_memory_used_mb gauge",
+        f"rtms_gpu_memory_used_mb {vram_used}",
+    ]
+    content = "\n".join(lines) + "\n"
+    return Response(content=content, media_type="text/plain; version=0.0.4; charset=utf-8")
 
 
 @router.get("/api/system/metrics", dependencies=[Depends(verify_api_token)])
@@ -220,3 +272,41 @@ async def update_system_settings(payload: SystemSettingsUpdate):
         "unattended_autostart": cfg.get("unattended_autostart", False),
         "restarted_mediamtx": restarted_mediamtx,
     }
+
+
+@router.post("/api/system/latency_benchmark", dependencies=[Depends(verify_api_token)])
+async def trigger_latency_benchmark(udp_samples: int = 50, video_duration: float = 2.5):
+    """
+    Ejecuta el benchmark determinista de latencia y ping local (Socket RTT, TCP Handshake, Pipeline TTFF y VLC limits).
+    Retorna el informe completo con métricas de alta resolución en nanosegundos/milisegundos.
+    """
+    from scripts.benchmark_local_ping import run_benchmark
+
+    try:
+        results = await run_benchmark(
+            udp_samples=min(max(udp_samples, 20), 200),
+            tcp_samples=15,
+            video_duration=min(max(video_duration, 1.5), 5.0),
+            save_json=True,
+        )
+        return {"status": "ok", "benchmark": results}
+    except Exception as e:
+        logger.exception(f"Error ejecutando benchmark de latencia: {e}")
+        raise HTTPException(status_code=500, detail=f"Error ejecutando benchmark: {e}") from e
+
+
+@router.get("/api/system/latency_report", dependencies=[Depends(verify_api_token)])
+async def get_latest_latency_report():
+    """Retorna el informe de la última evaluación de ping y latencia local realizada."""
+    from core.config_mgr import get_base_dir
+
+    report_path = os.path.join(get_base_dir(), "reports", "local_latency_ping_benchmark.json")
+    if not os.path.exists(report_path):
+        return {"status": "not_found", "message": "No se ha ejecutado ningún benchmark de latencia aún."}
+
+    try:
+        with open(report_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {"status": "ok", "benchmark": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error leyendo informe de latencia: {e}") from e

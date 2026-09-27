@@ -32,7 +32,7 @@ class nvmlMemory_t(ctypes.Structure):
 
 class GpuTelemetryReader:
     """
-    Lector de telemetría de GPU de latencia ultra-baja (<1ms) utilizando NVML nativo vía ctypes.
+    Lector de telemetría de GPU de baja latencia (<1ms) utilizando NVML nativo vía ctypes.
     No requiere dependencias externas adicionales en Python y conmuta suavemente a modo seguro
     (available=False) si el sistema no posee GPU NVIDIA o controladores compatibles.
     """

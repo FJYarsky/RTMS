@@ -4,6 +4,7 @@
     <!-- Panel de control web y visualización en tiempo real -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="rtms-token" content="{{ token }}">
     <title>RTMS v{{ version }} — Real-Time Multicam System</title>
     <link rel="icon" type="image/svg+xml" href="/static/isotype.svg">
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
@@ -18,7 +19,7 @@
     
     <div class="app">
         <header>
-            <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor">
+            <div class="logo-section" onclick="openAboutModal()" style="cursor: pointer;" title="Ver información del software y autor" data-i18n-attr="title:nav_about_tooltip">
                 <img src="/static/isotype.svg" class="logo-icon-svg" alt="RTMS Isotipo">
                 <div class="logo-text">RTMS</div>
                 <span class="version-tag">v{{ version }}</span>
@@ -33,86 +34,120 @@
                 </svg>
             </button>
 
-            <!-- HUD de Telemetría en Tiempo Real -->
-            <div class="header-hud hud-telemetry" id="hud-telemetry">
-                <div class="hud-item" title="Uso actual del procesador (CPU)">
-                    <span class="hud-label">CPU</span>
+            <!-- HUD de Telemetría en Tiempo Real (Clic para desplegar modal detallado) -->
+            <div class="header-hud hud-telemetry" id="hud-telemetry" onclick="openTelemetryModal()" style="cursor: pointer;" title="Clic para ver panel detallado de telemetría" data-i18n-attr="title:hud_telemetry_tooltip">
+                <div class="hud-item" title="Uso actual del procesador (CPU)" data-i18n-attr="title:hud_cpu_tooltip">
+                    <span class="hud-label" data-i18n="hud_cpu">CPU</span>
                     <span class="hud-val" id="hud-cpu-val">0%</span>
                 </div>
-                <div class="hud-item" title="Uso actual de tarjeta gráfica (GPU)" id="hud-gpu-item">
-                    <span class="hud-label">GPU</span>
+                <div class="hud-item" title="Uso actual de tarjeta gráfica (GPU)" id="hud-gpu-item" data-i18n-attr="title:hud_gpu_tooltip">
+                    <span class="hud-label" data-i18n="hud_gpu">GPU</span>
                     <span class="hud-val" id="hud-gpu-val">–</span>
                 </div>
-                <div class="hud-item" title="Uso actual de memoria RAM">
-                    <span class="hud-label">RAM</span>
+                <div class="hud-item" title="Uso actual de memoria RAM" data-i18n-attr="title:hud_ram_tooltip">
+                    <span class="hud-label" data-i18n="hud_ram">RAM</span>
                     <span class="hud-val" id="hud-ram-val">0%</span>
                 </div>
-                <div class="hud-item" title="Tráfico actual de red del sistema" id="hud-net-item">
-                    <span class="hud-label">RED</span>
+                <div class="hud-item" title="Tráfico actual de red del sistema" id="hud-net-item" data-i18n-attr="title:hud_net_tooltip">
+                    <span class="hud-label" data-i18n="hud_net">RED</span>
                     <span class="hud-val" id="hud-net-val">0 kbps</span>
                 </div>
-                <div class="hud-item" title="Ancho de banda total emitido (Streams RTMS)">
-                    <span class="hud-label">BITRATE</span>
+                <div class="hud-item" title="Ancho de banda total emitido (Streams RTMS)" data-i18n-attr="title:hud_bitrate_tooltip">
+                    <span class="hud-label" data-i18n="hud_bitrate">BITRATE</span>
                     <span class="hud-val" id="hud-bitrate-val">0 kbps</span>
                 </div>
             </div>
 
             <div class="header-status">
-                <div class="status-pill" id="header-stream-count">
-                    <span id="active-streams-num">0</span> activos / <span id="total-streams-num">0</span> total
+                <!-- Enlace Discreto al Sitio Web Oficial -->
+                <a href="https://fjyarsky.github.io/RTMS/" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm btn-nav-website" title="Sitio Web Oficial de RTMS" data-i18n-attr="title:nav_website_tooltip">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                    <span data-i18n="nav_website">Sitio Web</span>
+                </a>
+
+                <!-- Selector de Idioma Bilingüe -->
+                <div class="lang-selector">
+                    <button class="btn-lang active" id="lang-btn-es" onclick="setAppLanguage('es')" title="Español">ES</button>
+                    <button class="btn-lang" id="lang-btn-en" onclick="setAppLanguage('en')" title="English">EN</button>
                 </div>
-                <div class="ip-pill" id="header-ip-addr">–.–.–.–</div>
+
+                <!-- Estado Unificado: Flujos Activos / IP -->
+                <div class="header-status-badge" id="header-stream-count" title="Transmisiones activas e IP en red local">
+                    <span class="status-indicator-dot"></span>
+                    <span class="status-stream-counts"><span id="active-streams-num">0</span>/<span id="total-streams-num">0</span></span>
+                    <span class="status-sep">•</span>
+                    <span id="header-ip-addr" class="status-ip-text">–.–.–.–</span>
+                </div>
+
                 <!-- Botón de Detención Global -->
-                <button class="btn btn-emergency" onclick="confirmEmergencyStop()" title="Detener inmediatamente todas las transmisiones activas" aria-label="Detener todas las transmisiones">
-                    ⏹️ Detener Todo
+                <button class="btn btn-emergency" onclick="confirmEmergencyStop()" title="Detener inmediatamente todas las transmisiones activas" aria-label="Detener todas las transmisiones" data-i18n-attr="title:nav_emergency_tooltip,aria-label:nav_emergency_tooltip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <rect x="5" y="5" width="14" height="14" rx="2" ry="2"/>
+                    </svg>
+                    <span data-i18n="btn_stop_all">Detener Todo</span>
                 </button>
+
                 <!-- Botón de Finalizar Procesos -->
-                <button class="btn btn-kill-procs" onclick="confirmTerminateAllProcesses()" title="Finalizar totalmente todos los procesos de RTMS y streaming" aria-label="Finalizar todos los procesos">
-                    ⚡ Salir / Finalizar
+                <button class="btn btn-kill-procs" onclick="confirmTerminateAllProcesses()" title="Finalizar totalmente todos los procesos de RTMS y streaming" aria-label="Finalizar todos los procesos" data-i18n-attr="title:nav_kill_tooltip,aria-label:nav_kill_tooltip">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span data-i18n="btn_exit_app">Salir</span>
                 </button>
             </div>
         </header>
 
         <!-- SIDEBAR -->
         <nav class="sidebar">
-            <div class="nav-section-title">Principal</div>
+            <div class="nav-section-title" data-i18n="nav_section_main">Principal</div>
             <div class="nav-link active" data-page="connect" onclick="navigateToPage('connect')" role="button" tabindex="0">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
                 </svg>
-                Conectar OBS/VLC
+                <span data-i18n="nav_connect">Conectar OBS/VLC</span>
             </div>
             
-            <div class="nav-section-title">Gestión</div>
+            <div class="nav-section-title" data-i18n="nav_section_mgmt">Gestión</div>
             <div class="nav-link" data-page="cameras" onclick="navigateToPage('cameras')" role="button" tabindex="0">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/>
                 </svg>
-                Cámaras
+                <span data-i18n="nav_cameras">Cámaras</span>
                 <span class="nav-badge zero" id="sidebar-camera-badge">0</span>
             </div>
 
-            <div class="nav-section-title">Gestión del Sistema</div>
+            <div class="nav-section-title" data-i18n="nav_section_sys">Gestión del Sistema</div>
             <div class="nav-link" data-page="power" onclick="navigateToPage('power')" role="button" tabindex="0">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2h-2M9 3a2 2 0 002 2h2a2 2 0 002-2M9 3h6"/>
                 </svg>
-                Gestión de Energía
+                <span data-i18n="nav_power">Gestión de Energía</span>
             </div>
             <div class="nav-link" data-page="system" onclick="navigateToPage('system')" role="button" tabindex="0">
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                 </svg>
-                Sistema y Arranque
+                <span data-i18n="nav_system">Sistema y Arranque</span>
             </div>
 
             <!-- FIRMA DE AUTOR DESTACADA -->
             <div class="sidebar-footer">
                 <div class="author-card" onclick="openAboutModal()">
-                    <div class="author-title">Desarrollado por</div>
+                    <div class="author-title" data-i18n="developed_by_label">Desarrollado por</div>
                     <div class="author-name">Joaquín Yarsky</div>
-                    <div class="author-sub">RTMS v{{ version }} • Soporte Oficial</div>
-                    <button class="btn btn-author-contact">ℹ️ Acerca de / Contacto</button>
+                    <div class="author-sub">RTMS v{{ version }} • <span data-i18n="author_support">Soporte Oficial</span></div>
+                    <button class="btn btn-author-contact">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <span data-i18n="btn_about">Acerca de / Contacto</span>
+                    </button>
                 </div>
             </div>
         </nav>
@@ -124,32 +159,38 @@
         <main>
             <!-- 1. PAGE: CONECTAR OBS/VLC -->
             <div id="page-connect" class="page active">
-                <h2 class="page-title">Conectar con OBS / VLC</h2>
-                <p class="page-subtitle">Direcciones de red optimizadas para recepción de video con ultra baja latencia.</p>
+                <h2 class="page-title" data-i18n="connect_title">Conectar con OBS / VLC</h2>
+                <p class="page-subtitle" data-i18n="connect_desc">Direcciones de red optimizadas para recepción de video con baja latencia.</p>
 
                 <div class="ip-display-box">
                     <div class="ip-info-text">
-                        <div class="ip-title-label">IP del Servidor en la Red Local</div>
+                        <div class="ip-title-label" data-i18n="ip_title_label">IP del Servidor en la Red Local</div>
                         <div class="ip-address-val" id="connect-server-ip">Cargando...</div>
                     </div>
-                    <button class="btn btn-ghost" onclick="copyServerIp()">📋 Copiar IP</button>
+                    <button class="btn btn-ghost" onclick="copyServerIp()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        <span data-i18n="copy_server_ip">Copiar IP</span>
+                    </button>
                 </div>
 
                 <!-- Active Streams URL List -->
                 <div class="card">
-                    <div class="card-header">Direcciones de Transmisión Activas</div>
+                    <div class="card-header" data-i18n="active_streams_header">Direcciones de Transmisión Activas</div>
                     <div class="card-body" id="connect-streams-list">
                         <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-                            Buscando flujos de transmisión activos...
+                            <span data-i18n="searching_active_streams">Buscando flujos de transmisión activos...</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- OBS & VLC Guides -->
                 <div class="card">
-                    <div class="card-header">Guía de Configuración Rápida en OBS Studio</div>
+                    <div class="card-header" data-i18n="obs_guide_header">Guía de Configuración Rápida en OBS Studio</div>
                     <div class="card-body">
-                        <div class="alert-box alert-info">
+                        <div class="alert-box alert-info" data-i18n="obs_guide_alert">
                             <strong>Protocolo SRT Recomendado:</strong> SRT ofrece corrección automática de paquetes y latencia inferior a 100ms. Configura estas fuentes en la <strong>computadora donde corre OBS</strong>.
                         </div>
                         
@@ -157,33 +198,33 @@
                             <div class="obs-guide-step">
                                 <div class="step-number">1</div>
                                 <div class="step-details">
-                                    <div class="step-title">Crear Fuente Multimedia en OBS</div>
-                                    <div class="step-desc">Haz clic en <strong>+</strong> en el panel de Fuentes, y elige <strong>Fuente multimedia</strong>.</div>
+                                    <div class="step-title" data-i18n="obs_step_1_title">Crear Fuente Multimedia en OBS</div>
+                                    <div class="step-desc" data-i18n="obs_step_1_desc">Haz clic en <strong>+</strong> en el panel de Fuentes, y elige <strong>Fuente multimedia</strong>.</div>
                                 </div>
                             </div>
                             <div class="obs-guide-step">
                                 <div class="step-number">2</div>
                                 <div class="step-details">
-                                    <div class="step-title">Desmarcar "Archivo local"</div>
-                                    <div class="step-desc">Desmarca la casilla <strong>Archivo local</strong> para habilitar las opciones de red.</div>
+                                    <div class="step-title" data-i18n="obs_step_2_title">Desmarcar "Archivo local"</div>
+                                    <div class="step-desc" data-i18n="obs_step_2_desc">Desmarca la casilla <strong>Archivo local</strong> para habilitar las opciones de red.</div>
                                 </div>
                             </div>
                             <div class="obs-guide-step">
                                 <div class="step-number">3</div>
                                 <div class="step-details">
-                                    <div class="step-title">Pegar la URL generada</div>
-                                    <div class="step-desc">En el campo <strong>Entrada</strong>, pega la URL de SRT copiada arriba (ej: <code>srt://192.168.1.X:8890?streamid=read:cam_id...</code>).</div>
+                                    <div class="step-title" data-i18n="obs_step_3_title">Pegar la URL generada</div>
+                                    <div class="step-desc" data-i18n="obs_step_3_desc">En el campo <strong>Entrada</strong>, pega la URL de SRT copiada arriba (ej: <code>srt://192.168.1.X:8890?streamid=read:cam_id...</code>).</div>
                                 </div>
                             </div>
                             <div class="obs-guide-step">
                                 <div class="step-number">4</div>
                                 <div class="step-details">
-                                    <div class="step-title">Formato de entrada</div>
+                                    <div class="step-title" data-i18n="obs_step_4_title">Formato de entrada</div>
                                     <div class="step-desc" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                        <span>En el campo <strong>Formato de entrada</strong> escribe o copia:</span>
-                                        <button type="button" class="btn-copy-chip" onclick="copyMpegts()" title="Clic para copiar 'mpegts' al portapapeles">
+                                        <span data-i18n="obs_step_4_label">En el campo <strong>Formato de entrada</strong> escribe o copia:</span>
+                                        <button type="button" class="btn-copy-chip" onclick="copyMpegts()" title="Clic para copiar 'mpegts' al portapapeles" data-i18n-attr="title:btn_copy_chip_tooltip">
                                             <code>mpegts</code>
-                                            <span style="font-size: 0.75rem; font-weight: 600;">📋 Copiar</span>
+                                            <span style="font-size: 0.75rem; font-weight: 600;" data-i18n="btn_copy_chip">📋 Copiar</span>
                                         </button>
                                     </div>
                                 </div>
@@ -195,13 +236,41 @@
 
             <!-- 2. PAGE: CAMARAS Y CONFIGURACION -->
             <div id="page-cameras" class="page">
-                <h2 class="page-title">Dispositivos y Flujos</h2>
-                <p class="page-subtitle">Control individual, autoarranque y optimización de hardware para cada cámara detectada.</p>
+                <div class="cameras-page-header">
+                    <div>
+                        <h2 class="page-title" data-i18n="cameras_title">Dispositivos y Flujos</h2>
+                        <p class="page-subtitle" data-i18n="cameras_desc">Control individual, autoarranque y optimización de hardware para cada cámara detectada.</p>
+                    </div>
+                    <div class="cameras-page-actions">
+                        <button class="btn btn-primary" id="btn-scan-hw" onclick="scanHardwareDevices()" title="Escanear y sincronizar dispositivos de captura conectados">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <polyline points="1 20 1 14 7 14"/>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                            </svg>
+                            <span data-i18n="btn_scan_hardware">Escanear Hardware</span>
+                        </button>
+                    </div>
+                </div>
 
-                <div style="display: flex; justify-content: flex-end; margin-bottom: 20px; gap: 10px;">
-                    <button class="btn btn-primary" id="btn-scan-hw" onclick="scanHardwareDevices()">
-                        🔄 Escanear Hardware
-                    </button>
+                <!-- Barra de Estadísticas de Flujos -->
+                <div class="cameras-summary-bar">
+                    <div class="summary-chip">
+                        <span class="summary-chip-label">CÁMARAS DETECTADAS</span>
+                        <span class="summary-chip-value" id="cam-summary-total">0</span>
+                    </div>
+                    <div class="summary-chip live-chip">
+                        <span class="summary-chip-label">EN TRANSMISIÓN</span>
+                        <span class="summary-chip-value live" id="cam-summary-live">0</span>
+                    </div>
+                    <div class="summary-chip">
+                        <span class="summary-chip-label">DETENIDAS</span>
+                        <span class="summary-chip-value" id="cam-summary-stopped">0</span>
+                    </div>
+                    <div class="summary-chip">
+                        <span class="summary-chip-label">VIRTUALES / OCULTAS</span>
+                        <span class="summary-chip-value" id="cam-summary-virtual">0</span>
+                    </div>
                 </div>
 
                 <!-- Grid de Cámaras Físicas Principales -->
@@ -214,9 +283,9 @@
                     <div class="virtual-toggle-header" onclick="toggleVirtualCamerasVisibility()">
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <span id="virtual-chevron" style="font-size: 1.1rem; transition: transform 0.2s;">▶</span>
-                            <strong>Dispositivos Ocultos / Virtuales (<span id="virtual-count-badge">0</span>)</strong>
+                            <strong><span data-i18n="virtual_devices_header">Dispositivos Ocultos / Virtuales</span> (<span id="virtual-count-badge">0</span>)</strong>
                         </div>
-                        <span style="font-size: 0.8rem; color: var(--text-muted);">Haz clic para mostrar u ocultar</span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);" data-i18n="click_to_toggle">Haz clic para mostrar u ocultar</span>
                     </div>
                     <div class="streams-grid virtual-grid-hidden" id="virtual-cameras-grid" style="margin-top: 16px;">
                         <!-- Tarjetas de cámaras virtuales u ocultas -->
@@ -228,11 +297,11 @@
                     <div class="virtual-toggle-header" onclick="toggleIgnoredCamerasVisibility()" style="border-left: 3px solid #ef4444;">
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <span id="ignored-chevron" style="font-size: 1.1rem; transition: transform 0.2s;">▶</span>
-                            <strong>Cámaras Ocultadas / Eliminadas (<span id="ignored-count-badge">0</span>)</strong>
+                            <strong><span data-i18n="ignored_devices_header">Cámaras Ocultadas / Eliminadas</span> (<span id="ignored-count-badge">0</span>)</strong>
                         </div>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); restoreAllIgnoredCameras()" style="font-size: 0.75rem; padding: 4px 8px; color: var(--teal);">Restaurar Todas</button>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">Clic para ver y restaurar</span>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); restoreAllIgnoredCameras()" style="font-size: 0.75rem; padding: 4px 8px; color: var(--teal);" data-i18n="btn_restore_deleted">Restaurar Todas</button>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);" data-i18n="click_to_restore">Clic para ver y restaurar</span>
                         </div>
                     </div>
                     <div class="streams-grid virtual-grid-hidden" id="ignored-cameras-grid" style="margin-top: 16px;">
@@ -243,73 +312,112 @@
 
             <!-- 3. PAGE: GESTION DE ENERGIA -->
             <div id="page-power" class="page">
-                <h2 class="page-title">Optimización Energética</h2>
-                <p class="page-subtitle">Directivas silenciosas de Windows para evitar cortes de cámara por USB Selective Suspend.</p>
+                <h2 class="page-title" data-i18n="power_title">Optimización Energética</h2>
+                <p class="page-subtitle" data-i18n="power_desc">Directivas silenciosas de Windows para evitar cortes de cámara por USB Selective Suspend.</p>
 
                 <div class="card">
-                    <div class="card-header">Estado de Optimización Energética</div>
+                    <div class="card-header" data-i18n="power_header">Estado de Optimización Energética</div>
                     <div class="card-body">
-                        <div class="alert-box alert-warning">
+                        <div class="alert-box alert-warning" data-i18n="power_alert">
                             <strong>Estabilidad para Vivo:</strong> Estas optimizaciones evitan que Windows suspenda puertos USB de las cámaras o apague adaptadores de red. Se aplican de forma 100% silenciosa sin consolas visibles.
                         </div>
 
                         <div class="power-grid">
                             <div class="power-card">
-                                <div class="power-card-icon">⚡</div>
-                                <div class="power-card-info">
-                                    <div class="power-card-title">Alto Rendimiento</div>
-                                    <div class="power-card-desc">Fuerza el CPU al plan de máxima potencia de Windows.</div>
+                                <div class="power-card-icon">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                    </svg>
                                 </div>
-                                <div class="power-status-indicator" id="pwr-high-perf">Listo</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title" data-i18n="power_card_scheme_title">Alto Rendimiento</div>
+                                    <div class="power-card-desc" data-i18n="power_card_scheme_desc">Fuerza el CPU al plan de máxima potencia de Windows.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-high-perf" data-i18n="power_status_ready">Listo</div>
                             </div>
                             <div class="power-card">
-                                <div class="power-card-icon">💻</div>
-                                <div class="power-card-info">
-                                    <div class="power-card-title">Suspensión del Sistema</div>
-                                    <div class="power-card-desc">Evita que la PC entre en suspensión durante eventos.</div>
+                                <div class="power-card-icon">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                        <line x1="8" y1="21" x2="16" y2="21"/>
+                                        <line x1="12" y1="17" x2="12" y2="21"/>
+                                    </svg>
                                 </div>
-                                <div class="power-status-indicator" id="pwr-sleep">Listo</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title" data-i18n="power_card_awake_title">Suspensión del Sistema</div>
+                                    <div class="power-card-desc" data-i18n="power_card_awake_desc">Evita que la PC entre en suspensión durante eventos.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-sleep" data-i18n="power_status_ready">Listo</div>
                             </div>
                             <div class="power-card">
-                                <div class="power-card-icon">💤</div>
-                                <div class="power-card-info">
-                                    <div class="power-card-title">Hibernación</div>
-                                    <div class="power-card-desc">Desactiva el archivo de hibernación para evitar bloqueos.</div>
+                                <div class="power-card-icon">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                                    </svg>
                                 </div>
-                                <div class="power-status-indicator" id="pwr-hibernation">Listo</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title" data-i18n="power_card_hibernation_title">Hibernación</div>
+                                    <div class="power-card-desc" data-i18n="power_card_hibernation_desc">Desactiva el archivo de hibernación para evitar bloqueos.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-hibernation" data-i18n="power_status_ready">Listo</div>
                             </div>
                             <div class="power-card">
-                                <div class="power-card-icon">🔌</div>
-                                <div class="power-card-info">
-                                    <div class="power-card-title">USB Selective Suspend</div>
-                                    <div class="power-card-desc">Evita que Windows apague los puertos USB de las cámaras.</div>
+                                <div class="power-card-icon">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="1"/>
+                                        <path d="M12 2v6m0 8v6m-4-6l-3-3 3-3m8 6l3-3-3-3"/>
+                                    </svg>
                                 </div>
-                                <div class="power-status-indicator" id="pwr-usb">Listo</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title" data-i18n="power_card_usb_title">USB Selective Suspend</div>
+                                    <div class="power-card-desc" data-i18n="power_card_usb_desc">Evita que Windows apague los puertos USB de las cámaras.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-usb" data-i18n="power_status_ready">Listo</div>
                             </div>
                             <div class="power-card">
-                                <div class="power-card-icon">💽</div>
-                                <div class="power-card-info">
-                                    <div class="power-card-title">Apagado de HDD / Discos</div>
-                                    <div class="power-card-desc">Evita desactivación de unidades de almacenamiento.</div>
+                                <div class="power-card-icon">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="22" y1="12" x2="2" y2="12"/>
+                                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                                        <line x1="6" y1="16" x2="6.01" y2="16"/>
+                                        <line x1="10" y1="16" x2="10.01" y2="16"/>
+                                    </svg>
                                 </div>
-                                <div class="power-status-indicator" id="pwr-hdd">Listo</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title" data-i18n="power_card_hdd_title">Apagado de HDD / Discos</div>
+                                    <div class="power-card-desc" data-i18n="power_card_hdd_desc">Evita desactivación de unidades de almacenamiento.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-hdd" data-i18n="power_status_ready">Listo</div>
                             </div>
                             <div class="power-card">
-                                <div class="power-card-icon">🌐</div>
-                                <div class="power-card-info">
-                                    <div class="power-card-title">Ahorro en Adaptador de Red</div>
-                                    <div class="power-card-desc">Desactiva el ahorro de energía en tarjetas Ethernet/Wi-Fi.</div>
+                                <div class="power-card-icon">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="2" y1="12" x2="22" y2="12"/>
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                                    </svg>
                                 </div>
-                                <div class="power-status-indicator" id="pwr-network">Listo</div>
+                                <div class="power-card-info">
+                                    <div class="power-card-title" data-i18n="power_card_nic_title">Ahorro en Adaptador de Red</div>
+                                    <div class="power-card-desc" data-i18n="power_card_nic_desc">Desactiva el ahorro de energía en tarjetas Ethernet/Wi-Fi.</div>
+                                </div>
+                                <div class="power-status-indicator" id="pwr-network" data-i18n="power_status_ready">Listo</div>
                             </div>
                         </div>
 
                         <div style="text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                             <button class="btn btn-primary" id="btn-apply-power" onclick="reapplySystemEnvironment()">
-                                🛠️ Aplicar Optimizaciones
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                                </svg>
+                                <span data-i18n="btn_apply_power">Aplicar Optimizaciones</span>
                             </button>
                             <button class="btn btn-ghost" id="btn-restore-power" onclick="restorePowerSettings()" style="display:none;">
-                                ↩️ Restaurar Configuración Original
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                    <polyline points="1 4 1 10 7 10"/>
+                                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                                </svg>
+                                <span data-i18n="btn_restore_power">Restaurar Configuración Original</span>
                             </button>
                         </div>
                     </div>
@@ -318,20 +426,20 @@
 
             <!-- 4. PAGE: SISTEMA Y AUTOARRANQUE -->
             <div id="page-system" class="page">
-                <h2 class="page-title">Sistema y Ejecución Desatendida</h2>
-                <p class="page-subtitle">Configuración de tolerancia a reinicios del sistema sin intervención humana.</p>
+                <h2 class="page-title" data-i18n="system_title">Sistema y Ejecución Desatendida</h2>
+                <p class="page-subtitle" data-i18n="system_desc">Configuración de tolerancia a reinicios del sistema sin intervención humana.</p>
 
                 <div class="card">
-                    <div class="card-header">Autoarranque con Windows (Modo Desatendido)</div>
+                    <div class="card-header" data-i18n="sys_autostart_card_header">Autoarranque con Windows (Modo Desatendido)</div>
                     <div class="card-body">
-                        <div class="alert-box alert-info">
+                        <div class="alert-box alert-info" data-i18n="sys_autostart_alert">
                             Inicia RTMS silenciosamente al encender el equipo sin consolas negras abiertas. Las cámaras con la opción de <strong>Autoarranque</strong> activa comenzarán a transmitir automáticamente.
                         </div>
 
                         <label class="switch-label">
                             <div class="switch-text">
-                                <div class="switch-title">Iniciar RTMS al arrancar Windows</div>
-                                <div class="switch-desc">Permite tolerancia a reinicios accidentales o cortes de energía.</div>
+                                <div class="switch-title" data-i18n="sys_autostart_title">Iniciar RTMS al arrancar Windows</div>
+                                <div class="switch-desc" data-i18n="sys_autostart_desc">Permite tolerancia a reinicios accidentales o cortes de energía.</div>
                             </div>
                             <input type="checkbox" id="autostart-toggle-switch" onchange="toggleAutostartState(this.checked)">
                             <div class="switch-toggle"></div>
@@ -340,51 +448,56 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header">Media Server Interno (MediaMTX) y Puerto Central SRT</div>
+                    <div class="card-header" data-i18n="sys_mediamtx_card_header">Media Server Interno (MediaMTX) y Puerto Central SRT</div>
                     <div class="card-body">
-                        <div class="alert-box alert-info">
+                        <div class="alert-box alert-info" data-i18n="sys_mediamtx_alert">
                             MediaMTX centraliza la ingesta de todas las cámaras. Clientes externos como OBS Studio y vMix se conectan a este puerto central SRT único (por defecto <strong>8890</strong>) indicando la cámara mediante <code>streamid=read:{cam_id}</code>. Las desconexiones o reinicios de clientes no interrumpen la ingesta local de FFmpeg.
                         </div>
                         <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px;">
                             <div style="flex: 1; min-width: 240px;">
-                                <label for="mediamtx-srt-port-input" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;">
+                                <label for="mediamtx-srt-port-input" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 6px;" data-i18n="sys_mediamtx_port_label">
                                     Puerto SRT Central Media Server (Recomendado: 8890 - 8990 o 9000 - 9200)
                                 </label>
                                 <input type="number" id="mediamtx-srt-port-input" class="form-ctrl" min="1024" max="65535" value="8890" style="width: 100%; border: 1px solid var(--border-color); background: rgba(0, 0, 0, 0.35); color: var(--text-primary);">
                             </div>
                             <button class="btn btn-primary" onclick="saveMediaMtxPort()" id="btn-save-mediamtx-port">
-                                💾 Guardar Puerto MediaMTX
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                <span data-i18n="btn_save_port">Guardar Puerto MediaMTX</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-header">Información del Servidor y Entorno</div>
+                    <div class="card-header" data-i18n="sys_server_info_header">Información del Servidor y Entorno</div>
                     <div class="card-body">
                         <table class="system-table">
                             <tr>
-                                <td>Versión RTMS</td>
-                                <td>v{{ version }} (Compilación Oficial)</td>
+                                <td data-i18n="sys_table_version">Versión RTMS</td>
+                                <td data-i18n="sys_table_version_val">v{{ version }} (Compilación Oficial)</td>
                             </tr>
                             <tr>
-                                <td>Sistema Operativo</td>
+                                <td data-i18n="sys_table_os">Sistema Operativo</td>
                                 <td id="sys-platform">{% if platform_info %}{{ platform_info.summary }}{% else %}Windows{% endif %}</td>
                             </tr>
                             <tr>
-                                <td>Compilación Windows</td>
+                                <td data-i18n="sys_table_build">Compilación Windows</td>
                                 <td id="sys-win-build">{% if platform_info and platform_info.build_number %}{{ platform_info.build_number }}{% if platform_info.ubr %}.{{ platform_info.ubr }}{% endif %} ({{ platform_info.architecture }}){% else %}—{% endif %}</td>
                             </tr>
                             <tr>
-                                <td>Versión de Lanzamiento</td>
+                                <td data-i18n="sys_table_release">Versión de Lanzamiento</td>
                                 <td id="sys-win-ver">{% if platform_info and platform_info.display_version %}{{ platform_info.display_version }}{% else %}—{% endif %}</td>
                             </tr>
                             <tr>
-                                <td>IP del Servidor</td>
+                                <td data-i18n="sys_table_ip">IP del Servidor</td>
                                 <td id="sys-ip">127.0.0.1</td>
                             </tr>
                             <tr>
-                                <td>Desarrollador</td>
+                                <td data-i18n="sys_table_author">Desarrollador</td>
                                 <td><strong>Joaquín Yarsky</strong> (<a href="mailto:joaquinyarsky@gmail.com" style="color:var(--teal)">joaquinyarsky@gmail.com</a>)</td>
                             </tr>
                         </table>
@@ -392,30 +505,78 @@
                 </div>
 
                 <div class="card" style="margin-top: 20px;">
-                    <div class="card-header">Copia de Seguridad y Migración</div>
+                    <div class="card-header" data-i18n="sys_backup_title">Copia de Seguridad y Migración</div>
                     <div class="card-body">
-                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;" data-i18n="sys_backup_desc">
                             Exporta la configuración completa del sistema para respaldo o impórtala desde un archivo JSON validado.
                         </p>
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <button class="btn btn-ghost" onclick="exportConfiguration()">📥 Exportar Configuración (JSON)</button>
-                            <button class="btn btn-ghost" onclick="triggerImportConfiguration()">📤 Importar Configuración</button>
+                            <button class="btn btn-ghost" onclick="exportConfiguration()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                <span data-i18n="btn_export_json">Exportar Configuración (JSON)</span>
+                            </button>
+                            <button class="btn btn-ghost" onclick="triggerImportConfiguration()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                                <span data-i18n="btn_import_json">Importar Configuración</span>
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="card" style="margin-top: 20px; border: 1px solid rgba(239, 68, 68, 0.35);">
-                    <div class="card-header" style="color: var(--status-red, #ef4444);">Zona de Mantenimiento y Control de Procesos</div>
+                <!-- Diagnóstico de Ping y Latencia de Video -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--teal);">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 14 14"></polyline>
+                            </svg>
+                            <span data-i18n="bench_card_title">Diagnóstico de Ping y Latencia de Video</span>
+                        </span>
+                    </div>
                     <div class="card-body">
-                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;" data-i18n="bench_card_desc">
+                            Herramienta de auditoría para medir tiempos de tránsito de socket UDP, handshake local con MediaMTX, fluctuación (jitter) y compatibilidad de buffers de baja latencia con VLC Media Player.
+                        </p>
+                        <button class="btn btn-secondary" onclick="openLatencyBenchmarkModal()" style="display: inline-flex; align-items: center; gap: 6px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 14 14"></polyline>
+                            </svg>
+                            <span data-i18n="btn_open_latency_bench">Abrir Diagnóstico de Latencia</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px; border: 1px solid rgba(239, 68, 68, 0.35);">
+                    <div class="card-header" style="color: var(--status-red, #ef4444);" data-i18n="sys_zone_maint_header">Zona de Mantenimiento y Control de Procesos</div>
+                    <div class="card-body">
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;" data-i18n="sys_zone_maint_desc">
                             Herramientas de emergencia y saneamiento del entorno. Finaliza de raíz cualquier proceso remanente en memoria o restaura el software a su estado virgen de fábrica.
                         </p>
                         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <button class="btn btn-kill-procs" onclick="confirmTerminateAllProcesses()" title="Finalizar inmediatamente todos los procesos de RTMS, FFmpeg y FFplay">
-                                ⚡ Finalizar Todos los Procesos
+                            <button class="btn btn-kill-procs" onclick="confirmTerminateAllProcesses()" title="Finalizar inmediatamente todos los procesos de RTMS, FFmpeg y FFplay" data-i18n-attr="title:nav_kill_tooltip">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                                <span data-i18n="btn_kill_all_procs">Finalizar Todos los Procesos</span>
                             </button>
-                            <button class="btn btn-danger" onclick="confirmFactoryReset()" title="Restablecer configuración de fábrica y limpiar datos temporales">
-                                🗑️ Restablecer a Valores de Fábrica
+                            <button class="btn btn-danger" onclick="confirmFactoryReset()" title="Restablecer configuración de fábrica y limpiar datos temporales" data-i18n-attr="title:btn_factory_reset_tooltip">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    <line x1="10" y1="11" x2="10" y2="17"/>
+                                    <line x1="14" y1="11" x2="14" y2="17"/>
+                                </svg>
+                                <span data-i18n="btn_factory_reset">Restablecer a Valores de Fábrica</span>
                             </button>
                         </div>
                     </div>
@@ -428,7 +589,7 @@
     <div class="modal-overlay" role="dialog" aria-modal="true" id="config-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr">
-                <span id="config-modal-title">Configuración de Cámara</span>
+                <span id="config-modal-title" data-i18n="config_modal_title">Configuración de Cámara</span>
                 <button class="modal-close" aria-label="Cerrar" onclick="closeConfigModal()">&times;</button>
             </div>
             <div class="modal-body">
@@ -438,16 +599,16 @@
 
                     <div class="form-grid" style="margin-bottom: 16px;">
                         <div class="form-group">
-                            <label class="form-label" for="config-preset">Perfil Predefinido de Transmisión</label>
+                            <label class="form-label" for="config-preset" data-i18n="cfg_preset_label">Perfil Predefinido de Transmisión</label>
                             <select class="form-ctrl" id="config-preset" onchange="applyQualityPreset(this.value)">
-                                <option value="custom">Personalizado...</option>
-                                <option value="best">Alta Calidad / Broadcast (1080p @ 60 FPS — 6000 kbps)</option>
-                                <option value="default" selected>Estándar Equilibrado (720p @ 30 FPS — 3000 kbps)</option>
-                                <option value="lowest">Bajo Ancho de Banda (480p @ 24 FPS — 1500 kbps)</option>
+                                <option value="custom" data-i18n="opt_preset_custom">Personalizado...</option>
+                                <option value="best" data-i18n="opt_preset_best">Alta Calidad / Broadcast (1080p @ 60 FPS — 6000 kbps)</option>
+                                <option value="default" selected data-i18n="opt_preset_default">Estándar Equilibrado (720p @ 30 FPS — 3000 kbps)</option>
+                                <option value="lowest" data-i18n="opt_preset_lowest">Bajo Ancho de Banda (480p @ 24 FPS — 1500 kbps)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="config-resolution">Resolución</label>
+                            <label class="form-label" for="config-resolution" data-i18n="cam_resolution_label">Resolución</label>
                             <select class="form-ctrl" id="config-resolution" onchange="resetQualityPreset()">
                                 <option value="480p">854x480 (480p)</option>
                                 <option value="720p" selected>1280x720 (720p)</option>
@@ -460,7 +621,7 @@
 
                     <div class="form-grid" style="margin-bottom: 16px;">
                         <div class="form-group">
-                            <label class="form-label" for="config-fps">FPS (Fotogramas por Segundo)</label>
+                            <label class="form-label" for="config-fps" data-i18n="cfg_fps_label">FPS (Fotogramas por Segundo)</label>
                             <select class="form-ctrl" id="config-fps" onchange="resetQualityPreset()">
                                 <option value="24">24 FPS</option>
                                 <option value="30" selected>30 FPS</option>
@@ -468,69 +629,93 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="config-bitrate">Tasa de Bits / Bitrate (kbps)</label>
+                            <label class="form-label" for="config-bitrate" data-i18n="cfg_bitrate_label">Tasa de Bits / Bitrate (kbps)</label>
                             <input class="form-ctrl" type="number" id="config-bitrate" value="3000" min="500" max="50000" oninput="resetQualityPreset()">
                         </div>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 16px;">
-                        <label class="form-label" for="config-protocol">Protocolo de Red</label>
+                        <label class="form-label" for="config-protocol" data-i18n="cam_protocol_label">Protocolo de Red</label>
                         <select class="form-ctrl" id="config-protocol" onchange="handleProtocolChange(this.value)">
-                            <option value="srt" selected>SRT Media Server (Desacoplado, ultrabaja latencia — Recomendado)</option>
-                            <option value="udp_multicast">UDP Multicast (Emisión a múltiples receptores en red LAN)</option>
-                            <option value="udp_unicast">UDP Unicast LAN (Hacia otra PC o Celular — VLC sin caídas)</option>
+                            <option value="srt" selected data-i18n="opt_protocol_srt">SRT Media Server (Desacoplado, baja latencia — Recomendado)</option>
+                            <option value="udp_multicast" data-i18n="opt_protocol_udp_multicast">UDP Multicast (Emisión a múltiples receptores en red LAN)</option>
+                            <option value="udp_unicast" data-i18n="opt_protocol_udp_unicast">UDP Unicast LAN (Hacia otra PC o Celular — VLC sin caídas)</option>
                         </select>
                     </div>
 
                     <div class="form-group" id="group-udp-host" style="display: none; margin-bottom: 16px;">
-                        <label class="form-label" for="config-udp-host">IP de Destino Unicast (PC o Dispositivo Remoto)</label>
-                        <input class="form-ctrl" type="text" id="config-udp-host" value="127.0.0.1" placeholder="Ej: 192.168.1.100 o 127.0.0.1">
-                        <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;">Ingrese la dirección IP del dispositivo receptor en su red local (o 127.0.0.1 si es en este mismo equipo).</small>
+                        <label class="form-label" for="config-udp-host" data-i18n="cfg_udp_host_label">IP de Destino Unicast (PC o Dispositivo Remoto)</label>
+                        <input class="form-ctrl" type="text" id="config-udp-host" value="127.0.0.1" placeholder="Ej: 192.168.1.100 o 127.0.0.1" data-i18n-attr="placeholder:cfg_udp_host_placeholder">
+                        <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;" data-i18n="cfg_udp_host_desc">Ingrese la dirección IP del dispositivo receptor en su red local (o 127.0.0.1 si es en este mismo equipo).</small>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 16px;">
-                        <label class="form-label" for="config-encoder">Codificador de Video</label>
+                        <label class="form-label" for="config-encoder" data-i18n="cam_encoder_label">Codificador de Video</label>
                         <select class="form-ctrl" id="config-encoder" style="width: 100%;">
-                            <option value="auto" selected>Detección Automática de GPU (Conmutación suave a CPU)</option>
-                            <option value="h264_nvenc">NVIDIA NVENC H.264 (Acelerado por GPU)</option>
-                            <option value="h264_qsv">Intel QuickSync QSV H.264 (Acelerado por GPU)</option>
-                            <option value="h264_amf">AMD AMF H.264 (Acelerado por GPU)</option>
-                            <option value="libx264">libx264 (CPU — Máxima compatibilidad)</option>
+                            <option value="auto" selected data-i18n="opt_enc_auto">Detección Automática de GPU (Conmutación suave a CPU)</option>
+                            <optgroup label="H.264 / AVC (Máxima compatibilidad)" data-i18n-attr="label:optgrp_h264">
+                                <option value="h264_nvenc" data-i18n="opt_enc_h264_nvenc">NVIDIA NVENC H.264 (Acelerado por GPU)</option>
+                                <option value="h264_qsv" data-i18n="opt_enc_h264_qsv">Intel QuickSync QSV H.264 (Acelerado por GPU)</option>
+                                <option value="h264_amf" data-i18n="opt_enc_h264_amf">AMD AMF H.264 (Acelerado por GPU)</option>
+                                <option value="libx264" data-i18n="opt_enc_libx264">libx264 (CPU — Universal)</option>
+                            </optgroup>
+                            <optgroup label="H.265 / HEVC (Alta Eficiencia)" data-i18n-attr="label:optgrp_hevc">
+                                <option value="hevc_nvenc" data-i18n="opt_enc_hevc_nvenc">NVIDIA NVENC HEVC (H.265 GPU)</option>
+                                <option value="hevc_qsv" data-i18n="opt_enc_hevc_qsv">Intel QuickSync QSV HEVC (H.265 GPU)</option>
+                                <option value="hevc_amf" data-i18n="opt_enc_hevc_amf">AMD AMF HEVC (H.265 GPU)</option>
+                                <option value="libx265" data-i18n="opt_enc_libx265">libx265 (CPU — H.265)</option>
+                            </optgroup>
+                            <optgroup label="AV1 Next-Gen (Mínimo Ancho de Banda)" data-i18n-attr="label:optgrp_av1">
+                                <option value="av1_nvenc" data-i18n="opt_enc_av1_nvenc">NVIDIA NVENC AV1 (Acelerado por GPU)</option>
+                                <option value="av1_qsv" data-i18n="opt_enc_av1_qsv">Intel QuickSync QSV AV1 (Acelerado por GPU)</option>
+                                <option value="av1_amf" data-i18n="opt_enc_av1_amf">AMD AMF AV1 (Acelerado por GPU)</option>
+                            </optgroup>
                         </select>
                     </div>
 
                     <!-- AJUSTES DE EJECUCIÓN DESATENDIDA -->
                     <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px;">
-                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--teal); margin-bottom: 8px;">Opciones de Automatización y Rendimiento</div>
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--teal); margin-bottom: 8px;" data-i18n="cfg_auto_opts">Opciones de Automatización y Rendimiento</div>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
                             <input type="checkbox" id="config-cam-autostart" checked style="display: inline-block;">
-                            <span>Iniciar transmisión automáticamente al arrancar RTMS</span>
+                            <span data-i18n="cfg_cam_autostart">Iniciar transmisión automáticamente al arrancar RTMS</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
-                            <input type="checkbox" id="config-zerolatency" checked style="display: inline-block;">
-                            <span>Modo de ultra baja latencia zerolatency (&lt;100ms real sin buffers)</span>
+                            <input type="checkbox" id="config-zerolatency" checked style="display: inline-block;" onchange="handleZerolatencyChange()">
+                            <span data-i18n="cfg_zerolatency">Modo de baja latencia zerolatency (&lt;100ms real sin buffers)</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
                             <input type="checkbox" id="config-is-virtual" style="display: inline-block;">
-                            <span>Clasificar como cámara virtual o secundaria (ocultar del panel principal)</span>
+                            <span data-i18n="cfg_is_virtual">Clasificar como cámara virtual o secundaria (ocultar del panel principal)</span>
                         </label>
                     </div>
 
                     <!-- ADVANCED SRT SETTINGS COLLAPSIBLE -->
                     <div class="advanced-trigger" onclick="toggleAdvancedSettingsPanel()">
-                        <span>⚙️ Ajustes Avanzados de Transmisión (SRT)</span>
+                        <span style="display: flex; align-items: center; gap: 6px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                            <span data-i18n="cfg_srt_adv">Ajustes Avanzados de Transmisión (SRT)</span>
+                        </span>
                         <span class="advanced-icon" id="advanced-chevron">&#9662;</span>
                     </div>
 
                     <div class="advanced-panel" id="config-advanced-panel">
                         <div class="form-grid">
-                            <div class="form-group">
-                                <label class="form-label" for="config-srt-latency">Latencia de Buffer SRT (ms)</label>
+                            <div class="form-group" id="group-srt-latency">
+                                <label class="form-label" for="config-srt-latency" data-i18n="cfg_srt_latency">Latencia de Buffer SRT (ms)</label>
                                 <input class="form-ctrl" type="number" id="config-srt-latency" value="120" min="10" max="5000">
+                                <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">Búfer personalizado (solo sin zerolatency)</span>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label" for="config-srt-passphrase">Frase de Paso / Passphrase SRT (Opcional)</label>
-                                <input class="form-ctrl" type="text" id="config-srt-passphrase" placeholder="Entre 10 y 79 caracteres" minlength="10" maxlength="79">
+                            <div class="form-group" id="notice-srt-latency-zerolatency" style="display: none; grid-column: 1 / -1; padding: 10px 14px; background: rgba(20, 184, 166, 0.08); border: 1px solid rgba(20, 184, 166, 0.25); border-radius: var(--radius-sm); font-size: 0.78rem; color: var(--teal);">
+                                <div style="font-weight: 700; margin-bottom: 2px;">⚡ Modo Baja Latencia Activo</div>
+                                <div style="color: var(--text-secondary); font-size: 0.75rem;">El búfer SRT se calibra automáticamente en 50 ms para mínima latencia física. Para personalizar manualmente la latencia de búfer SRT, desactiva la casilla 'Modo de baja latencia zerolatency'.</div>
+                            </div>
+                            <div class="form-group" id="group-srt-passphrase">
+                                <label class="form-label" for="config-srt-passphrase" data-i18n="cfg_srt_pass">Frase de Paso / Passphrase SRT (Opcional)</label>
+                                <input class="form-ctrl" type="text" id="config-srt-passphrase" placeholder="Entre 10 y 79 caracteres" minlength="10" maxlength="79" data-i18n-attr="placeholder:cfg_srt_pass_placeholder">
                             </div>
                         </div>
                     </div>
@@ -541,9 +726,15 @@
                 </form>
             </div>
             <div class="modal-foot">
-                <button class="btn btn-danger btn-sm" type="button" style="margin-right: auto;" onclick="deleteCurrentCamera()">🗑️ Eliminar Cámara</button>
-                <button class="btn btn-ghost" onclick="closeConfigModal()">Cancelar</button>
-                <button class="btn btn-primary" onclick="document.getElementById('form-submit-hidden').click()">Guardar y Aplicar</button>
+                <button class="btn btn-danger btn-sm" type="button" style="margin-right: auto;" onclick="deleteCurrentCamera()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    <span data-i18n="btn_confirm_delete">Eliminar Cámara</span>
+                </button>
+                <button class="btn btn-ghost" onclick="closeConfigModal()" data-i18n="btn_cancel">Cancelar</button>
+                <button class="btn btn-primary" onclick="document.getElementById('form-submit-hidden').click()" data-i18n="btn_save_apply">Guardar y Aplicar</button>
             </div>
         </div>
     </div>
@@ -552,14 +743,14 @@
     <div class="modal-overlay" role="dialog" aria-modal="true" id="logs-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr">
-                <span id="logs-modal-title">Logs de FFmpeg</span>
+                <span id="logs-modal-title" data-i18n="logs_modal_title">Logs de FFmpeg</span>
                 <button class="modal-close" aria-label="Cerrar" onclick="closeLogsModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="logs-box" id="logs-content-box">Cargando logs...</div>
+                <div class="logs-box" id="logs-content-box" data-i18n="logs_connecting">Cargando logs...</div>
             </div>
             <div class="modal-foot">
-                <button class="btn btn-ghost" onclick="closeLogsModal()">Cerrar</button>
+                <button class="btn btn-ghost" onclick="closeLogsModal()" data-i18n="btn_close">Cerrar</button>
             </div>
         </div>
     </div>
@@ -568,7 +759,7 @@
     <div class="modal-overlay" role="dialog" aria-modal="true" id="about-modal-overlay">
         <div class="modal-card about-card" style="max-width: 480px;">
             <div class="modal-hdr">
-                <span>Acerca de RTMS</span>
+                <span data-i18n="about_title">Acerca de RTMS</span>
                 <button class="modal-close" aria-label="Cerrar" onclick="closeAboutModal()">&times;</button>
             </div>
             <div class="modal-body" style="text-align: center; padding: 24px 22px;">
@@ -580,15 +771,16 @@
                 </div>
 
                 <!-- Insignia y Homenaje de Identidad Nacional -->
-                <div class="argentina-tribute-pill" title="Desarrollo 100% argentino con orgullo e identidad soberana">
+                <div class="argentina-tribute-pill" title="Desarrollo 100% argentino con orgullo e identidad soberana" data-i18n-attr="title:arg_tribute_tooltip">
+                    <img src="/static/malvinas.svg" class="arg-malvinas-svg" alt="Islas Malvinas Argentinas">
                     <span class="arg-flag-badge">🇦🇷</span>
-                    <span class="arg-tribute-text">Hecho en Argentina por un argentino</span>
+                    <span class="arg-tribute-text" data-i18n="arg_tribute_made">Hecho en Argentina</span>
                     <span class="arg-divider">•</span>
-                    <span class="arg-malvinas-text">Las Malvinas son argentinas</span>
+                    <span class="arg-malvinas-text" data-i18n="arg_tribute_malvinas">Las Malvinas son argentinas</span>
                 </div>
 
                 <div class="about-author-box">
-                    <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-muted); font-weight: 600;">
+                    <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-muted); font-weight: 600;" data-i18n="developed_by_label">
                         Desarrollado y Diseñado por
                     </div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: #fff; margin: 6px 0;">
@@ -596,16 +788,25 @@
                     </div>
                     <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
                         <a href="https://fjyarsky.github.io/RTMS/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="text-decoration:none; display: inline-flex; align-items: center; gap: 6px;">
-                            🌐 Sitio Web Oficial
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="2" y1="12" x2="22" y2="12"></line>
+                                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                            </svg>
+                            <span data-i18n="official_website_btn">Sitio Web Oficial</span>
                         </a>
                         <a href="mailto:joaquinyarsky@gmail.com" class="btn btn-ghost btn-sm" style="text-decoration:none; display: inline-flex; align-items: center; gap: 6px;">
-                            ✉️ joaquinyarsky@gmail.com
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            <span>joaquinyarsky@gmail.com</span>
                         </a>
                     </div>
                 </div>
 
                 <div style="text-align: left; background: rgba(0,0,0,0.25); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 14px; margin-top: 18px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5;">
-                    <strong>Atribuciones y Componentes de Terceros:</strong><br>
+                    <strong data-i18n="third_party_label">Atribuciones y Componentes de Terceros:</strong><br>
                     • <strong>FFmpeg & FFplay:</strong> Motor multimedia bajo licencias LGPL/GPL.<br>
                     • <strong>FastAPI & Uvicorn:</strong> Framework asíncrono bajo licencia MIT.<br>
                     • <strong>pywebview:</strong> Interfaz gráfica de escritorio multiplataforma.<br>
@@ -613,7 +814,7 @@
                 </div>
             </div>
             <div class="modal-foot">
-                <button class="btn btn-primary" onclick="closeAboutModal()">Entendido</button>
+                <button class="btn btn-primary" onclick="closeAboutModal()" data-i18n="btn_understood">Entendido</button>
             </div>
         </div>
     </div>
@@ -623,7 +824,7 @@
         <div class="modal-card preview-card">
             <div class="modal-hdr" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; flex: 1;">
-                    <span id="preview-modal-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px;">Vista Previa de Video</span>
+                    <span id="preview-modal-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px;" data-i18n="preview_modal_title">Vista Previa de Video</span>
                     <span id="preview-modal-info" style="display: inline-flex; align-items: center;"></span>
                 </div>
                 <button class="modal-close" aria-label="Cerrar" onclick="closePreviewModal()">&times;</button>
@@ -632,7 +833,7 @@
                 <div class="preview-container">
                     <div class="preview-loader" id="preview-loader">
                         <div class="spinner"></div>
-                        <p>Iniciando monitor de video WebRTC...</p>
+                        <p data-i18n="preview_loading">Iniciando monitor de video WebRTC...</p>
                     </div>
                     <video id="preview-video" class="preview-video-element" autoplay muted playsinline style="display:none;"></video>
                     <img id="preview-modal-img" class="preview-video-element" alt="Vista previa en vivo" style="display:none;">
@@ -640,14 +841,18 @@
             </div>
             <div class="modal-foot" style="justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn btn-secondary btn-sm" id="preview-ffplay-btn" title="Abrir en ventana flotante externa con ultra baja latencia">
-                        📺 Abrir Visor Nativo FFplay
+                    <button class="btn btn-secondary btn-sm" id="preview-ffplay-btn" title="Abrir en ventana flotante externa con baja latencia" data-i18n-attr="title:preview_ffplay_tooltip">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+                            <polyline points="17 2 12 7 7 2"/>
+                        </svg>
+                        <span data-i18n="btn_ffplay">Abrir Visor Nativo FFplay</span>
                     </button>
-                    <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);" data-i18n="preview_hardware_note">
                         Consumo de hardware: 0.00% al cerrar este visor
                     </span>
                 </div>
-                <button class="btn btn-ghost" onclick="closePreviewModal()">Cerrar</button>
+                <button class="btn btn-ghost" onclick="closePreviewModal()" data-i18n="btn_close">Cerrar</button>
             </div>
         </div>
     </div>
@@ -656,13 +861,19 @@
     <div class="modal-overlay" role="dialog" aria-modal="true" id="qr-modal-overlay">
         <div class="modal-card" style="max-width: 440px; text-align: center;">
             <div class="modal-hdr">
-                <span>📱 Escanear con Celular (VLC Mobile)</span>
+                <span style="display: flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                        <line x1="12" y1="18" x2="12.01" y2="18"/>
+                    </svg>
+                    <span data-i18n="qr_title">Compartir enlace QR</span>
+                </span>
                 <button class="modal-close" aria-label="Cerrar" onclick="closeQrModal()">&times;</button>
             </div>
             <div class="modal-body" style="padding: 24px 20px;">
                 <div id="qr-stream-name" style="font-weight: 700; font-size: 1rem; margin-bottom: 6px; color: var(--text-primary);"></div>
                 <div id="qr-protocol-badge" style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px;"></div>
-                <div id="qr-stream-desc" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 16px;">
+                <div id="qr-stream-desc" style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 16px;" data-i18n="qr_desc">
                     Escanea este código con la cámara de tu teléfono para abrir la transmisión en VLC o reproducir en la red local.
                 </div>
                 
@@ -671,20 +882,148 @@
                 </div>
 
                 <div class="form-group" style="text-align: left; margin-top: 8px;">
-                    <label class="form-label" for="qr-url-input">URL de Red (VLC / Celular):</label>
+                    <label class="form-label" for="qr-obs-url-input" data-i18n="qr_obs_label">URL para OBS Studio / vMix:</label>
                     <div style="display: flex; gap: 8px;">
-                        <input type="text" id="qr-url-input" class="form-ctrl" readonly style="flex: 1; font-family: monospace; font-size: 0.78rem;">
-                        <button class="btn btn-primary btn-sm" onclick="copyQrUrl()">📋 Copiar</button>
+                        <input type="text" id="qr-obs-url-input" class="form-ctrl" readonly style="flex: 1; font-family: monospace; font-size: 0.78rem;">
+                        <button class="btn btn-primary btn-sm" onclick="copyObsUrl()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                            <span data-i18n="btn_copy_url">Copiar</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="alert-box alert-info" style="margin-top: 14px; text-align: left; font-size: 0.75rem;">
-                    💡 <strong>Cómo abrir en VLC Mobile:</strong> Abre VLC en Android o iOS, entra a <em>Red &gt; Abrir dirección de red</em> y pega la URL escaneada.
+                <div class="form-group" style="text-align: left; margin-top: 8px;">
+                    <label class="form-label" for="qr-url-input" data-i18n="qr_vlc_label">URL limpia para VLC Mobile:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="qr-url-input" class="form-ctrl" readonly style="flex: 1; font-family: monospace; font-size: 0.78rem;">
+                        <button class="btn btn-primary btn-sm" onclick="copyQrUrl()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                            <span data-i18n="btn_copy_url">Copiar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción Inmediata VLC (Ocultos a pedido de usuario) -->
+                <div id="qr-vlc-actions-container" style="display: none !important; gap: 8px; margin-top: 12px;">
+                    <button class="btn btn-sm" id="qr-vlc-launch-btn" onclick="launchVlcCurrentModalStream()" style="display: none !important; flex: 1; background: var(--teal); color: #000; font-weight: 700; border: none; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border-radius: var(--radius-sm);" title="Abrir inmediatamente en VLC">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        <span data-i18n="qr_vlc_launch">Abrir en VLC</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="qr-vlc-download-btn" onclick="downloadXspfCurrentModalStream()" style="display: none !important; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; font-weight: 600;" title="Descargar archivo .xspf">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span data-i18n="qr_vlc_download">Playlist .xspf</span>
+                    </button>
+                </div>
+
+                <div class="form-group" style="text-align: left; margin-top: 10px;">
+                    <label class="form-label" for="qr-vlc-cmd-input" data-i18n="qr_vlc_cmd_label">Comando de terminal VLC de baja latencia:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="qr-vlc-cmd-input" class="form-ctrl" readonly style="flex: 1; font-family: monospace; font-size: 0.72rem;">
+                        <button class="btn btn-ghost btn-sm" onclick="copyVlcCmd()" title="Copiar comando de VLC optimizado">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="alert-box alert-info" style="margin-top: 14px; text-align: left; font-size: 0.75rem; display: flex; align-items: flex-start; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <div data-i18n="qr_vlc_hint"><strong>Reproducción fluida en VLC:</strong> VLC aplica por defecto 1.500 ms de búfer. Copia y ejecuta el comando de terminal provisto arriba para reproducir con <strong>150 ms</strong> de búfer optimizado sin caídas de FPS ni imágenes trabadas.</div>
                 </div>
             </div>
             <div class="modal-foot" style="justify-content: center;">
-                <button class="btn btn-ghost" onclick="closeQrModal()">Cerrar</button>
+                <button class="btn btn-ghost" onclick="closeQrModal()" data-i18n="btn_close">Cerrar</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DIAGNÓSTICO DE PING Y LATENCIA LOCAL -->
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="latency-bench-modal-overlay">
+        <div class="modal-card" style="max-width: 580px; text-align: left;">
+            <div class="modal-hdr">
+                <span style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 14 14"></polyline>
+                    </svg>
+                    <span data-i18n="bench_modal_title">Diagnóstico de Ping y Latencia de Video</span>
+                </span>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeLatencyBenchmarkModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;" data-i18n="bench_modal_desc">
+                    Evalúa en tiempo real el tiempo de ida y vuelta (RTT) a nivel de socket en bucle local (127.0.0.1), el retardo de conexión con MediaMTX y la latencia de entrega de cuadros de video (TTFF).
+                </p>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <button class="btn btn-primary" id="btn-run-latency-bench" onclick="runLatencyBenchmarkTest()" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        <span data-i18n="btn_run_benchmark">Ejecutar Diagnóstico</span>
+                    </button>
+                    <span id="bench-status-indicator" style="font-size: 0.8rem; color: var(--text-muted);">Listo</span>
+                </div>
+
+                <div id="bench-results-container" style="display: none; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px;">
+                    <div style="font-weight: 700; font-size: 0.88rem; margin-bottom: 12px; color: var(--teal); display: flex; align-items: center; gap: 6px;">
+                        <span>📊 Métricas de Recepción en esta PC</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                        <div class="metric-card" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">PING UDP SOCKET (AVG)</div>
+                            <div id="metric-udp-ping" style="font-size: 1.2rem; font-weight: 800; color: var(--status-green);">-- ms</div>
+                            <div id="metric-udp-details" style="font-size: 0.7rem; color: var(--text-muted);">Min: -- | Jitter: --</div>
+                        </div>
+
+                        <div class="metric-card" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">TCP HANDSHAKE MEDIAMTX</div>
+                            <div id="metric-tcp-ping" style="font-size: 1.2rem; font-weight: 800; color: var(--teal);">-- ms</div>
+                            <div id="metric-tcp-details" style="font-size: 0.7rem; color: var(--text-muted);">SYN/ACK Avg</div>
+                        </div>
+
+                        <div class="metric-card" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">TIEMPO 1ER CUADRO (TTFF)</div>
+                            <div id="metric-video-ttff" style="font-size: 1.2rem; font-weight: 800; color: var(--cyan);">-- ms</div>
+                            <div id="metric-video-fps" style="font-size: 0.7rem; color: var(--text-muted);">FPS: -- | Jitter: --</div>
+                        </div>
+
+                        <div class="metric-card" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">BÚFER RECOMENDADO VLC</div>
+                            <div id="metric-vlc-cache" style="font-size: 1.2rem; font-weight: 800; color: #f59e0b;">50 ms</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">En lugar de 1.500 ms por defecto</div>
+                        </div>
+                    </div>
+
+                    <div class="alert-box alert-success" style="font-size: 0.75rem; margin: 0; padding: 10px;">
+                        <strong>Estado del pipeline:</strong> Transmisión local optimizada. La codificación GPU NVENC entrega cuadros en &lt; 5 ms y el transporte SRT loopback responde con latencia sub-milisegundo.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-foot" style="justify-content: flex-end;">
+                <button class="btn btn-ghost" onclick="closeLatencyBenchmarkModal()" data-i18n="btn_close">Cerrar</button>
+            </div>
+        </div>
+    </div>
         </div>
     </div>
 
@@ -692,20 +1031,25 @@
     <div class="modal-overlay" role="dialog" aria-modal="true" id="emergency-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr" style="color: #f59e0b;">
-                <span>⏹️ Confirmar Detención Global</span>
+                <span style="display: flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="5" y="5" width="14" height="14" rx="2" ry="2"/>
+                    </svg>
+                    <span data-i18n="emergency_modal_title">Confirmar Detención Global</span>
+                </span>
                 <button class="modal-close" aria-label="Cerrar" onclick="closeEmergencyModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="font-size: 0.95rem; margin-bottom: 12px;">
+                <p style="font-size: 0.95rem; margin-bottom: 12px;" data-i18n="emergency_modal_desc1">
                     ¿Estás seguro de que deseas ejecutar la <strong>Detención Global</strong>?
                 </p>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                <p style="font-size: 0.85rem; color: var(--text-secondary);" data-i18n="emergency_modal_desc2">
                     Esto detendrá de forma ordenada todas las transmisiones activas y liberará los recursos de red y captura.
                 </p>
             </div>
             <div class="modal-foot">
-                <button class="btn btn-ghost" onclick="closeEmergencyModal()">Cancelar</button>
-                <button class="btn btn-warning" onclick="executeEmergencyStop()">Detener Todas las Transmisiones</button>
+                <button class="btn btn-ghost" onclick="closeEmergencyModal()" data-i18n="btn_cancel">Cancelar</button>
+                <button class="btn btn-warning" onclick="executeEmergencyStop()" data-i18n="btn_stop_all_confirm">Detener Todas las Transmisiones</button>
             </div>
         </div>
     </div>
@@ -714,20 +1058,25 @@
     <div class="modal-overlay" role="dialog" aria-modal="true" id="terminate-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr" style="color: var(--status-red);">
-                <span>⚡ Finalización Total de Procesos</span>
+                <span style="display: flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span data-i18n="terminate_modal_title">Finalización Total de Procesos</span>
+                </span>
                 <button class="modal-close" aria-label="Cerrar" onclick="closeTerminateModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="font-size: 0.95rem; margin-bottom: 12px;">
+                <p style="font-size: 0.95rem; margin-bottom: 12px;" data-i18n="terminate_modal_desc1">
                     ¿Deseas <strong>cerrar RTMS y forzar la finalización de todos los procesos</strong>?
                 </p>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                <p style="font-size: 0.85rem; color: var(--text-secondary);" data-i18n="terminate_modal_desc2">
                     Esto cerrará el programa de inmediato y garantizará la eliminación de cualquier proceso hijo en ejecución (como FFmpeg o FFplay), liberando por completo los recursos de hardware y la memoria RAM.
                 </p>
             </div>
             <div class="modal-foot">
-                <button class="btn btn-ghost" onclick="closeTerminateModal()">Cancelar</button>
-                <button class="btn btn-danger" onclick="executeTerminateAllProcesses()">Finalizar Todo Ahora</button>
+                <button class="btn btn-ghost" onclick="closeTerminateModal()" data-i18n="btn_cancel">Cancelar</button>
+                <button class="btn btn-danger" onclick="executeTerminateAllProcesses()" data-i18n="btn_terminate_all_confirm">Finalizar Todo Ahora</button>
             </div>
         </div>
     </div>
@@ -736,23 +1085,122 @@
     <div class="modal-overlay" role="dialog" aria-modal="true" id="reset-modal-overlay">
         <div class="modal-card">
             <div class="modal-hdr" style="color: var(--status-red);">
-                <span>🗑️ Restablecer a Valores de Fábrica</span>
+                <span style="display: flex; align-items: center; gap: 6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                    </svg>
+                    <span data-i18n="reset_modal_title">Restablecer a Valores de Fábrica</span>
+                </span>
                 <button class="modal-close" aria-label="Cerrar" onclick="closeResetModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="font-size: 0.95rem; margin-bottom: 12px;">
+                <p style="font-size: 0.95rem; margin-bottom: 12px;" data-i18n="reset_modal_desc1">
                     ¿Confirmas que deseas <strong>limpiar todos los datos y restaurar la configuración original</strong>?
                 </p>
-                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;" data-i18n="reset_modal_desc2">
                     Se eliminará permanentemente la configuración personalizada (<code>config.json</code>), respaldos automáticos, archivos de registro (<code>rtms.log</code>) y archivos temporales.
                 </p>
-                <div class="alert-box alert-warning" style="margin-bottom: 0;">
+                <div class="alert-box alert-warning" style="margin-bottom: 0;" data-i18n="reset_modal_warn">
                     ⚠️ El programa se cerrará automáticamente al finalizar la limpieza. La próxima vez que lo inicies, arrancará como si fuera su primera ejecución.
                 </div>
             </div>
             <div class="modal-foot">
-                <button class="btn btn-ghost" onclick="closeResetModal()">Cancelar</button>
-                <button class="btn btn-danger" onclick="executeFactoryReset()">Borrar Datos y Salir</button>
+                <button class="btn btn-ghost" onclick="closeResetModal()" data-i18n="btn_cancel">Cancelar</button>
+                <button class="btn btn-danger" onclick="executeFactoryReset()" data-i18n="btn_factory_reset_confirm">Borrar Datos y Salir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: BIENVENIDA / SELECCIÓN DE IDIOMA (PRIMER INICIO) -->
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="welcome-modal">
+        <div class="modal-card" style="max-width: 480px; text-align: center;">
+            <div class="modal-hdr" style="justify-content: center;">
+                <img src="/static/isotype.svg" alt="RTMS" style="width: 32px; height: 32px; margin-right: 8px;">
+                <span style="font-size: 1.15rem; font-weight: 800;" data-i18n="welcome_title">Bienvenido a RTMS</span>
+            </div>
+            <div class="modal-body" style="padding: 24px 20px;">
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 20px;" data-i18n="welcome_sub">
+                    Estación de Ingesta Multicámara de Baja Latencia para Windows
+                </p>
+                <p style="font-size: 0.85rem; font-weight: 600; margin-bottom: 16px;" data-i18n="welcome_select_lang">
+                    Selecciona tu idioma para continuar / Select your language to continue:
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="selectInitialLanguage('es')" style="padding: 12px 20px; font-size: 0.95rem;">
+                        🇦🇷 Español (Argentina)
+                    </button>
+                    <button class="btn btn-ghost" onclick="selectInitialLanguage('en')" style="padding: 12px 20px; font-size: 0.95rem; border: 1px solid var(--border-color);">
+                        🇺🇸 English (United States)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMACIÓN PERSONALIZADA ASÍNCRONA -->
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="confirm-modal">
+        <div class="modal-card" style="max-width: 440px;">
+            <div class="modal-hdr" id="confirm-modal-hdr">
+                <span id="confirm-modal-title" data-i18n="confirm_title_default">Confirmar Acción</span>
+                <button class="modal-close" aria-label="Cerrar" onclick="resolveConfirmModal(false)">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-modal-message" style="font-size: 0.92rem; line-height: 1.5; color: var(--text-primary); margin-bottom: 8px;"></p>
+                <p id="confirm-modal-sub" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;"></p>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" id="confirm-modal-btn-cancel" onclick="resolveConfirmModal(false)" data-i18n="btn_cancel">Cancelar</button>
+                <button class="btn btn-danger" id="confirm-modal-btn-confirm" onclick="resolveConfirmModal(true)" data-i18n="btn_confirm_action">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: TELEMETRÍA DEL SISTEMA Y SILICIO EN TIEMPO REAL -->
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="telemetry-modal">
+        <div class="modal-card" style="max-width: 580px;">
+            <div class="modal-hdr">
+                <span data-i18n="telemetry_title">Telemetría del Sistema y Silicio en Tiempo Real</span>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeTelemetryModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px;" data-i18n="telemetry_desc">
+                    Métricas de rendimiento en vivo proporcionadas por NVML nativo, subprocesos FFmpeg y kernel de Windows.
+                </p>
+                <div class="telemetry-grid">
+                    <div class="telemetry-card">
+                        <div class="telemetry-label" data-i18n="telemetry_cpu">CPU Total</div>
+                        <div class="telemetry-val" id="tel-cpu-val">0%</div>
+                    </div>
+                    <div class="telemetry-card">
+                        <div class="telemetry-label" data-i18n="telemetry_gpu_engine">Motor GPU / NVENC</div>
+                        <div class="telemetry-val" id="tel-gpu-val">–</div>
+                    </div>
+                    <div class="telemetry-card">
+                        <div class="telemetry-label" data-i18n="telemetry_gpu_mem">Memoria VRAM</div>
+                        <div class="telemetry-val" id="tel-vram-val">–</div>
+                    </div>
+                    <div class="telemetry-card">
+                        <div class="telemetry-label" data-i18n="telemetry_ram">Memoria RAM</div>
+                        <div class="telemetry-val" id="tel-ram-val">0%</div>
+                    </div>
+                    <div class="telemetry-card">
+                        <div class="telemetry-label" data-i18n="telemetry_lan">Tráfico Red LAN</div>
+                        <div class="telemetry-val" id="tel-net-val">0 kbps</div>
+                    </div>
+                    <div class="telemetry-card">
+                        <div class="telemetry-label" data-i18n="telemetry_bitrate">Bitrate RTMS</div>
+                        <div class="telemetry-val" id="tel-bitrate-val">0 kbps</div>
+                    </div>
+                </div>
+                <div id="tel-gpu-details" style="margin-top: 14px; font-size: 0.8rem; background: rgba(0,0,0,0.3); border-radius: var(--radius-sm); padding: 12px; border: 1px solid var(--border-subtle);">
+                    <div style="font-weight: 700; color: var(--teal); margin-bottom: 6px;" data-i18n="telemetry_primary_gpu">Dispositivo Gráfico Primario</div>
+                    <div id="tel-gpu-model" style="color: var(--text-primary); margin-bottom: 4px;">–</div>
+                    <div id="tel-gpu-driver" style="color: var(--text-muted); font-size: 0.75rem;" data-i18n="telemetry_driver">Controlador: Estándar Windows DirectShow</div>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn btn-ghost" onclick="closeTelemetryModal()" data-i18n="btn_close">Cerrar</button>
             </div>
         </div>
     </div>
@@ -761,6 +1209,7 @@
     <div id="toast-container" aria-live="polite" role="status"></div>
 
     <script src="/static/qrcode.min.js"></script>
+    <script src="/static/i18n.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

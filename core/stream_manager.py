@@ -38,6 +38,16 @@ class StreamManager:
         self._procs: Dict[str, StreamProc] = {}
         self._watchdog_task: Optional[asyncio.Task] = None
         self._handling_device_lost: Set[str] = set()
+        self._sync_lock: Optional[asyncio.Lock] = None
+        self._sync_lock_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._is_shutting_down = False
+
+    def _get_sync_lock(self) -> asyncio.Lock:
+        loop = asyncio.get_running_loop()
+        if self._sync_lock is None or self._sync_lock_loop != loop:
+            self._sync_lock = asyncio.Lock()
+            self._sync_lock_loop = loop
+        return self._sync_lock
 
     def get_proc(self, device_path: str) -> Optional[StreamProc]:
         """Retorna el StreamProc existente sin crear uno nuevo si no existe."""
@@ -72,16 +82,32 @@ class StreamManager:
         """Inicia un flujo asegurando exclusión mutua para evitar ejecuciones concurrentes."""
         proc = self.ensure_proc(device_path)
         async with proc.lock:
+            if getattr(proc, "marked_for_removal", False):
+                logger.warning(f"Intento de inicio de {device_path} abortado porque está marcado para eliminación.")
+                return
             await self._start_stream_locked(proc, force_cpu=force_cpu)
 
     async def restart_stream(self, device_path: str, force_cpu: bool = False):
         """Reinicia un flujo de forma atómica bajo exclusión mutua."""
         proc = self.ensure_proc(device_path)
         async with proc.lock:
+            if getattr(proc, "marked_for_removal", False):
+                return
+            proc.transition_to(State.RESTARTING)
             await self._stop_stream_locked(proc)
+            proc._stop_evt.clear()
+            if not proc.is_connected or proc.state == State.DISCONNECTED:
+                logger.warning(f"[{proc.device_path}] Reinicio abortado: dispositivo desconectado o no disponible.")
+                if proc.state != State.DISCONNECTED:
+                    proc.transition_to(State.STOPPED)
+                return
             await self._start_stream_locked(proc, force_cpu=force_cpu)
 
     async def _start_stream_locked(self, proc: StreamProc, force_cpu: bool = False):
+        if self._is_shutting_down:
+            logger.warning(f"[{proc.device_path}] Inicio abortado: StreamManager se está apagando.")
+            return
+
         if proc.is_alive:
             logger.debug(f"Flujo {proc.device_path} ya está en ejecución.")
             return
@@ -181,6 +207,15 @@ class StreamManager:
         logger.info(f"Iniciando flujo ({actual_encoder}): {clean_cmd_log}")
         proc.log(f"Iniciando ({actual_encoder}): {clean_cmd_log}")
 
+        # Comprobación de corte limpio antes de spawn
+        if not proc.is_connected or proc.state == State.DISCONNECTED or proc._stop_evt.is_set():
+            logger.warning(
+                f"[{proc.device_path}] Inicialización abortada antes de spawn: cámara desconectada o parada."
+            )
+            if proc.state != State.DISCONNECTED:
+                proc.transition_to(State.STOPPED)
+            return
+
         try:
             process = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -197,6 +232,21 @@ class StreamManager:
                 proc.log("Reintentando con fallback a CPU libx264...")
                 await asyncio.sleep(0.5)
                 await self._start_stream_locked(proc, force_cpu=True)
+            return
+
+        # Comprobación de desconexión en caliente o parada durante el lanzamiento asíncrono
+        if not proc.is_connected or proc.state == State.DISCONNECTED or proc._stop_evt.is_set():
+            logger.warning(
+                f"[{proc.device_path}] Desconexión o parada detectada durante el lanzamiento de FFmpeg. Abortando proceso."
+            )
+            if process.returncode is None:
+                try:
+                    process.terminate()
+                except Exception:
+                    pass
+            proc.process = None
+            if proc.state != State.DISCONNECTED:
+                proc.transition_to(State.STOPPED)
             return
 
         proc.process = process
@@ -335,6 +385,7 @@ class StreamManager:
                     break
 
         if proc:
+            proc.marked_for_removal = True
             await self.stop_stream(device_path)
             port = proc.config.get("port")
             if port:
@@ -387,20 +438,40 @@ class StreamManager:
             await self._stop_stream_locked(proc, timeout=1.0)
             await self._start_stream_locked(proc, force_cpu=proc.using_fallback_cpu)
 
+    async def _fallback_from_dshow_options(self, device_path: str):
+        """Maneja la transición ágil cuando el sensor no soporta la resolución o framerate nativamente."""
+        proc = self.get_proc(device_path)
+        if not proc:
+            return
+        async with proc.lock:
+            proc.dshow_options_failed = True
+            if proc.config:
+                proc.config["dshow_options_failed"] = True
+            logger.warning(
+                f"[{device_path}] DirectShow no soporta video_size/framerate solicitado. Conmutando a captura nativa con escalado..."
+            )
+            proc.log("DirectShow rechazó resolución/fps. Conmutando a captura nativa con escalado...")
+            await self._stop_stream_locked(proc, timeout=1.0)
+            await self._start_stream_locked(proc, force_cpu=proc.using_fallback_cpu)
+
     async def stop_all(self):
         """Detiene todos los flujos activos de forma concurrente y ordenada."""
         logger.info("Deteniendo todos los flujos activos ordenadamente...")
-        if self._watchdog_task and not self._watchdog_task.done():
-            self._watchdog_task.cancel()
-            try:
-                await self._watchdog_task
-            except (asyncio.CancelledError, Exception):
-                pass
-            self._watchdog_task = None
+        self._is_shutting_down = True
+        try:
+            if self._watchdog_task and not self._watchdog_task.done():
+                self._watchdog_task.cancel()
+                try:
+                    await self._watchdog_task
+                except (asyncio.CancelledError, Exception):
+                    pass
+                self._watchdog_task = None
 
-        tasks = [self.stop_stream(dp) for dp in list(self._procs.keys())]
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            tasks = [self.stop_stream(dp) for dp in list(self._procs.keys())]
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+        finally:
+            self._is_shutting_down = False
 
     async def emergency_stop_all(self):
         """Detención global de todas las transmisiones solicitada por el usuario."""
@@ -626,19 +697,30 @@ class StreamManager:
                 if any(pat in line_lower for pat in FATAL_PATTERNS):
                     logger.warning(f"[{device_path}] Error en FFmpeg: {clean_line}")
 
-                    # Fallback inmediato de silicio si DirectShow rechaza el pin o códec MJPEG
+                    # Fallback inmediato si DirectShow rechaza el pin/códec MJPEG o la resolución/framerate
                     if (
                         "could not set video options" in line_lower
                         or "cannot find video device with requested options" in line_lower
-                    ) and not proc.mjpeg_input_failed:
-                        logger.warning(
-                            f"[{device_path}] DirectShow rechazó opciones de entrada MJPEG ({clean_line}). Conmutando automáticamente a formato nativo YUYV/NV12..."
-                        )
-                        proc.log("DirectShow rechazó pin MJPEG. Conmutando de inmediato a formato nativo...")
-                        proc.mjpeg_input_failed = True
-                        proc.mjpeg_supported = False
-                        asyncio.create_task(self._fallback_from_mjpeg(device_path))
-                        return
+                    ):
+                        if not proc.mjpeg_input_failed and proc.mjpeg_supported is not False:
+                            logger.warning(
+                                f"[{device_path}] DirectShow rechazó opciones de entrada MJPEG ({clean_line}). Conmutando automáticamente a formato nativo YUYV/NV12..."
+                            )
+                            proc.log("DirectShow rechazó pin MJPEG. Conmutando de inmediato a formato nativo...")
+                            proc.mjpeg_input_failed = True
+                            proc.mjpeg_supported = False
+                            asyncio.create_task(self._fallback_from_mjpeg(device_path))
+                            return
+                        elif not proc.dshow_options_failed:
+                            logger.warning(
+                                f"[{device_path}] DirectShow rechazó resolución o framerate ({clean_line}). Conmutando automáticamente a captura nativa con escalado..."
+                            )
+                            proc.log(
+                                "DirectShow rechazó resolución/framerate. Conmutando a captura nativa con escalado..."
+                            )
+                            proc.dshow_options_failed = True
+                            asyncio.create_task(self._fallback_from_dshow_options(device_path))
+                            return
 
                     # Clasificación de categoría de error según diagnóstico de FFmpeg
                     is_output_or_net = any(
@@ -715,95 +797,100 @@ class StreamManager:
             except Exception as e:
                 logger.error(f"Error en sincronización periódica de hardware: {e}")
 
-    async def sync_streams_with_hardware(self):
-        """Sincroniza el inventario de cámaras con el hardware DirectShow detectado."""
-        if not self._watchdog_task or self._watchdog_task.done():
-            try:
-                from core.task_registry import task_registry
-
-                self._watchdog_task = task_registry.create_task(self.watchdog(), name="stream_manager_watchdog")
-            except Exception:
-                self._watchdog_task = asyncio.create_task(self.watchdog())
-
-        devices = await get_directshow_devices()
-        detected_paths = {d["device_path"]: d["friendly_name"] for d in devices}
-        detected_names = {d["friendly_name"]: d["device_path"] for d in devices}
-
-        # 1. Actualizar estado de desconexión para cámaras desaparecidas
-        for dp, proc in self._procs.items():
-            was_connected = proc.is_connected
-            cfg_dp = proc.config.get("device_path", dp)
-            cfg_fn = proc.config.get("friendly_name", "")
-            is_virt = proc.config.get("is_virtual", False) or dp.startswith("virtual://") or dp.startswith("testsrc")
-            is_present = (
-                is_virt
-                or dp in detected_paths
-                or dp in detected_names
-                or cfg_dp in detected_paths
-                or cfg_fn in detected_names
-            )
-            proc.is_connected = is_present
-            if was_connected and not proc.is_connected:
-                logger.warning(f"Cámara {dp} desapareció del sistema. Marcando como DISCONNECTED.")
-                proc.transition_to(State.DISCONNECTED)
+    async def sync_streams_with_hardware(self, force_refresh: bool = False):
+        """Sincroniza el inventario de cámaras con el hardware DirectShow detectado bajo exclusión mutua."""
+        async with self._get_sync_lock():
+            if not self._watchdog_task or self._watchdog_task.done():
                 try:
-                    from core.telemetry_hub import telemetry_hub
+                    from core.task_registry import task_registry
 
-                    asyncio.create_task(
-                        telemetry_hub.broadcast_event(
-                            "device_lost",
-                            {"device_path": dp, "friendly_name": proc.config.get("friendly_name")},
-                        )
-                    )
+                    self._watchdog_task = task_registry.create_task(self.watchdog(), name="stream_manager_watchdog")
                 except Exception:
-                    pass
-                if proc.is_alive:
-                    asyncio.create_task(self.stop_stream(dp, timeout=1.0))
+                    self._watchdog_task = asyncio.create_task(self.watchdog())
 
-        # 2. Registrar y actualizar dispositivos presentes (omitiendo dispositivos en ignored_devices)
-        from core.config_mgr import is_device_ignored
+            devices = await get_directshow_devices(force_refresh=force_refresh)
+            detected_paths = {d["device_path"]: d["friendly_name"] for d in devices}
+            detected_names = {d["friendly_name"]: d["device_path"] for d in devices}
 
-        for d in devices:
-            dp = d["device_path"]
-            if is_device_ignored(dp):
-                continue
-            proc = self.ensure_proc(dp)
-            was_disconnected = not proc.is_connected or proc.state == State.DISCONNECTED
-            proc.config = get_or_allocate_camera_config(dp, d["friendly_name"])
-            proc.is_connected = True
+            # 1. Actualizar estado de desconexión para cámaras desaparecidas
+            for dp, proc in self._procs.items():
+                was_connected = proc.is_connected
+                cfg_dp = proc.config.get("device_path", dp)
+                cfg_fn = proc.config.get("friendly_name", "")
+                is_virt = (
+                    proc.config.get("is_virtual", False) or dp.startswith("virtual://") or dp.startswith("testsrc")
+                )
+                is_present = (
+                    is_virt
+                    or dp in detected_paths
+                    or dp in detected_names
+                    or cfg_dp in detected_paths
+                    or cfg_fn in detected_names
+                )
+                proc.is_connected = is_present
+                if was_connected and not proc.is_connected:
+                    logger.warning(f"Cámara {dp} desapareció del sistema. Marcando como DISCONNECTED.")
+                    proc.transition_to(State.DISCONNECTED)
+                    try:
+                        from core.telemetry_hub import telemetry_hub
 
-            # Si la cámara se reconectó o salió del estado desconectado
-            if was_disconnected:
-                proc.clear_failure()
-                proc.zero_fps_since = None
-                try:
-                    from core.telemetry_hub import telemetry_hub
-
-                    asyncio.create_task(
-                        telemetry_hub.broadcast_event(
-                            "device_recovered",
-                            {"device_path": dp, "friendly_name": d["friendly_name"]},
+                        asyncio.create_task(
+                            telemetry_hub.broadcast_event(
+                                "device_lost",
+                                {"device_path": dp, "friendly_name": proc.config.get("friendly_name")},
+                            )
                         )
-                    )
-                except Exception:
-                    pass
-                if proc.config.get("auto_start", False) and not proc._stop_evt.is_set():
-                    logger.info(f"Cámara {dp} reconectada físicamente. Restaurando transmisión...")
-                    proc.log("Cámara reconectada. Restaurando transmisión automáticamente...")
+                    except Exception:
+                        pass
+                    if proc.is_alive:
+                        asyncio.create_task(self.stop_stream(dp, timeout=1.0))
+
+            # 2. Registrar y actualizar dispositivos presentes (omitiendo dispositivos en ignored_devices)
+            from core.config_mgr import is_device_ignored
+
+            for d in devices:
+                dp = d["device_path"]
+                if is_device_ignored(dp):
+                    continue
+                proc = self.ensure_proc(dp)
+                was_disconnected = not proc.is_connected or proc.state == State.DISCONNECTED
+                proc.config = get_or_allocate_camera_config(dp, d["friendly_name"])
+                proc.is_connected = True
+
+                # Si la cámara se reconectó o salió del estado desconectado
+                if was_disconnected:
+                    proc.clear_failure()
+                    proc.zero_fps_since = None
+                    try:
+                        from core.telemetry_hub import telemetry_hub
+
+                        asyncio.create_task(
+                            telemetry_hub.broadcast_event(
+                                "device_recovered",
+                                {"device_path": dp, "friendly_name": d["friendly_name"]},
+                            )
+                        )
+                    except Exception:
+                        pass
+                    if proc.config.get("auto_start", False) and not proc._stop_evt.is_set():
+                        logger.info(f"Cámara {dp} reconectada físicamente. Restaurando transmisión...")
+                        proc.log("Cámara reconectada. Restaurando transmisión automáticamente...")
+                        asyncio.create_task(self.start_stream(dp))
+                    else:
+                        proc.transition_to(State.STOPPED)
+                        proc.log("Cámara detectada y conectada. Lista para iniciar.")
+                elif (
+                    proc.config.get("auto_start", False) and proc.state == State.STOPPED and not proc._stop_evt.is_set()
+                ):
                     asyncio.create_task(self.start_stream(dp))
-                else:
-                    proc.transition_to(State.STOPPED)
-                    proc.log("Cámara detectada y conectada. Lista para iniciar.")
-            elif proc.config.get("auto_start", False) and proc.state == State.STOPPED and not proc._stop_evt.is_set():
-                asyncio.create_task(self.start_stream(dp))
 
-        # Sincronizar en memoria las rutas con MediaMTX API
-        try:
-            from core.mediamtx_mgr import mediamtx_manager
+            # Sincronizar en memoria las rutas con MediaMTX API
+            try:
+                from core.mediamtx_mgr import mediamtx_manager
 
-            await mediamtx_manager.sync_paths_api()
-        except Exception as e:
-            logger.debug(f"Aviso sincronizando rutas en MediaMTX tras escaneo de hardware: {e}")
+                await mediamtx_manager.sync_paths_api()
+            except Exception as e:
+                logger.debug(f"Aviso sincronizando rutas en MediaMTX tras escaneo de hardware: {e}")
 
     @property
     def has_active_streams(self) -> bool:

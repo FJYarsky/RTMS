@@ -2,6 +2,10 @@
 # RTMS — MediaMTX Broadcast Server Configuration (Template)
 # ==============================================================================
 
+# Control de buffer y encolamiento para latencia minima
+writeQueueSize: 256
+udpMaxPayloadSize: 1472
+
 # API interna de telemetria y control de rutas
 api: yes
 apiAddress: 127.0.0.1:9997
@@ -15,7 +19,7 @@ hls: no
 srt: yes
 srtAddress: :8890
 
-# Servidor WebRTC / WHEP para vistas previas de ultra baja latencia
+# Servidor WebRTC / WHEP para vistas previas de baja latencia
 webrtc: yes
 webrtcAddress: 127.0.0.1:8889
 webrtcEncryption: no
@@ -25,3 +29,4 @@ webrtcAllowOrigin: "*"
 # Configuracion de rutas (paths)
 paths:
   all_others:
+    overridePublisher: yes

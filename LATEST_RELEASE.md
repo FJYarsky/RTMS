@@ -1,47 +1,51 @@
-# RTMS v2.7.0 — Ultra-Baja Latencia SRT/UDP, Zero GPU Bloat, Identidad Visual Oficial, Gobernanza Dinámica Energética y Seguridad Integral
+# RTMS v2.8.0 — Streaming de Video Puro de Baja Latencia, Calibración Inteligente SRT/VLC, Rediseño UI Obsidian y Validación Integral
 
-**Fecha:** 24 de Septiembre de 2026 | **Versión:** `v2.7.0`
+**Fecha:** 27 de Septiembre de 2026 | **Versión:** `v2.8.0`
 
----
-
-### 🚀 Motor Multimedia de Ultra-Baja Latencia y Mitigación de Saturación GPU
-- **Eliminación de VBV Buffer Bloat**: Reducción del buffer VBV a sub-segundo (`bufk = int(bitrate * 0.5)k`), eliminando colas y buffers inflados que generaban latencia progresiva de varios segundos.
-- **Sintonización Fina NVENC**: Ajuste exhaustivo de parámetros `h264_nvenc` (`-preset p2 -tune ll -rc cbr -delay 0 -zerolatency 1 -forced-idr 1 -bf 0 -b_adapt 0 -pix_fmt nv12`), erradicando la saturación artificial al 100% de la GPU dedicada y previniendo fallos con webcams DirectShow en formato YUYV.
-- **Cadencia Determinista CFR**: Forzado de `-fps_mode cfr` antes de la codificación para sincronía estricta de marcas de tiempo PTS/DTS.
-- **Optimización de Sockets UDP y Mapeo Multicast Inyectivo**: Buffers de red configurados a `buffer_size=131072` (128 KB) y `fifo_size=50000`. Fórmula inyectiva `(port - 9000) + 1` asignando IPs de multidifusión únicas (`239.255.0.1`..`239.255.0.201`) para puertos 9000..9200, garantizando cero colisiones.
-- **Latencia Sub-100ms en Clientes SRT y VLC**: Receptores SRT con URLs de reproducción directa sin búfer retardado en OBS/vMix y VLC. Formato canónico `udp://@:<port>` para VLC UDP Unicast LAN.
-- **Watchdog Anti-Freeze**: Monitoreo de `last_progress_at` con reinicio automático si la transmisión se congela (>10s sin avance de frames).
+[![Descargar RTMS v2.8.0](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Descargar%20RTMS-v2.8.0%20(Windows%20x64)-00E5FF?style=for-the-badge&logo=windows&logoColor=050b14)](https://github.com/FJYarsky/RTMS/releases/latest)
 
 ---
 
-### 💾 Persistencia Transaccional SQLite v2 y Semántica REST PATCH
-- **Migración de Base de Datos a Esquema v2**: Soporte nativo para persistir `is_virtual`, `udp_mode` y `udp_host` de forma idempotente y segura (ACID WAL).
-- **Semántica PATCH Granular**: Actualización de cámaras preservando campos omitidos y control seguro de credenciales SRT (`secret_action = keep | set | clear`).
-- **Arquitectura No-Mutante en StreamManager**: `get_proc` retorna `None` / HTTP 404 para cámaras inexistentes, previniendo asignaciones residuales de puertos y procesos fantasma.
-- **Reinicio Selectivo Inteligente**: Las importaciones de configuración en caliente sólo reinician procesos cuando los parámetros del pipeline de codificación han cambiado.
+### 🎥 Política Estricta de Video Puro y Latencia Optimizada Sub-100ms
+- **Bandera Mandataria `-an`**: Inyección sistemática de `-an` en todas las tuberías de captura, transcodificación y preview de FFmpeg. Se desactiva cualquier captura de audio DirectShow, transcodificación de pistas de audio y grabación ISO, dedicando el 100% de la capacidad de cómputo al streaming de video en vivo.
+- **Cadencia GOP=15 y Sintonización de Bajo Retardo**: Configuración estricta de grupo de imágenes en 15 fotogramas (250-500 ms) junto con `-fflags nobuffer+flush_packets -flags low_delay`, garantizando un tiempo de sincronización inmediato en reproductores sin búfer de acumulación.
+- **Calibración VBV al 35%**: Ajuste fino del búfer de tasa de bits (`bufk = int(bitrate * 0.35)k`) previniendo el estrangulamiento de bits en fotogramas complejos y erradicando micro-cortes.
 
 ---
 
-### 🎨 Identidad Visual Oficial, Estética y Branding Vectorial
-- **Badge de Versión Fluorescente**: Píldora `.version-tag` rediseñada con tipografía monospace fluorescente (JetBrains Mono/Consolas), halo de luz sutil y micro-interacción hover.
-- **HUD Superior y Animación de Tarjetas**: Indicadores en vivo en la barra de navegación con animación esmeralda pulsante `pulse-live` para transmisiones activas.
-- **Modal "Acerca de" con Imagotipo Vectorial**: Integración de `gui/static/imagotype_vertical.svg`, tarjeta glassmorphism de autor y enlace directo a la web oficial `https://fjyarsky.github.io/RTMS/`.
-- **Selector de Protocolo y Modal QR**: Experiencia pulida con selección directa de "UDP Unicast LAN" y host destino.
+### 🧪 Calibración Inteligente SRT y Reproducción VLC Fluida
+- **Desactivación Contextual de Búfer SRT**: Cuando se activa el modo `zerolatency`, el selector manual de latencia SRT se oculta y calibra automáticamente a 50 ms con un badge explicativo, eliminando inconsistencias operativas.
+- **Comando VLC Optimizado**: Ajuste de `:network-caching=150` y eliminación de flags de descarte agresivo, logrando streaming continuo a 60 FPS sin congelamientos de fotograma.
+- **Limpieza de Opciones Obsoletas**: Eliminación de opciones no funcionales de lanzamiento directo en VLC y listas XSPF en el diálogo de conexión.
 
 ---
 
-### 🛡️ Seguridad Integral, Prevención de Fugas y Gobernanza de Energía
-- **Eliminación de Tokens en Query Strings (CWE-598)**: Rechazo explícito con HTTP 403 en previsualizaciones WHEP y código 1008 en `/ws/telemetry`. Autenticación obligatoria mediante cookies de sesión HttpOnly `rtms_session` o cabeceras `X-RTMS-Token`.
-- **Prevención de Fuga de Handles Win32**: Invocación garantizada de `CloseHandle` en bloques `finally` en el gestor de Job Objects.
-- **Gobernador Dinámico de Energía**: Activación automática del plan de Alto Rendimiento en Windows durante streaming activo y restauración del esquema previo al detener flujos.
-- **Cabeceras CSP**: Inyección de `Content-Security-Policy` estricto en respuestas HTTP.
-- **Redirección de Logs MediaMTX**: Redirección segura a `config/mediamtx.log` con rotación preventiva (5 MB).
-- **Operaciones No Bloqueantes**: Envoltura de comandos `powercfg` y tareas de I/O en hilos asíncronos vía `asyncio.to_thread`.
+### 🎨 Rediseño Visual Obsidian Dark Glassmorphism y Sección Dispositivos
+- **Nueva Sección Dispositivos y Flujos**: Tarjetas modernas estilo dashboard con avatar visual de cámara, especificaciones técnicas compactas (resolución, FPS objetivo, códec, acelerador HW), HUD de telemetría en vivo (FPS actuales, bitrate, uptime) y conmutador de autostart integrado.
+- **Barra de Resumen de Flujos**: Métricas globales en tiempo real con conteo de cámaras totales, en vivo, detenidas y virtuales.
+- **Menú Superior Simplificado**: Traslado de las herramientas de diagnóstico de latencia y ping a Configuración del Sistema, depuración del selector de idiomas (ES/EN) y botón de compartir limpio.
+- **Superficies Translúcidas y Contraste WCAG AAA**: Fondo obsidiana profundo (`#070b14`), efectos de desenfoque de fondo y acentos lumínicos cian y azul celeste.
 
 ---
 
-### 🧪 Suite de Pruebas y Control de Calidad
-- **186/186 Pruebas Automatizadas Pasando al 100%**: Cobertura exhaustiva de endpoints, pipeline multimedia, base de datos, persistencia, seguridad y rendimiento.
-- **0 Errores de Mypy en 41 Archivos Fuente**: Verificación de tipado estricto completada.
-- **Linter y Formato 100% Limpio**: Ruff check y ruff format sin advertencias.
+### 🌐 Bilingüismo 100% Estricto (Español Argentina / Inglés Estados Unidos)
+- **Eliminación Total de Textos Mixtos**: 100% Español argentino cuando se selecciona `es`, 100% Inglés estadounidense cuando se selecciona `en`.
+- **Diccionarios Simétricos Dinámicos**: Traducción integral del DOM incluyendo elementos de formulario, tooltips de navegación y alertas contextuales.
+- **Conmutación en Caliente**: Re-renderizado instantáneo del panel sin recarga de página.
 
+---
+
+### 🇦🇷 Acreditación e Identidad Nacional
+- **Mapa-Bandera Oficial de las Islas Malvinas**: Inclusión del archivo SVG vectorial auténtico de Wikimedia Commons en el modal "Acerca de RTMS".
+- **Insignia Soberana**: "Hecho en Argentina • Las Malvinas son argentinas".
+
+---
+
+### ⚡ Aceleración por Hardware HEVC y AV1
+- **Soporte Ampliado**: Detección y priorización automática de codificadores NVIDIA NVENC HEVC, Intel QuickSync HEVC, AMD AMF HEVC, libx265 CPU y perfiles AV1.
+
+---
+
+### 🛡️ Calidad de Código, Fuzzing y Estrés
+- **345 Pruebas Automatizadas Pasando**: 100% de éxito en suites unitarias, de integración, concurrencia, límites, fuzzing y benchmarking, con cobertura de código integral.
+- **Auditoría Visual y Capturas Reales**: 11 capturas de pantalla de alta resolución integradas en la documentación y README demostrando la interfaz real en funcionamiento.

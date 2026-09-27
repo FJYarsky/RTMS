@@ -91,11 +91,18 @@ set_global_api_token(API_TOKEN)
 # Configuración de Logging con Rotación y Filtro de Secretos
 _STORAGE_DIR = get_base_dir()
 _LOG_FILE = os.path.join(_STORAGE_DIR, "rtms.log")
+_ECS_LOG_FILE = os.path.join(_STORAGE_DIR, "rtms_ecs.log")
 secret_filter = SecretFilter()
 file_handler = RotatingFileHandler(_LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
 file_handler.addFilter(secret_filter)
 
-handlers: list[logging.Handler] = [file_handler]
+from core.ecs_logger import ECSJsonFormatter
+
+ecs_handler = RotatingFileHandler(_ECS_LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
+ecs_handler.setFormatter(ECSJsonFormatter())
+ecs_handler.addFilter(secret_filter)
+
+handlers: list[logging.Handler] = [file_handler, ecs_handler]
 if sys.stderr is not None and not isinstance(sys.stderr, _NullWriter):
     stream_handler = logging.StreamHandler(sys.stderr)
     stream_handler.addFilter(secret_filter)
@@ -103,6 +110,105 @@ if sys.stderr is not None and not isinstance(sys.stderr, _NullWriter):
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", handlers=handlers)
 logger = logging.getLogger("rtms.main")
+
+
+def proactor_exception_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+    """
+    Manejador global de excepciones para el bucle de eventos de asyncio.
+    Silencia los tracebacks innecesarios de ConnectionResetError: [WinError 10054]
+    y desconexiones abruptas de sockets generadas por ProactorEventLoop en Windows
+    cuando clientes WebSockets o navegadores cierran pestañas intempestivamente.
+    """
+    exception = context.get("exception")
+    message = str(context.get("message", ""))
+
+    # 1. Comprobar ConnectionResetError / WinError 10054 en la excepción
+    is_win_conn_reset = False
+    if isinstance(exception, ConnectionResetError):
+        is_win_conn_reset = True
+    elif isinstance(exception, (OSError, ConnectionAbortedError, BrokenPipeError)):
+        winerror = getattr(exception, "winerror", None) or getattr(exception, "errno", None)
+        if winerror in (10054, 10038, 10053):  # WSAECONNRESET, WSAENOTSOCK, WSAECONNABORTED
+            is_win_conn_reset = True
+
+    # 2. Comprobar si el mensaje o contexto proviene de transportes Proactor
+    is_proactor_transport = (
+        "_ProactorBasePipeTransport" in message
+        or "_call_connection_lost" in message
+        or "proactor_events" in str(context.get("handle", ""))
+    )
+
+    if is_win_conn_reset or (
+        is_proactor_transport
+        and isinstance(exception, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, OSError))
+    ):
+        logger.debug(f"Silenciada desconexión abrupta de cliente Proactor [WinError 10054]: {message or exception}")
+        return
+
+    # Si la excepción no es un error de socket/proactor esperado, invocar el handler por defecto
+    loop.default_exception_handler(context)
+
+
+def install_proactor_loop_exception_handler(loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+    """Instala el manejador proactor_exception_handler en el bucle de eventos provisto o activo."""
+    if loop is None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+    loop.set_exception_handler(proactor_exception_handler)
+
+
+def patch_proactor_connection_lost() -> None:
+    """
+    Parchea defensivamente _ProactorBasePipeTransport._call_connection_lost en Windows
+    para evitar que self._sock.shutdown() lance ConnectionResetError [WinError 10054]
+    durante el cierre abrupto de WebSockets por parte del cliente.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import socket
+        from asyncio.proactor_events import _ProactorBasePipeTransport
+
+        orig_call = _ProactorBasePipeTransport._call_connection_lost
+
+        def safe_call_connection_lost(self, exc):
+            try:
+                if self._called_connection_lost:
+                    return
+                try:
+                    if self._protocol is not None:
+                        self._protocol.connection_lost(exc)
+                finally:
+                    if hasattr(self._sock, "shutdown") and self._sock.fileno() != -1:
+                        try:
+                            self._sock.shutdown(socket.SHUT_RDWR)
+                        except (ConnectionResetError, BrokenPipeError, ConnectionAbortedError, OSError):
+                            pass
+                    if self._sock is not None:
+                        try:
+                            self._sock.close()
+                        except Exception:
+                            pass
+                        self._sock = None
+                    server = self._server
+                    if server is not None:
+                        server._detach(self)
+                        self._server = None
+                    self._called_connection_lost = True
+            except Exception:
+                orig_call(self, exc)
+
+        _ProactorBasePipeTransport._call_connection_lost = safe_call_connection_lost
+        logger.debug("Parche defensivo para _ProactorBasePipeTransport instalado con éxito.")
+    except Exception as e:
+        logger.debug(f"Aviso al parchear _ProactorBasePipeTransport: {e}")
+
+
+# Parche defensivo temprano para el bucle Proactor de Windows
+if sys.platform == "win32":
+    patch_proactor_connection_lost()
 
 _main_window = None
 _main_window_ready = False
@@ -114,7 +220,9 @@ _uvicorn_thread = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Iniciando RTMS API Backend v{__version__}...")
-    app.state.loop = asyncio.get_running_loop()
+    loop = asyncio.get_running_loop()
+    app.state.loop = loop
+    install_proactor_loop_exception_handler(loop)
     acquire_stay_awake()
     set_high_resolution_timer(True)
 
@@ -228,10 +336,11 @@ def create_app(token: str = API_TOKEN, port: Optional[int] = None) -> FastAPI:
                 context={
                     "version": __version__,
                     "platform_info": platform_info,
+                    "token": token,
                 },
             )
             if token:
-                response.set_cookie(key="rtms_session", value=token, httponly=True, samesite="strict")
+                response.set_cookie(key="rtms_session", value=token, httponly=True, samesite="lax", path="/")
             return response
 
     return application
@@ -433,6 +542,10 @@ if __name__ == "__main__":
         logger.info("Ventana nativa WebView2 inicializada y lista.")
 
     try:
+        # Mitigación Bug GPU-01: Evita sobrecarga de GPU por VSync desbloqueado en WebView2
+        os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (
+            "--disable-gpu-vsync=0 --max_fps=60 --disable-features=CalculateNativeWinOcclusion"
+        )
         import webview
 
         _main_window = webview.create_window(

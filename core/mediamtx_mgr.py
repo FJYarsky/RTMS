@@ -48,15 +48,16 @@ class MediaMTXManager:
         self.config_active_path = os.path.join(self.base_dir, "config", "mediamtx.yml")
 
         self.srt_port = DEFAULT_MEDIAMTX_SRT_PORT
+        self.webrtc_port = DEFAULT_MEDIAMTX_WEBRTC_PORT
         try:
             from core.config_mgr import load_config
 
             cfg = load_config()
             self.srt_port = int(cfg.get("mediamtx_srt_port", DEFAULT_MEDIAMTX_SRT_PORT))
+            self.webrtc_port = int(cfg.get("mediamtx_webrtc_port", DEFAULT_MEDIAMTX_WEBRTC_PORT))
         except Exception:
             pass
         self.api_port = DEFAULT_MEDIAMTX_API_PORT
-        self.webrtc_port = DEFAULT_MEDIAMTX_WEBRTC_PORT
 
         self.log_path = os.path.join(self.base_dir, "config", "mediamtx.log")
         self._log_file: Optional[Any] = None
@@ -72,6 +73,16 @@ class MediaMTXManager:
     def get_webrtc_port(self) -> int:
         """Retorna el puerto central WebRTC / WHEP configurado para MediaMTX."""
         return self.webrtc_port
+
+    def get_api_port(self) -> int:
+        """Retorna el puerto de la API interna de MediaMTX."""
+        return self.api_port
+
+    def ensure_config_exists(self) -> str:
+        """Verifica o genera la configuración activa de MediaMTX y retorna su ruta."""
+        if not os.path.exists(self.config_active_path):
+            return self.generate_config()
+        return self.config_active_path
 
     def get_bin_path(self) -> str:
         """Retorna la ruta al ejecutable de MediaMTX, con fallback al PATH del sistema."""
@@ -100,6 +111,8 @@ class MediaMTXManager:
 
         config_content = (
             "# RTMS — Configuración Dinámica de MediaMTX (Autogenerada)\n"
+            "writeQueueSize: 256\n"
+            "udpMaxPayloadSize: 1472\n\n"
             "api: yes\n"
             f"apiAddress: 127.0.0.1:{self.api_port}\n\n"
             "rtsp: no\n"
@@ -114,6 +127,7 @@ class MediaMTXManager:
             f"srtAddress: :{self.srt_port}\n\n"
             "paths:\n"
             "  all_others:\n"
+            "    overridePublisher: yes\n"
         )
 
         tmp_path = self.config_active_path + ".tmp"

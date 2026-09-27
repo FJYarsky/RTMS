@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rtms"
-version = "2.7.0"
-description = "Servidor multicámara de ultra-baja latencia para Windows vía SRT y MediaMTX"
+version = "2.8.0"
+description = "Servidor multicámara de baja latencia para Windows vía SRT y MediaMTX"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
@@ -81,7 +81,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 ignore_missing_imports = true
 warn_unused_configs = true
 disallow_untyped_defs = false

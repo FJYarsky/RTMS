@@ -9,7 +9,7 @@
 import logging
 import re
 import urllib.parse
-from typing import List, Union
+from typing import Any, List, Union
 
 logger = logging.getLogger("rtms.sanitizer")
 
@@ -95,6 +95,18 @@ def sanitize_command_for_log(cmd: Union[List[str], str]) -> str:
                 clean_parts.append(clean_part)
         return " ".join(clean_parts)
     return sanitize_url(str(cmd))
+
+
+def sanitize_input_string(val: Union[str, Any]) -> str:
+    """
+    Elimina bytes nulos (\x00) y caracteres de control C0 no imprimibles que puedan
+    causar fallos de subproceso (ValueError: embedded null byte) o inyecciones de control.
+    """
+    if not isinstance(val, str):
+        val = str(val) if val is not None else ""
+    val = val.replace("\x00", "")
+    val = re.sub(r"[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]", "", val)
+    return val.strip()
 
 
 class SecretFilter(logging.Filter):

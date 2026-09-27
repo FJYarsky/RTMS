@@ -13,6 +13,111 @@ let _uptimeTicker = null;
 let _metricsTicker = null;
 let _virtualGridVisible = false;
 let _ignoredGridVisible = false;
+let _lastTelemetryData = null;
+let _confirmResolver = null;
+
+// ICONOS SVG PROFESIONALES DE ALTA DEFINICIÓN
+const ICONS = {
+    play: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+    stop: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;"><rect x="5" y="5" width="14" height="14" rx="2" ry="2"/></svg>`,
+    eye: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+    eyeOff: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`,
+    share: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`,
+    restart: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
+    settings: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    logs: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+    trash: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>`,
+    refresh: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`
+};
+
+// DIÁLOGO ASÍNCRONO DE CONFIRMACIÓN (REEMPLAZO TOTAL DE confirm())
+function showConfirmModal({ title, message, sub = '', confirmText = null, cancelText = null, isDanger = true }) {
+    return new Promise(resolve => {
+        _confirmResolver = resolve;
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('confirm-modal-title');
+        const msgEl = document.getElementById('confirm-modal-message');
+        const subEl = document.getElementById('confirm-modal-sub');
+        const confirmBtn = document.getElementById('confirm-modal-btn-confirm');
+        const cancelBtn = document.getElementById('confirm-modal-btn-cancel');
+
+        const defTitle = (typeof getTranslation === 'function') ? getTranslation('confirm_title_default') : 'Confirmar Acción';
+        const defConfirm = (typeof getTranslation === 'function') ? getTranslation('btn_confirm_action') : 'Confirmar';
+        const defCancel = (typeof getTranslation === 'function') ? getTranslation('btn_cancel') : 'Cancelar';
+
+        if (titleEl) titleEl.textContent = title || defTitle;
+        if (msgEl) msgEl.textContent = message || '';
+        if (subEl) subEl.textContent = sub || '';
+        if (confirmBtn) {
+            confirmBtn.textContent = confirmText || defConfirm;
+            confirmBtn.className = isDanger ? 'btn btn-danger' : 'btn btn-primary';
+        }
+        if (cancelBtn) cancelBtn.textContent = cancelText || defCancel;
+        if (modal) modal.classList.add('active');
+    });
+}
+
+function resolveConfirmModal(result) {
+    const modal = document.getElementById('confirm-modal');
+    if (modal) modal.classList.remove('active');
+    if (_confirmResolver) {
+        _confirmResolver(result);
+        _confirmResolver = null;
+    }
+}
+
+// PANEL DETALLADO DE TELEMETRÍA EN TIEMPO REAL
+function openTelemetryModal() {
+    const modal = document.getElementById('telemetry-modal');
+    if (modal) {
+        modal.classList.add('active');
+        if (_lastTelemetryData) {
+            updateTelemetryModalUI(_lastTelemetryData);
+        }
+    }
+}
+
+function closeTelemetryModal() {
+    const modal = document.getElementById('telemetry-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function updateTelemetryModalUI(data) {
+    if (!data) return;
+    const sys = data.system || data;
+    const cpuEl = document.getElementById('tel-cpu-val');
+    const gpuEl = document.getElementById('tel-gpu-val');
+    const vramEl = document.getElementById('tel-vram-val');
+    const ramEl = document.getElementById('tel-ram-val');
+    const netEl = document.getElementById('tel-net-val');
+    const brEl = document.getElementById('tel-bitrate-val');
+    const gpuModel = document.getElementById('tel-gpu-model');
+    const gpuDriver = document.getElementById('tel-gpu-driver');
+
+    if (cpuEl && sys.cpu_percent !== undefined) cpuEl.textContent = `${Math.round(sys.cpu_percent)}%`;
+    if (ramEl && sys.memory_percent !== undefined) ramEl.textContent = `${Math.round(sys.memory_percent)}%`;
+    if (gpuEl) {
+        gpuEl.textContent = (sys.gpu_available && sys.gpu_percent !== null && sys.gpu_percent !== undefined) ? `${Math.round(sys.gpu_percent)}%` : 'N/A';
+    }
+    if (vramEl) {
+        vramEl.textContent = (sys.gpu_memory_used_mb !== null && sys.gpu_memory_used_mb !== undefined && sys.gpu_memory_total_mb !== null && sys.gpu_memory_total_mb !== undefined)
+            ? `${Math.round(sys.gpu_memory_used_mb)} / ${Math.round(sys.gpu_memory_total_mb)} MB`
+            : '–';
+    }
+    if (netEl) {
+        const total = sys.net_system_total_kbps || sys.net_total_kbps || 0;
+        netEl.textContent = total >= 1000 ? `${(total / 1000).toFixed(1)} Mbps` : `${Math.round(total)} kbps`;
+    }
+    if (brEl && sys.total_bitrate_kbps !== undefined) {
+        brEl.textContent = sys.total_bitrate_kbps >= 1000 ? `${(sys.total_bitrate_kbps / 1000).toFixed(1)} Mbps` : `${Math.round(sys.total_bitrate_kbps)} kbps`;
+    }
+    if (gpuModel) {
+        gpuModel.textContent = sys.gpu_name || 'Sin GPU dedicada detectada';
+    }
+    if (gpuDriver) {
+        gpuDriver.textContent = sys.gpu_driver ? `Controlador: ${sys.gpu_driver}` : 'Controlador: Estándar Windows DirectShow';
+    }
+}
 
 // TOKEN DE SEGURIDAD CSRF LOCAL
 function getApiToken() {
@@ -202,10 +307,23 @@ async function loadConnectUrlForStream(stream, globalIndex) {
                 stream.connect_url = data.connect_url;
                 stream.vlc_url = data.vlc_url;
                 const urlInput = document.getElementById(`url-input-${globalIndex}`);
+                const btn = document.getElementById(`toggle-pass-btn-${globalIndex}`);
                 if (urlInput) {
-                    urlInput.value = data.connect_url;
                     urlInput.dataset.fullUrl = data.connect_url;
-                    urlInput.dataset.vlcUrl = data.vlc_url;
+                    urlInput.dataset.vlcUrl = data.vlc_url || '';
+                    if (data.connect_url.includes('passphrase=')) {
+                        urlInput.value = data.connect_url.replace(/passphrase=[^&]+/, 'passphrase=••••••••');
+                        urlInput.dataset.masked = 'true';
+                        if (btn) {
+                            btn.style.display = 'inline-flex';
+                            btn.innerHTML = ICONS.eye;
+                            btn.title = (typeof getTranslation === 'function') ? getTranslation('passphrase_toggle_show') : 'Mostrar contraseña';
+                        }
+                    } else {
+                        urlInput.value = data.connect_url;
+                        urlInput.dataset.masked = 'false';
+                        if (btn) btn.style.display = 'none';
+                    }
                 }
             }
         }
@@ -224,11 +342,17 @@ function toggleUrlPassphrase(index) {
     if (input.dataset.masked === 'true') {
         input.value = fullUrl;
         input.dataset.masked = 'false';
-        if (btn) btn.textContent = '👁️';
+        if (btn) {
+            btn.innerHTML = ICONS.eyeOff;
+            btn.title = (typeof getTranslation === 'function') ? getTranslation('passphrase_toggle_hide') : 'Ocultar contraseña';
+        }
     } else {
         input.value = fullUrl.replace(/passphrase=[^&]+/, 'passphrase=••••••••');
         input.dataset.masked = 'true';
-        if (btn) btn.textContent = '🔒';
+        if (btn) {
+            btn.innerHTML = ICONS.eye;
+            btn.title = (typeof getTranslation === 'function') ? getTranslation('passphrase_toggle_show') : 'Mostrar contraseña';
+        }
     }
 }
 
@@ -306,6 +430,11 @@ async function fetchStatus() {
 // HUD DE TELEMETRÍA EN TIEMPO REAL Y PROCESAMIENTO REACTIVO
 function applyTelemetryData(data) {
     if (!data) return;
+    _lastTelemetryData = data;
+    const telModal = document.getElementById('telemetry-modal');
+    if (telModal && telModal.classList.contains('active')) {
+        updateTelemetryModalUI(data);
+    }
     const sys = data.system || data;
 
     // CPU
@@ -482,7 +611,7 @@ function renderConnectPage() {
     if (activeStreams.length === 0) {
         container.innerHTML = `
             <div class="alert-box alert-warning" style="margin-bottom:0;">
-                No hay transmisiones activas en este momento. Ve a la sección de <strong>Cámaras</strong> y haz clic en <strong>Iniciar</strong> para comenzar a emitir hacia OBS.
+                ${t('active_streams_empty')}
             </div>
         `;
         return;
@@ -494,15 +623,15 @@ function renderConnectPage() {
         let clientUrl = '';
         let protocolLabel = '';
         if (stream.protocol === 'srt') {
-            protocolLabel = 'SRT Media Server (Reconexión Instantánea)';
+            protocolLabel = t('proto_srt_label');
             const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
             const cleanCamId = stream.clean_cam_id || stream.id;
-            clientUrl = `srt://${_localIp}:${srtPort}/?streamid=read:${cleanCamId}`;
+            clientUrl = `srt://${_localIp}:${srtPort}?streamid=read:${cleanCamId}`;
         } else if (stream.udp_mode === 'unicast') {
-            protocolLabel = 'UDP Unicast (Localhost / Misma PC)';
+            protocolLabel = t('proto_udp_unicast');
             clientUrl = `udp://@127.0.0.1:${stream.port}`;
         } else {
-            protocolLabel = 'UDP Multicast (Red LAN)';
+            protocolLabel = t('proto_udp_multicast');
             const ipLastOctet = (stream.port % 200) + 1;
             clientUrl = `udp://@239.255.0.${ipLastOctet}:${stream.port}`;
         }
@@ -514,16 +643,22 @@ function renderConnectPage() {
         row.innerHTML = `
             <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <strong style="color: var(--teal); font-size: 0.95rem;">${escapeHtml(stream.friendly_name)}</strong>
-                <span class="status-badge running"><span class="status-dot"></span>Transmitiendo</span>
+                <span class="status-badge running"><span class="status-dot"></span>${t('status_transmitting')}</span>
             </div>
             <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">
-                Protocolo: <strong>${escapeHtml(protocolLabel)}</strong> | Resolución: <strong>${escapeHtml(stream.resolution)} @ ${escapeHtml(stream.fps)} FPS</strong> | Bitrate: <strong>${escapeHtml(stream.bitrate)} kbps</strong>
+                ${t('cam_protocol_label')} <strong>${escapeHtml(protocolLabel)}</strong> | ${t('cam_resolution_label')} <strong>${escapeHtml(stream.resolution)} @ ${escapeHtml(stream.fps)} FPS</strong> | ${t('cam_bitrate_label')} <strong>${escapeHtml(stream.bitrate)} kbps</strong>
             </div>
             <div class="copy-input-grp">
                 <input type="text" id="url-input-${globalIndex}" value="${escapeHtml(clientUrl)}" readonly>
-                ${stream.protocol === 'srt' ? `<button class="btn btn-ghost btn-sm" id="toggle-pass-btn-${globalIndex}" title="Mostrar/Ocultar contraseña" onclick="toggleUrlPassphrase(${globalIndex})" style="padding: 4px 10px; margin-right: 4px; border: 1px solid var(--border-color);">👁️</button>` : ''}
-                <button class="btn btn-ghost btn-sm" onclick="openQrModal(${globalIndex})" title="Código QR para celular" style="padding: 4px 10px; margin-right: 4px; border: 1px solid var(--border-color);">📱 QR</button>
-                <button class="copy-icon-btn" onclick="copyUrlByIndex(${globalIndex})">Copiar URL</button>
+                ${stream.protocol === 'srt' ? `<button class="btn btn-ghost btn-sm" id="toggle-pass-btn-${globalIndex}" title="${t('passphrase_toggle_show')}" onclick="toggleUrlPassphrase(${globalIndex})" style="padding: 4px 10px; margin-right: 4px; border: 1px solid var(--border-color); display: none; align-items: center;">${ICONS.eye}</button>` : ''}
+                <button class="btn btn-ghost btn-sm" onclick="openQrModal(${globalIndex})" title="${t('btn_share_qr')}" style="padding: 4px 10px; margin-right: 4px; border: 1px solid var(--border-color); display: inline-flex; align-items: center;">${ICONS.share} <span>${t('btn_share_qr')}</span></button>
+                <button class="copy-icon-btn" onclick="copyUrlByIndex(${globalIndex})">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    <span>${t('btn_copy_url')}</span>
+                </button>
             </div>
         `;
         container.appendChild(row);
@@ -545,15 +680,20 @@ function renderCamerasPage() {
     if (_streams.length === 0) {
         mainGrid.innerHTML = `
             <div class="empty-state-card" style="grid-column: 1/-1; text-align: center; padding: 48px 24px; background: rgba(0, 0, 0, 0.2); border: 1px dashed var(--border-color); border-radius: var(--radius-lg); margin: 20px 0;">
-                <div style="font-size: 2.8rem; margin-bottom: 12px; filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.3));">📷</div>
+                <div style="margin-bottom: 12px; display: inline-flex; justify-content: center; align-items: center; width: 64px; height: 64px; border-radius: 50%; background: rgba(20, 184, 166, 0.1); border: 1px solid var(--border-color); filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.3));">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                </div>
                 <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">
-                    No se han detectado cámaras DirectShow
+                    ${t('empty_cameras_title')}
                 </h3>
                 <p style="font-size: 0.85rem; color: var(--text-secondary); max-width: 480px; margin: 0 auto 20px auto; line-height: 1.5;">
-                    Conecta tus cámaras web USB o tarjetas capturadoras HDMI/SDI y actualiza la lista de dispositivos multimedia del sistema.
+                    ${t('empty_cameras_desc')}
                 </p>
                 <button class="btn btn-primary" onclick="scanHardwareDevices()">
-                    🔄 Escanear Dispositivos Ahora
+                    ${ICONS.refresh} <span>${t('btn_scan_devices_now')}</span>
                 </button>
             </div>
         `;
@@ -562,10 +702,18 @@ function renderCamerasPage() {
     }
 
     let virtualCount = 0;
+    let liveCount = 0;
+    let stoppedCount = 0;
     
     _streams.forEach((stream, index) => {
         const card = createCameraCardElement(stream, index);
         
+        if (stream.status && stream.status.state === 'running') {
+            liveCount++;
+        } else {
+            stoppedCount++;
+        }
+
         if (stream.is_virtual) {
             virtualCount++;
             if (virtualGrid) virtualGrid.appendChild(card);
@@ -573,6 +721,16 @@ function renderCamerasPage() {
             mainGrid.appendChild(card);
         }
     });
+
+    // Actualizar badges de resumen superior
+    const totalEl = document.getElementById('cam-summary-total');
+    const liveEl = document.getElementById('cam-summary-live');
+    const stoppedEl = document.getElementById('cam-summary-stopped');
+    const virtualEl = document.getElementById('cam-summary-virtual');
+    if (totalEl) totalEl.textContent = _streams.length;
+    if (liveEl) liveEl.textContent = liveCount;
+    if (stoppedEl) stoppedEl.textContent = stoppedCount;
+    if (virtualEl) virtualEl.textContent = virtualCount;
 
     if (virtualSection) {
         if (virtualCount > 0) {
@@ -593,31 +751,31 @@ function createCameraCardElement(stream, index) {
     
     const state = stream.status.state;
     let badgeClass = 'stopped';
-    let badgeText = 'Detenido';
+    let badgeText = t('cam_status_stopped');
     
-    if (state === 'running') { badgeClass = 'running'; badgeText = 'En Vivo'; }
-    else if (state === 'starting') { badgeClass = 'starting'; badgeText = 'Iniciando'; }
-    else if (state === 'restarting') { badgeClass = 'restarting'; badgeText = 'Reiniciando'; }
+    if (state === 'running') { badgeClass = 'running'; badgeText = t('cam_status_running'); card.classList.add('is-running'); }
+    else if (state === 'starting') { badgeClass = 'starting'; badgeText = t('cam_status_starting'); }
+    else if (state === 'restarting') { badgeClass = 'restarting'; badgeText = t('cam_status_restarting'); }
     else if (state === 'error') { 
         badgeClass = 'failed'; 
-        badgeText = stream.status.error_count >= 5 ? 'Fallo Permanente' : 'Reintentando...'; 
+        badgeText = stream.status.error_count >= 5 ? t('cam_status_permanent_fail') : t('cam_status_retrying'); 
     }
     
     const protocolName = stream.protocol === 'srt' 
-        ? 'SRT Media Server' 
-        : (stream.udp_mode === 'unicast' ? 'UDP Unicast (Localhost)' : 'UDP Multicast (LAN)');
+        ? t('proto_srt_name')
+        : (stream.udp_mode === 'unicast' ? t('proto_udp_unicast_short') : t('proto_udp_multicast_short'));
     
     let actionBtnHtml = '';
     if (state === 'running' || state === 'starting' || state === 'restarting') {
-        actionBtnHtml = `<button class="btn btn-danger btn-sm" onclick="controlStream(${index}, 'stop')">⏹️ Detener</button>`;
+        actionBtnHtml = `<button class="btn btn-danger btn-sm" onclick="controlStream(${index}, 'stop')">${ICONS.stop} <span>${t('btn_stop')}</span></button>`;
     } else {
-        actionBtnHtml = `<button class="btn btn-success btn-sm" onclick="controlStream(${index}, 'start')">▶️ Iniciar</button>`;
+        actionBtnHtml = `<button class="btn btn-success btn-sm" onclick="controlStream(${index}, 'start')">${ICONS.play} <span>${t('btn_start')}</span></button>`;
     }
     
     const uptimeStr = formatUptime(stream.status.uptime_seconds);
     const liveFps = stream.status.current_fps ? `${stream.status.current_fps} FPS` : '–';
     const liveBitrate = stream.status.current_bitrate_kbps ? `${Math.round(stream.status.current_bitrate_kbps)} kbps` : '–';
-    const fallbackTag = stream.status.using_fallback_cpu ? '<span style="color:var(--status-yellow); font-size:0.7rem; font-weight:700;">(Modo CPU Fallback)</span>' : '';
+    const fallbackTag = stream.status.using_fallback_cpu ? `<span style="color:var(--status-yellow); font-size:0.7rem; font-weight:700;">${t('tag_cpu_fallback')}</span>` : '';
     const autostartChecked = stream.auto_start ? 'checked' : '';
 
     const encText = (stream.actual_encoder && stream.actual_encoder !== 'desconocido' && stream.encoder === 'auto')
@@ -626,51 +784,84 @@ function createCameraCardElement(stream, index) {
 
     let alertBanner = '';
     if (stream.permanent_failure) {
-        alertBanner = `<div class="alert-box alert-danger" style="margin: 8px 0; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px;">⚠️ Superado límite de reintentos. Verifique si el dispositivo está en uso o desconectado.</div>`;
+        alertBanner = `<div class="alert-box alert-danger" style="margin: 8px 0; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px;">${t('alert_retry_limit')}</div>`;
     } else if (!stream.is_connected) {
-        alertBanner = `<div class="alert-box alert-warning" style="margin: 8px 0; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px;">🔌 Dispositivo desconectado físicamente. En espera de reconexión.</div>`;
+        alertBanner = `<div class="alert-box alert-warning" style="margin: 8px 0; padding: 6px 10px; font-size: 0.75rem; border-radius: 6px;">${t('alert_device_disconnected')}</div>`;
     }
 
-    const portInfoHtml = stream.protocol === 'srt'
-        ? `<p>Puerto SRT: <strong>${escapeHtml(stream.mediamtx_port || _mediamtxSrtPort || 8890)}</strong> (Servidor Central) | Stream ID: <code>read:${escapeHtml(stream.clean_cam_id || stream.id)}</code></p>`
-        : `<p>Puerto UDP: <strong>${escapeHtml(stream.port)}</strong> (${stream.udp_mode === 'unicast' ? 'Unicast Local' : 'Multicast LAN'})</p>`;
+    const portDisplay = stream.protocol === 'srt'
+        ? `${stream.mediamtx_port || _mediamtxSrtPort || 8890}`
+        : `${stream.port} (${stream.udp_mode === 'unicast' ? 'Unicast' : 'Multicast'})`;
+
+    const streamIdLine = stream.protocol === 'srt'
+        ? `<div class="stream-chip-sub"><span style="color:var(--text-muted);">Stream ID:</span> <code class="stream-code-id">read:${escapeHtml(stream.clean_cam_id || stream.id)}</code></div>`
+        : '';
 
     card.innerHTML = `
         <div class="stream-card-hdr">
-            <div>
-                <div class="stream-name">${escapeHtml(stream.friendly_name)}</div>
-                ${fallbackTag}
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                <div class="stream-camera-avatar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                </div>
+                <div style="min-width: 0;">
+                    <div class="stream-name" title="${escapeHtml(stream.friendly_name)}">${escapeHtml(stream.friendly_name)}</div>
+                    ${fallbackTag}
+                </div>
             </div>
             <span class="status-badge ${badgeClass}"><span class="status-dot"></span>${badgeText}</span>
         </div>
         
         ${alertBanner}
 
-        <div style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">
-            ${portInfoHtml}
-            <p>Protocolo: <strong>${escapeHtml(protocolName)}</strong></p>
-            <p>Perfil: <strong>${escapeHtml(stream.resolution)} @ ${escapeHtml(stream.fps)} FPS | ${escapeHtml(stream.bitrate)} kbps</strong></p>
-            <p>Codificador: <strong>${escapeHtml(encText)}</strong></p>
-            <div style="margin-top: 6px;">
-                <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--teal);">
-                    <input type="checkbox" ${autostartChecked} onchange="toggleCamAutostart(${index}, this.checked)" style="display:inline-block;">
-                    <span>Autoarranque al encender PC</span>
-                </label>
+        <div class="stream-specs-dashboard">
+            <div class="stream-spec-item">
+                <span class="spec-label">${t('cam_protocol_label').replace(':', '')}</span>
+                <span class="spec-val highlight">${escapeHtml(protocolName)} :${escapeHtml(portDisplay)}</span>
+                ${streamIdLine}
+            </div>
+            <div class="stream-spec-item">
+                <span class="spec-label">${t('cam_profile_label').replace(':', '')}</span>
+                <span class="spec-val">${escapeHtml(stream.resolution)} @ ${escapeHtml(stream.fps)} FPS</span>
+                <span class="stream-chip-sub">${escapeHtml(stream.bitrate)} kbps</span>
+            </div>
+            <div class="stream-spec-item" style="grid-column: 1 / -1;">
+                <span class="spec-label">${t('cam_encoder_label').replace(':', '')}</span>
+                <span class="spec-val font-mono" style="font-size: 0.78rem;">${escapeHtml(encText)}</span>
             </div>
         </div>
 
-        <div class="stream-meta-row">
-            <span>Uptime: <strong id="uptime-val-${index}">${uptimeStr}</strong></span>
-            <span>En vivo: <strong id="live-fps-${index}">${liveFps}</strong> | <strong id="live-bitrate-${index}">${liveBitrate}</strong></span>
+        <div class="stream-meta-row telemetry-hud-bar">
+            <div class="telemetry-hud-box">
+                <span class="hud-lbl">${t('cam_uptime_label')}</span>
+                <strong class="hud-val" id="uptime-val-${index}">${uptimeStr}</strong>
+            </div>
+            <div class="telemetry-hud-box">
+                <span class="hud-lbl">FPS</span>
+                <strong class="hud-val ${stream.status.current_fps > 0 ? 'active' : ''}" id="live-fps-${index}">${liveFps}</strong>
+            </div>
+            <div class="telemetry-hud-box">
+                <span class="hud-lbl">BITRATE</span>
+                <strong class="hud-val ${stream.status.current_bitrate_kbps > 0 ? 'active' : ''}" id="live-bitrate-${index}">${liveBitrate}</strong>
+            </div>
         </div>
         
-        <div class="actions-row" style="flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 2px 2px;">
+            <label style="font-size: 0.76rem; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-secondary); user-select: none;">
+                <input type="checkbox" ${autostartChecked} onchange="toggleCamAutostart(${index}, this.checked)" style="display:inline-block; accent-color: var(--teal); cursor: pointer;">
+                <span>${t('cam_autostart_checkbox')}</span>
+            </label>
+        </div>
+
+        <div class="actions-row" style="flex-wrap: wrap; gap: 6px;">
             ${actionBtnHtml}
-            <button class="btn btn-primary btn-sm" onclick="openPreviewModal(${index})">👁️ Vista Previa</button>
-            <button class="btn btn-ghost btn-sm" onclick="openQrModal(${index})" title="Ver código QR para reproducir en celular con VLC">📱 QR</button>
-            <button class="btn btn-ghost btn-sm" onclick="controlStream(${index}, 'restart')">🔄 Reiniciar</button>
-            <button class="btn btn-ghost btn-sm" onclick="configureStream(${index})">⚙️ Ajustes</button>
-            <button class="btn btn-ghost btn-sm" onclick="viewLogs(${index})">📝 Logs</button>
+            <button class="btn btn-primary btn-sm" onclick="openPreviewModal(${index})">${ICONS.eye} <span>${t('btn_preview')}</span></button>
+            <button class="btn btn-ghost btn-sm" onclick="openQrModal(${index})" title="${t('btn_share')}">${ICONS.share} <span>${t('btn_share')}</span></button>
+            <button class="btn btn-ghost btn-sm" onclick="controlStream(${index}, 'restart')">${ICONS.restart} <span>${t('btn_restart')}</span></button>
+            <button class="btn btn-ghost btn-sm" onclick="configureStream(${index})">${ICONS.settings} <span>${t('btn_settings')}</span></button>
+            <button class="btn btn-ghost btn-sm" onclick="viewLogs(${index})">${ICONS.logs} <span>${t('btn_logs')}</span></button>
         </div>
     `;
     
@@ -724,8 +915,8 @@ async function loadIgnoredDevices() {
             card.style.background = 'rgba(239, 68, 68, 0.03)';
 
             const connBadge = dev.is_connected
-                ? `<span class="status-badge running" style="font-size: 0.7rem;"><span class="status-dot"></span>Conectada (USB)</span>`
-                : `<span class="status-badge stopped" style="font-size: 0.7rem;"><span class="status-dot"></span>Desconectada</span>`;
+                ? `<span class="status-badge running" style="font-size: 0.7rem;"><span class="status-dot"></span>${t('badge_connected_usb')}</span>`
+                : `<span class="status-badge stopped" style="font-size: 0.7rem;"><span class="status-dot"></span>${t('badge_disconnected')}</span>`;
 
             card.innerHTML = `
                 <div class="stream-card-hdr">
@@ -738,11 +929,11 @@ async function loadIgnoredDevices() {
                     ${connBadge}
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary); margin: 10px 0;">
-                    Estado: Cámara oculta o eliminada. No transmitirá hasta que sea restaurada.
+                    ${t('ignored_camera_status')}
                 </div>
                 <div class="actions-row">
                     <button class="btn btn-primary btn-sm" data-device-path="${escapeHtml(dev.device_path)}" onclick="unignoreCamera(this.dataset.devicePath)">
-                        🔄 Restaurar Cámara
+                        ${ICONS.restart} <span>${t('btn_restore_camera')}</span>
                     </button>
                 </div>
             `;
@@ -794,7 +985,15 @@ async function unignoreCamera(devicePath) {
 
 // RESTAURAR TODAS LAS CÁMARAS IGNORADAS
 async function restoreAllIgnoredCameras() {
-    if (!confirm("¿Deseas restaurar todas las cámaras que fueron eliminadas u ocultadas?")) {
+    const confirmed = await showConfirmModal({
+        title: (typeof getTranslation === 'function') ? getTranslation('confirm_title_default') : 'Confirmar Acción',
+        message: '¿Deseas restaurar todas las cámaras que fueron eliminadas u ocultadas?',
+        sub: 'Volverán a aparecer en la lista de dispositivos configurados del sistema.',
+        confirmText: (typeof getTranslation === 'function') ? getTranslation('btn_restore_deleted') : 'Restaurar Todas',
+        cancelText: (typeof getTranslation === 'function') ? getTranslation('btn_cancel') : 'Cancelar',
+        isDanger: false
+    });
+    if (!confirmed) {
         return;
     }
     try {
@@ -868,23 +1067,23 @@ async function toggleCamAutostart(index, enabled) {
 async function scanHardwareDevices() {
     const btn = document.getElementById('btn-scan-hw');
     btn.disabled = true;
-    btn.textContent = "⌛ Escaneando...";
+    btn.textContent = t('toast_scanning');
     
     try {
         const res = await apiFetch('/api/hardware/scan', { method: 'POST' });
         const data = await res.json();
         if (res.ok) {
-            showToast("Escaneo de hardware completado", "success");
+            showToast(t('toast_scan_done'), "success");
             fetchStatus();
         } else {
-            showToast("Error al escanear hardware", "error");
+            showToast(t('toast_scan_error'), "error");
         }
     } catch (err) {
         console.error(err);
-        showToast("Error de red durante el escaneo", "error");
+        showToast(t('toast_scan_error'), "error");
     } finally {
         btn.disabled = false;
-        btn.textContent = "🔄 Escanear Hardware";
+        btn.textContent = t('toast_scan_btn');
     }
 }
 
@@ -999,7 +1198,7 @@ function configureStream(index) {
     const stream = _streams[index];
     if (!stream) return;
     
-    document.getElementById('config-modal-title').textContent = `Ajustes — ${stream.friendly_name}`;
+    document.getElementById('config-modal-title').textContent = `${t('btn_settings')} — ${stream.friendly_name}`;
     document.getElementById('config-device-path').value = stream.device_path;
     document.getElementById('config-port').value = stream.port;
     document.getElementById('config-resolution').value = stream.resolution;
@@ -1025,6 +1224,7 @@ function configureStream(index) {
     }
     
     handleProtocolChange(protoVal);
+    handleZerolatencyChange();
     document.getElementById('config-modal-overlay').classList.add('active');
 }
 
@@ -1035,7 +1235,15 @@ function closeConfigModal() {
 async function deleteCurrentCamera() {
     const dp = document.getElementById('config-device-path').value;
     if (!dp) return;
-    if (!confirm("¿Estás seguro de que deseas eliminar permanentemente esta cámara de la configuración?")) {
+    const confirmed = await showConfirmModal({
+        title: (typeof getTranslation === 'function') ? getTranslation('btn_confirm_delete') : 'Eliminar Cámara',
+        message: '¿Estás seguro de que deseas eliminar permanentemente esta cámara de la configuración?',
+        sub: 'Esta acción detendrá la transmisión si está activa y quitará el dispositivo de la lista principal.',
+        confirmText: (typeof getTranslation === 'function') ? getTranslation('btn_confirm_delete') : 'Eliminar Permanentemente',
+        cancelText: (typeof getTranslation === 'function') ? getTranslation('btn_cancel') : 'Cancelar',
+        isDanger: true
+    });
+    if (!confirmed) {
         return;
     }
     try {
@@ -1072,6 +1280,20 @@ function handleProtocolChange(protocol) {
         if (advPanel) advPanel.classList.remove('active');
         const chev = document.getElementById('advanced-chevron');
         if (chev) chev.innerHTML = '&#9662;';
+    }
+}
+
+function handleZerolatencyChange() {
+    const zeroEl = document.getElementById('config-zerolatency');
+    const latencyGroup = document.getElementById('group-srt-latency');
+    const noticeEl = document.getElementById('notice-srt-latency-zerolatency');
+    if (!zeroEl) return;
+    const isZero = zeroEl.checked;
+    if (latencyGroup) {
+        latencyGroup.style.display = isZero ? 'none' : 'flex';
+    }
+    if (noticeEl) {
+        noticeEl.style.display = isZero ? 'block' : 'none';
     }
 }
 
@@ -1188,8 +1410,8 @@ function viewLogs(index) {
     if (!stream) return;
     
     _currentLogDevicePath = stream.device_path;
-    document.getElementById('logs-modal-title').textContent = `Logs de FFmpeg — ${stream.friendly_name}`;
-    document.getElementById('logs-content-box').textContent = "Conectando al log de FFmpeg...";
+    document.getElementById('logs-modal-title').textContent = `${t('logs_modal_title')} — ${stream.friendly_name}`;
+    document.getElementById('logs-content-box').textContent = t('logs_connecting');
     document.getElementById('logs-modal-overlay').classList.add('active');
     
     fetchLogs();
@@ -1210,10 +1432,10 @@ async function fetchLogs() {
             logBox.textContent = data.logs.join('\n');
             logBox.scrollTop = logBox.scrollHeight;
         } else {
-            logBox.textContent = "No hay registros disponibles para este flujo en este momento.";
+            logBox.textContent = t('logs_empty');
         }
     } catch (err) {
-        document.getElementById('logs-content-box').textContent = "Error al leer los logs del servidor.";
+        document.getElementById('logs-content-box').textContent = t('logs_error');
     }
 }
 
@@ -1336,6 +1558,9 @@ async function saveMediaMtxPort() {
 
 // INICIALIZACIÓN
 window.addEventListener('DOMContentLoaded', () => {
+    if (typeof initI18n === 'function') {
+        initI18n();
+    }
     fetchStatus();
     fetchMetrics();
     loadSystemSettings();
@@ -1464,16 +1689,16 @@ async function openPreviewModal(index) {
 
     if (!modal) return;
 
-    titleEl.textContent = `Vista Previa — ${stream.friendly_name}`;
+    titleEl.textContent = `${t('preview_modal_title')} — ${stream.friendly_name}`;
     const isRunning = stream.status.state === 'running';
     const isVirtual = Boolean(stream.is_virtual || (stream.device_path && (stream.device_path.startsWith('virtual://') || stream.device_path.startsWith('testsrc'))));
 
     const portDisplay = stream.protocol === 'srt'
         ? `SRT Central :${escapeHtml(stream.mediamtx_port || _mediamtxSrtPort || 8890)}`
-        : `UDP :${escapeHtml(stream.port)} (${stream.udp_mode === 'unicast' ? 'Unicast' : 'Multicast'})`;
-    const stoppedText = isVirtual ? 'Generador Virtual' : 'Encuadre DirectShow (Detenido)';
+        : `UDP :${escapeHtml(stream.port)} (${stream.udp_mode === 'unicast' ? t('label_unicast_local') : t('label_multicast_lan')})`;
+    const stoppedText = isVirtual ? t('preview_virtual_generator') : t('preview_stopped_framing');
     infoEl.innerHTML = isRunning 
-        ? `<span class="status-badge running"><span class="status-dot"></span>En Vivo WebRTC (${portDisplay})</span>`
+        ? `<span class="status-badge running"><span class="status-dot"></span>${t('preview_live_webrtc')} (${portDisplay})</span>`
         : `<span class="status-badge stopped"><span class="status-dot"></span>${stoppedText}</span>`;
 
     loader.style.display = 'flex';
@@ -1481,7 +1706,7 @@ async function openPreviewModal(index) {
     if (videoEl) { videoEl.style.display = 'none'; videoEl.srcObject = null; }
     modal.classList.add('active');
 
-    // 1. Intentar primero WebRTC WHEP de ultra baja latencia (<40ms) si el flujo está activo
+    // 1. Intentar primero WebRTC WHEP de baja latencia (<40ms) si el flujo está activo
     let whepStarted = false;
     if (isRunning && videoEl && window.RTCPeerConnection) {
         try {
@@ -1565,7 +1790,7 @@ async function openPreviewModal(index) {
 
         imgEl.onerror = () => {
             loader.style.display = 'none';
-            infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">(No disponible o límite alcanzado)</span>`;
+            infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">${t('preview_unavailable')}</span>`;
         };
 
         imgEl.src = previewUrl;
@@ -1614,22 +1839,24 @@ async function launchFFplayExternal(devicePath) {
     }
 }
 
-// CONTROLADOR DEL MODAL DE CÓDIGO QR PARA REPRODUCCIÓN EN CELULAR
+// CONTROLADOR DEL MODAL DE CÓDIGO QR PARA REPRODUCCIÓN EN CELULAR Y REPRODUCTORES
 let _currentQrCodeInstance = null;
+let _currentModalStream = null;
 
 async function openQrModal(index) {
     const stream = _streams[index];
     if (!stream) return;
+    _currentModalStream = stream;
 
     const modal = document.getElementById('qr-modal-overlay');
     const nameEl = document.getElementById('qr-stream-name');
     const badgeEl = document.getElementById('qr-protocol-badge');
     const urlInput = document.getElementById('qr-url-input');
+    const vlcCmdInput = document.getElementById('qr-vlc-cmd-input');
     const qrContainer = document.getElementById('qr-code-display');
 
     if (!modal || !qrContainer) return;
 
-    const protoTitle = stream.protocol === 'srt' ? 'SRT' : (stream.udp_mode === 'unicast' ? 'UDP Unicast' : 'UDP Multicast');
     nameEl.textContent = `${stream.friendly_name}`;
 
     if (badgeEl) {
@@ -1643,13 +1870,17 @@ async function openQrModal(index) {
         }
     }
 
-    // Obtener la URL más actualizada con autenticación/passphrase
+    // Obtener la URL más actualizada con autenticación/passphrase y comando VLC
     let targetUrl = '';
+    let obsUrl = '';
+    let vlcCmd = '';
     try {
         const res = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/connect_url`);
         if (res.ok) {
             const data = await res.json();
             targetUrl = data.vlc_url || data.connect_url || '';
+            obsUrl = data.connect_url || targetUrl;
+            vlcCmd = data.vlc_command || '';
         }
     } catch (e) {
         console.warn('Fallo obteniendo URL para QR, usando fallback:', e);
@@ -1659,17 +1890,27 @@ async function openQrModal(index) {
         if (stream.protocol === 'srt') {
             const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
             const cleanCamId = stream.clean_cam_id || stream.id;
-            targetUrl = `srt://${_localIp}:${srtPort}/?streamid=read:${cleanCamId}&latency=50000`;
+            targetUrl = `srt://${_localIp}:${srtPort}?streamid=read:${cleanCamId}`;
+            obsUrl = targetUrl;
         } else if (stream.udp_mode === 'unicast') {
             targetUrl = `udp://@:${stream.port}`;
+            obsUrl = `udp://${_localIp}:${stream.port}`;
         } else {
             const p = parseInt(stream.port);
             const ipLastOctet = (p >= 9000 && p <= 9200) ? ((p - 9000) + 1) : (((p - 1024) % 250) + 1);
             targetUrl = `udp://@239.255.0.${ipLastOctet}:${stream.port}`;
+            obsUrl = `udp://239.255.0.${ipLastOctet}:${stream.port}`;
         }
     }
 
-    urlInput.value = targetUrl;
+    if (!vlcCmd) {
+        vlcCmd = `vlc.exe "${targetUrl}" :network-caching=50 :clock-jitter=0 :clock-synchro=0 :drop-late-frames`;
+    }
+
+    const obsInput = document.getElementById('qr-obs-url-input');
+    if (obsInput) obsInput.value = obsUrl || targetUrl;
+    if (urlInput) urlInput.value = targetUrl;
+    if (vlcCmdInput) vlcCmdInput.value = vlcCmd;
     qrContainer.innerHTML = '';
 
     if (typeof QRCode !== 'undefined') {
@@ -1699,6 +1940,157 @@ function copyQrUrl() {
     const urlInput = document.getElementById('qr-url-input');
     if (urlInput && urlInput.value) {
         copyText(urlInput.value, "URL copiada al portapapeles");
-        showToast("URL de red copiada para VLC / Celular");
+        showToast("URL limpia copiada para VLC Mobile");
+    }
+}
+
+function copyObsUrl() {
+    const obsInput = document.getElementById('qr-obs-url-input');
+    if (obsInput && obsInput.value) {
+        copyText(obsInput.value, "URL copiada al portapapeles");
+        showToast("URL copiada para OBS Studio / vMix");
+    }
+}
+
+async function launchVlcCurrentModalStream() {
+    if (!_currentModalStream) return;
+    try {
+        const dp = _currentModalStream.device_path;
+        showToast("Lanzando VLC Media Player en baja latencia...");
+        const res = await apiFetch(`/api/stream/${encodeURIComponent(dp)}/launch_vlc`, { method: "POST" });
+        if (res.ok) {
+            showToast("VLC Player iniciado exitosamente (~50ms de latencia)");
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showToast("Aviso: " + (err.detail || "No se pudo iniciar VLC"), "error");
+        }
+    } catch (e) {
+        showToast("Error lanzando VLC: " + e.message, "error");
+    }
+}
+
+async function downloadXspfCurrentModalStream() {
+    if (!_currentModalStream) return;
+    try {
+        const dp = _currentModalStream.device_path;
+        const res = await apiFetch(`/api/stream/${encodeURIComponent(dp)}/vlc_playlist.xspf`);
+        if (!res.ok) {
+            showToast("Error generando playlist VLC", "error");
+            return;
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.style.display = "none";
+        a.href = url;
+        const safeName = (_currentModalStream.friendly_name || "rtms_stream").replace(/[^a-zA-Z0-9_-]/g, "_");
+        a.download = `${safeName}_baja_latencia.xspf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        showToast("Playlist .xspf descargada (Baja Latencia ~50ms)");
+    } catch (e) {
+        showToast("Error descargando playlist: " + e.message, "error");
+    }
+}
+
+function copyVlcCmd() {
+    const input = document.getElementById("qr-vlc-cmd-input");
+    if (input && input.value) {
+        copyText(input.value, "Comando VLC copiado");
+        showToast("Comando VLC de baja latencia copiado");
+    }
+}
+
+function openLatencyBenchmarkModal() {
+    const modal = document.getElementById("latency-bench-modal-overlay");
+    if (modal) modal.classList.add("active");
+}
+
+function closeLatencyBenchmarkModal() {
+    const modal = document.getElementById("latency-bench-modal-overlay");
+    if (modal) modal.classList.remove("active");
+}
+
+async function runLatencyBenchmarkTest() {
+    const btn = document.getElementById("btn-run-latency-bench");
+    const indicator = document.getElementById("bench-status-indicator");
+    const container = document.getElementById("bench-results-container");
+
+    if (btn) btn.disabled = true;
+    if (indicator) {
+        indicator.textContent = "Evaluando paquetes y pipeline...";
+        indicator.style.color = "var(--teal)";
+    }
+
+    try {
+        showToast("Iniciando benchmark de latencia de red y pipeline...");
+        const res = await apiFetch("/api/system/latency_benchmark?udp_samples=50&video_duration=2.5", {
+            method: "POST"
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || "Error en el benchmark");
+        }
+        const data = await res.json();
+        const bench = data.benchmark || {};
+        const phases = bench.phases || {};
+
+        if (container) container.style.display = "block";
+
+        // 1. Socket UDP Ping
+        const udp = phases.udp_socket_ping || {};
+        const udpPingEl = document.getElementById("metric-udp-ping");
+        const udpDetailsEl = document.getElementById("metric-udp-details");
+        if (udpPingEl && udp.avg_ms !== undefined) {
+            udpPingEl.textContent = `${udp.avg_ms.toFixed(3)} ms`;
+            if (udpDetailsEl) {
+                udpDetailsEl.textContent = `Min: ${udp.min_ms.toFixed(3)}ms | Jitter: ${udp.jitter_ms.toFixed(3)}ms | Pérdida: ${(udp.loss_rate * 100).toFixed(1)}%`;
+            }
+        }
+
+        // 2. TCP Handshake Ping
+        const tcp = phases.tcp_mediamtx_api_ping || {};
+        const tcpPingEl = document.getElementById("metric-tcp-ping");
+        const tcpDetailsEl = document.getElementById("metric-tcp-details");
+        if (tcpPingEl && tcp.avg_ms !== undefined) {
+            tcpPingEl.textContent = `${tcp.avg_ms.toFixed(3)} ms`;
+            if (tcpDetailsEl) {
+                tcpDetailsEl.textContent = `Min: ${tcp.min_ms.toFixed(3)}ms | p95: ${tcp.p95_ms.toFixed(3)}ms`;
+            }
+        }
+
+        // 3. Video Pipeline TTFF
+        const video = phases.srt_pipeline || {};
+        const videoTtffEl = document.getElementById("metric-video-ttff");
+        const videoFpsEl = document.getElementById("metric-video-fps");
+        if (videoTtffEl && video.time_to_first_frame_ms !== undefined) {
+            videoTtffEl.textContent = `${video.time_to_first_frame_ms.toFixed(1)} ms`;
+            if (videoFpsEl) {
+                videoFpsEl.textContent = `FPS: ${video.fps_measured.toFixed(1)} | Jitter: ${video.inter_frame_jitter_ms.toFixed(2)}ms`;
+            }
+        }
+
+        // 4. VLC Cache
+        const rec = bench.recommendations || {};
+        const vlcCacheEl = document.getElementById("metric-vlc-cache");
+        if (vlcCacheEl) {
+            vlcCacheEl.textContent = `${rec.optimal_vlc_caching_ms || 50} ms`;
+        }
+
+        if (indicator) {
+            indicator.textContent = "Completado exitosamente";
+            indicator.style.color = "var(--status-green)";
+        }
+        showToast("Diagnóstico de latencia completado con éxito");
+    } catch (e) {
+        if (indicator) {
+            indicator.textContent = "Fallo en diagnóstico";
+            indicator.style.color = "#ef4444";
+        }
+        showToast("Error ejecutando diagnóstico: " + e.message, "error");
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }

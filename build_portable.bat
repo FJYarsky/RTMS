@@ -159,6 +159,19 @@ if exist "rtms.exe.config" (
     copy /Y "rtms.exe.config" "dist\rtms\_internal\" >nul
 )
 
+REM Copiar recursos web (plantillas Jinja2 y assets estáticos) a dist/rtms/gui/
+if not exist "dist\rtms\gui" mkdir "dist\rtms\gui"
+if exist "gui\templates" (
+    echo [INFO] Copiando plantillas web a dist\rtms\gui\templates...
+    if not exist "dist\rtms\gui\templates" mkdir "dist\rtms\gui\templates"
+    xcopy /E /I /Y "gui\templates\*" "dist\rtms\gui\templates\" >nul
+)
+if exist "gui\static" (
+    echo [INFO] Copiando assets estáticos a dist\rtms\gui\static...
+    if not exist "dist\rtms\gui\static" mkdir "dist\rtms\gui\static"
+    xcopy /E /I /Y "gui\static\*" "dist\rtms\gui\static\" >nul
+)
+
 REM Localizar librerías y runtimes nativos de webview/WebView2
 set "WEBVIEW_LIB_DIR="
 for /f "usebackq delims=" %%D in (`%PYTHON_EXE% -c "import webview, os; print(os.path.join(os.path.dirname(webview.__file__), 'lib'))" 2^>nul`) do (
@@ -175,9 +188,24 @@ if defined WEBVIEW_LIB_DIR (
     )
 )
 
+REM Verificación estricta de integridad de la distribución construida
+set "BUILD_VALID=1"
+if not exist "dist\rtms\rtms.exe" set "BUILD_VALID=0"
+if not exist "dist\rtms\bin\ffmpeg.exe" set "BUILD_VALID=0"
+if not exist "dist\rtms\bin\ffplay.exe" set "BUILD_VALID=0"
+if not exist "dist\rtms\bin\mediamtx.exe" set "BUILD_VALID=0"
+if not exist "dist\rtms\config\mediamtx.example.yml" set "BUILD_VALID=0"
+if not exist "dist\rtms\config\config.example.json" set "BUILD_VALID=0"
+
+if "%BUILD_VALID%"=="0" (
+    echo.
+    echo [ERROR] La distribucion en dist\rtms esta incompleta. Faltan binarios o configuraciones.
+    exit /b 1
+)
+
 echo.
 echo ============================================================
-echo  [OK] Aplicacion nativa generada exitosamente en: dist\rtms\rtms.exe
+echo  [OK] Aplicacion nativa generada y verificada en: dist\rtms\rtms.exe
 echo ============================================================
 echo.
  

@@ -73,12 +73,35 @@ class PortManager:
             raise RuntimeError(f"No hay puertos libres disponibles en el rango {self.min_port}-{self.max_port}")
 
     def reallocate_if_collided(self, current_port: int) -> int:
-        """Reasigna un nuevo puerto libre si ocurrió una colisión externa con current_port."""
+        """Reasigna un nuevo puerto libre si ocurrió una colisión externa con current_port, buscando el siguiente disponible."""
         with self._lock:
             self._allocated_ports.discard(current_port)
-        new_port = self.allocate_port()
-        logger.warning(f"Colisión de puerto detectada en {current_port}. Reasignado a nuevo puerto libre: {new_port}")
-        return new_port
+            # Buscar el siguiente puerto libre empezando por current_port + 1
+            start_search = current_port + 1 if (self.min_port <= current_port < self.max_port) else self.min_port
+            for port in range(start_search, self.max_port + 1):
+                if port == current_port or port in self._allocated_ports:
+                    continue
+                if not self.is_port_in_use(port):
+                    self._allocated_ports.add(port)
+                    logger.warning(
+                        f"Colisión de puerto detectada en {current_port}. Reasignado a siguiente puerto libre: {port}"
+                    )
+                    return port
+
+            # Búsqueda circular de fallback desde min_port hasta current_port - 1
+            for port in range(self.min_port, current_port):
+                if port in self._allocated_ports:
+                    continue
+                if not self.is_port_in_use(port):
+                    self._allocated_ports.add(port)
+                    logger.warning(
+                        f"Colisión de puerto detectada en {current_port}. Reasignado a nuevo puerto libre: {port}"
+                    )
+                    return port
+
+            raise RuntimeError(
+                f"No hay puertos alternativos libres disponibles en el rango {self.min_port}-{self.max_port}"
+            )
 
     def release_port(self, port: int):
         """Libera un puerto previamente asignado."""

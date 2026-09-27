@@ -442,6 +442,7 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         cam.setdefault("protocol", "srt")
         cam.setdefault("udp_mode", "multicast")
         cam.setdefault("udp_host", "127.0.0.1")
+        cam.setdefault("device_path", device_path)
         if not cam.get("srt_passphrase") and not cam.get("decryption_failed"):
             cam["srt_passphrase"] = ""
 

@@ -247,8 +247,8 @@ def run_restore(targets: List[str]) -> int:
     success_count = 0
 
     for item in items_to_restore:
-        canonical = DESCRIPTIONS_CATALOG.get(item)
-        if not canonical:
+        target_desc = DESCRIPTIONS_CATALOG.get(item)
+        if not target_desc:
             print(f"[SKIP] Elemento '{item}' no está en el catálogo.")
             continue
 

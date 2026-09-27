@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import sys
+import time
 from typing import Dict, List, Optional
 
 logger = logging.getLogger("rtms.hardware")
@@ -44,19 +45,103 @@ def has_ffmpeg_binary() -> bool:
     return os.path.exists(_FFMPEG_BIN) or (shutil.which("ffmpeg") is not None)
 
 
-async def get_directshow_devices() -> List[Dict[str, str]]:
+class DirectShowDeviceScanner:
     """
-    Llama a ffmpeg -list_devices true -f dshow -i dummy de forma asíncrona y
-    analiza stderr para extraer el Nombre Amigable (Friendly Name) y la Ruta del Dispositivo (Alternative name).
-    Retorna una lista de diccionarios: [{"friendly_name": "...", "device_path": "..."}]
+    Detector y caché con deduplicación y coalescing (single-flight) de dispositivos DirectShow.
+    Evita saturar la CPU y bloquear drivers USB al colapsar múltiples llamadas concurrentes
+    en una única ejecución compartida de FFmpeg, manteniendo una caché con TTL corto (4 segundos).
     """
-    ffmpeg_bin = get_ffmpeg_bin()
-    if not has_ffmpeg_binary():
-        logger.error(f"No se encontró el binario FFmpeg en {_FFMPEG_BIN} ni en PATH del sistema")
-        return []
 
-    logger.info("Sondeando dispositivos DirectShow...")
-    try:
+    _instance: Optional["DirectShowDeviceScanner"] = None
+
+    def __init__(self, cache_ttl: float = 4.0):
+        self._cache_ttl: float = cache_ttl
+        self._cached_devices: Optional[List[Dict[str, str]]] = None
+        self._last_scan_time: float = 0.0
+        self._inflight_task: Optional[asyncio.Task] = None
+        self._lock: Optional[asyncio.Lock] = None
+        self._lock_loop: Optional[asyncio.AbstractEventLoop] = None
+
+    @classmethod
+    def get_instance(cls) -> "DirectShowDeviceScanner":
+        if cls._instance is None:
+            cls._instance = DirectShowDeviceScanner()
+        return cls._instance
+
+    def _get_lock(self) -> asyncio.Lock:
+        loop = asyncio.get_running_loop()
+        if self._lock is None or self._lock_loop != loop:
+            self._lock = asyncio.Lock()
+            self._lock_loop = loop
+        return self._lock
+
+    def invalidate_cache(self) -> None:
+        """Invalida inmediatamente la caché en memoria forzando el siguiente escaneo."""
+        self._cached_devices = None
+        self._last_scan_time = 0.0
+
+    def reset(self) -> None:
+        """Resetea completamente el estado interno del escáner (útil para pruebas unitarias)."""
+        self.invalidate_cache()
+        self._inflight_task = None
+        self._lock = None
+        self._lock_loop = None
+
+    async def get_devices(self, force_refresh: bool = False) -> List[Dict[str, str]]:
+        now = time.monotonic()
+        # 1. Si no se fuerza refresco y la caché sigue válida dentro del TTL (4s), devolver copia inmediatamente
+        if not force_refresh and self._cached_devices is not None:
+            if (now - self._last_scan_time) < self._cache_ttl:
+                logger.debug("Retornando dispositivos DirectShow desde caché TTL activa.")
+                return [d.copy() for d in self._cached_devices]
+
+        # 2. Coordinación de single-flight bajo lock
+        lock = self._get_lock()
+        async with lock:
+            now = time.monotonic()
+            if not force_refresh and self._cached_devices is not None:
+                if (now - self._last_scan_time) < self._cache_ttl:
+                    return [d.copy() for d in self._cached_devices]
+
+            loop = asyncio.get_running_loop()
+            # Si ya hay una tarea de sondeo en curso en el mismo loop, reutilizarla (Single-Flight / Coalescing)
+            if (
+                self._inflight_task is not None
+                and not self._inflight_task.done()
+                and getattr(self._inflight_task, "get_loop", lambda: None)() == loop
+            ):
+                logger.debug("Coalesciendo llamada a get_directshow_devices con sondeo en curso.")
+                task = self._inflight_task
+            else:
+                task = asyncio.create_task(self._run_probe())
+                self._inflight_task = task
+
+        # 3. Esperar el resultado de la tarea (compartida o nueva) fuera del lock
+        try:
+            devices = await task
+            return [d.copy() for d in devices]
+        except Exception as e:
+            logger.exception(f"Error en sondeo coalescido de dispositivos DirectShow: {e}")
+            if self._cached_devices is not None:
+                return [d.copy() for d in self._cached_devices]
+            return []
+
+    async def _run_probe(self) -> List[Dict[str, str]]:
+        try:
+            devices = await self._execute_probe()
+            self._cached_devices = devices
+            self._last_scan_time = time.monotonic()
+            return devices
+        finally:
+            self._inflight_task = None
+
+    async def _execute_probe(self) -> List[Dict[str, str]]:
+        ffmpeg_bin = get_ffmpeg_bin()
+        if not has_ffmpeg_binary():
+            logger.error(f"No se encontró el binario FFmpeg en {_FFMPEG_BIN} ni en PATH del sistema")
+            return []
+
+        logger.info("Sondeando dispositivos DirectShow (ejecución FFmpeg real)...")
         process = await asyncio.create_subprocess_exec(
             ffmpeg_bin,
             "-list_devices",
@@ -72,11 +157,22 @@ async def get_directshow_devices() -> List[Dict[str, str]]:
 
         _, stderr = await process.communicate()
         output = stderr.decode("utf-8", errors="ignore")
-
         return parse_dshow_output(output)
-    except Exception as e:
-        logger.exception(f"Error consultando dispositivos DirectShow: {e}")
-        return []
+
+
+dshow_scanner = DirectShowDeviceScanner.get_instance()
+
+
+async def get_directshow_devices(force_refresh: bool = False) -> List[Dict[str, str]]:
+    """
+    Llama a ffmpeg -list_devices true -f dshow -i dummy de forma asíncrona y
+    analiza stderr para extraer el Nombre Amigable (Friendly Name) y la Ruta del Dispositivo (Alternative name).
+    Retorna una lista de diccionarios: [{"friendly_name": "...", "device_path": "..."}]
+
+    Implementa deduplicación single-flight y caché con TTL corto (4 segundos) para
+    evitar saturar la CPU y bloquear controladores USB DirectShow por sondeos concurrentes redundantes.
+    """
+    return await dshow_scanner.get_devices(force_refresh=force_refresh)
 
 
 def parse_dshow_output(output: str) -> List[Dict[str, str]]:
@@ -185,7 +281,7 @@ class HardwareCapabilityDetector:
             return [enc for enc, ok in self._capabilities.items() if ok]
 
     async def is_encoder_supported(self, encoder: str) -> bool:
-        if encoder == "libx264":
+        if encoder in ("libx264", "libx265"):
             return True
         async with self._lock:
             if not self._tested:
@@ -204,13 +300,35 @@ class HardwareCapabilityDetector:
     async def _probe_capabilities(self):
         if not has_ffmpeg_binary():
             logger.warning("FFmpeg no disponible. Aceleración por hardware desactivada.")
-            self._capabilities = {"h264_nvenc": False, "h264_qsv": False, "h264_amf": False, "libx264": True}
+            self._capabilities = {
+                "h264_nvenc": False,
+                "h264_qsv": False,
+                "h264_amf": False,
+                "hevc_nvenc": False,
+                "hevc_qsv": False,
+                "hevc_amf": False,
+                "av1_nvenc": False,
+                "av1_qsv": False,
+                "av1_amf": False,
+                "libx264": True,
+                "libx265": True,
+            }
             self._tested = True
             return
 
         logger.info("Detectando capacidades de codificación por hardware (Caché Global)...")
         ffmpeg_bin = get_ffmpeg_bin()
-        encoders_to_test = ["h264_nvenc", "h264_qsv", "h264_amf"]
+        encoders_to_test = [
+            "h264_nvenc",
+            "h264_qsv",
+            "h264_amf",
+            "hevc_nvenc",
+            "hevc_qsv",
+            "hevc_amf",
+            "av1_nvenc",
+            "av1_qsv",
+            "av1_amf",
+        ]
 
         for enc in encoders_to_test:
             try:
@@ -241,6 +359,7 @@ class HardwareCapabilityDetector:
                 self._capabilities[enc] = False
 
         self._capabilities["libx264"] = True
+        self._capabilities["libx265"] = True
         self._tested = True
 
 

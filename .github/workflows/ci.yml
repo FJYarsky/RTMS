@@ -36,13 +36,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
-          cache-dependency-path: requirements-dev.txt
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          uv pip install --system -r requirements-dev.txt
 
       - name: Download Multimedia Binaries
         shell: powershell
@@ -73,13 +76,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: requirements-dev.txt
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          uv pip install --system -r requirements-dev.txt
 
       - name: Download Multimedia Binaries
         shell: powershell
@@ -94,21 +100,48 @@ jobs:
       - name: Verify Distribution Artifacts
         shell: powershell
         run: |
-          if (-not (Test-Path "dist/rtms/rtms.exe")) {
-            throw "El ejecutable dist/rtms/rtms.exe no fue generado."
+          $requiredFiles = @(
+            "dist/rtms/rtms.exe",
+            "dist/rtms/bin/ffmpeg.exe",
+            "dist/rtms/bin/ffplay.exe",
+            "dist/rtms/bin/mediamtx.exe",
+            "dist/rtms/config/mediamtx.example.yml",
+            "dist/rtms/config/config.example.json",
+            "dist/rtms/THIRD_PARTY_NOTICES.md",
+            "dist/rtms/icon.ico"
+          )
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file)) {
+              throw "Artefacto obligatorio ausente en distribucion: $file"
+            }
           }
-          if (-not (Test-Path "dist/rtms/bin/ffmpeg.exe")) {
-            throw "ffmpeg.exe no esta presente en dist/rtms/bin."
+
+          $templateFound = (Test-Path "dist/rtms/gui/templates/index.html") -or (Test-Path "dist/rtms/_internal/gui/templates/index.html")
+          if (-not $templateFound) {
+            throw "Plantilla web index.html no encontrada en la distribucion."
           }
-          if (-not (Test-Path "dist/rtms/bin/ffplay.exe")) {
-            throw "ffplay.exe no esta presente en dist/rtms/bin."
+
+          $jsFound = (Test-Path "dist/rtms/gui/static/app.js") -or (Test-Path "dist/rtms/_internal/gui/static/app.js")
+          if (-not $jsFound) {
+            throw "Script de aplicacion app.js no encontrado en la distribucion."
           }
-          if (-not (Test-Path "dist/rtms/bin/mediamtx.exe")) {
-            throw "mediamtx.exe no esta presente en dist/rtms/bin."
+
+          $i18nFound = (Test-Path "dist/rtms/gui/static/i18n.js") -or (Test-Path "dist/rtms/_internal/gui/static/i18n.js")
+          if (-not $i18nFound) {
+            throw "Diccionario de internacionalizacion i18n.js no encontrado en la distribucion."
           }
-          if (-not (Test-Path "dist/rtms/config/mediamtx.example.yml")) {
-            throw "mediamtx.example.yml no esta presente en dist/rtms/config."
+
+          $cssFound = (Test-Path "dist/rtms/gui/static/styles.css") -or (Test-Path "dist/rtms/_internal/gui/static/styles.css")
+          if (-not $cssFound) {
+            throw "Hoja de estilos styles.css no encontrada en la distribucion."
           }
-          Write-Host "Verificacion de empaquetado completada exitosamente." -ForegroundColor Green
+
+          $malvinasFound = (Test-Path "dist/rtms/gui/static/malvinas.svg") -or (Test-Path "dist/rtms/_internal/gui/static/malvinas.svg")
+          if (-not $malvinasFound) {
+            throw "Vector oficial de Islas Malvinas no encontrado en la distribucion."
+          }
+
+          Write-Host "Verificacion de empaquetado y distribucion completada exitosamente." -ForegroundColor Green
+
 
  

@@ -8,8 +8,9 @@
 
 import asyncio
 import logging
+import re
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import JSONResponse
 
 from api.deps import get_local_ip, verify_api_token
@@ -242,7 +243,7 @@ async def scan_hardware(restore_ignored: bool = False):
         from core.config_mgr import clear_ignored_devices
 
         await asyncio.to_thread(clear_ignored_devices)
-    await sync_streams_with_hardware()
+    await sync_streams_with_hardware(force_refresh=True)
     return {"status": "ok", "message": "Escaneo de hardware completado"}
 
 
@@ -359,14 +360,20 @@ async def get_stream_connect_url(device_path: str):
         udp_mode=udp_mode,
     )
 
+    from core.stream_proc import get_vlc_binary_path
+
     return JSONResponse(
         content={
             "status": "ok",
             "device_path": dp,
+            "friendly_name": cam.get("friendly_name", dp),
             "protocol": protocol,
             "udp_mode": udp_mode,
             "connect_url": urls["connect_url"],
             "vlc_url": urls["vlc_url"],
+            "vlc_command": urls.get("vlc_command", ""),
+            "vlc_caching_ms": urls.get("vlc_caching_ms", 50),
+            "vlc_installed": bool(get_vlc_binary_path()),
             "has_passphrase": bool(passphrase),
         },
         headers={
@@ -374,3 +381,115 @@ async def get_stream_connect_url(device_path: str):
             "Pragma": "no-cache",
         },
     )
+
+
+@router.get("/api/stream/{device_path:path}/vlc_playlist.xspf", dependencies=[Depends(verify_api_token)])
+async def get_stream_vlc_playlist(device_path: str):
+    """Genera y descarga un archivo de lista de reproducción .xspf configurado con baja latencia (50ms) para VLC."""
+    cam = find_camera_by_id_or_path(device_path)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Dispositivo de cámara no encontrado")
+
+    dp = cam["device_path"]
+    proc = stream_manager.get_proc(dp)
+    cfg = proc.config if (proc and proc.config) else cam
+
+    protocol = cfg.get("protocol", "srt")
+    port = cfg.get("port", 9000)
+    raw_pass = cfg.get("srt_passphrase", "")
+    passphrase = ""
+    if raw_pass:
+        from core.secrets_mgr import unprotect_secret
+
+        passphrase = unprotect_secret(raw_pass)
+    local_ip = get_local_ip()
+    from core.mediamtx_mgr import mediamtx_manager
+    from core.stream_proc import build_client_urls, generate_vlc_xspf_playlist
+
+    mediamtx_port = mediamtx_manager.get_srt_port()
+    cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
+    udp_mode = cfg.get("udp_mode", "multicast")
+
+    urls = build_client_urls(
+        protocol=protocol,
+        host=local_ip,
+        port=port,
+        cam_id=cam_id,
+        passphrase=passphrase,
+        mediamtx_port=mediamtx_port,
+        udp_mode=udp_mode,
+    )
+
+    friendly = cam.get("friendly_name") or f"Cam_{port}"
+    xspf_xml = generate_vlc_xspf_playlist(
+        stream_url=urls["vlc_url"],
+        title=friendly,
+        caching_ms=50,
+    )
+
+    safe_fname = re.sub(r"[^a-zA-Z0-9_-]", "_", friendly) + ".xspf"
+    return Response(
+        content=xspf_xml,
+        media_type="application/xspf+xml",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_fname}"',
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+    )
+
+
+@router.post("/api/stream/{device_path:path}/launch_vlc", dependencies=[Depends(verify_api_token)])
+async def launch_vlc_stream_endpoint(device_path: str):
+    """Lanza localmente el reproductor VLC con parámetros forzados de ultra baja latencia (:network-caching=50)."""
+    from core.stream_proc import build_client_urls, get_vlc_binary_path, launch_vlc_player
+
+    cam = find_camera_by_id_or_path(device_path)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Dispositivo de cámara no encontrado")
+
+    if not get_vlc_binary_path():
+        raise HTTPException(
+            status_code=400,
+            detail="VLC Media Player no se encuentra instalado en la ruta estándar del sistema.",
+        )
+
+    dp = cam["device_path"]
+    proc = stream_manager.get_proc(dp)
+    cfg = proc.config if (proc and proc.config) else cam
+
+    protocol = cfg.get("protocol", "srt")
+    port = cfg.get("port", 9000)
+    raw_pass = cfg.get("srt_passphrase", "")
+    passphrase = ""
+    if raw_pass:
+        from core.secrets_mgr import unprotect_secret
+
+        passphrase = unprotect_secret(raw_pass)
+    # Para lanzamiento local en la misma PC siempre se usa 127.0.0.1
+    local_ip = "127.0.0.1"
+    from core.mediamtx_mgr import mediamtx_manager
+
+    mediamtx_port = mediamtx_manager.get_srt_port()
+    cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
+    udp_mode = cfg.get("udp_mode", "multicast")
+
+    urls = build_client_urls(
+        protocol=protocol,
+        host=local_ip,
+        port=port,
+        cam_id=cam_id,
+        passphrase=passphrase,
+        mediamtx_port=mediamtx_port,
+        udp_mode=udp_mode,
+    )
+
+    success = launch_vlc_player(urls["vlc_url"], caching_ms=50)
+    if not success:
+        raise HTTPException(status_code=500, detail="Fallo al ejecutar el proceso de VLC Media Player.")
+
+    return {
+        "status": "ok",
+        "message": f"VLC lanzado exitosamente con buffer de 50ms para {cam.get('friendly_name', dp)}",
+        "vlc_url": urls["vlc_url"],
+        "caching_ms": 50,
+    }

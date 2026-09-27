@@ -8,7 +8,7 @@
 
 ## 1. Visión y Fundamentos del Rediseño
 
-La identidad visual de **RTMS** representa una estación de transmisión multicámara de ultra-baja latencia (<100ms) para entornos de producción en vivo sobre Windows (integrando MediaMTX, SRT, UDP Multicast y OBS Studio).
+La identidad visual de **RTMS** representa una estación de transmisión multicámara de baja latencia (<100ms) para entornos de producción en vivo sobre Windows (integrando MediaMTX, SRT, UDP Multicast y OBS Studio).
 
 ### Objetivos Clave de la Renovación Visual:
 1. **Eliminación del fondo blanco legado**: Se sustituye el diseño anterior de fondo blanco plano por un sistema nativo *Dark Mode First*, alineado con la paleta oscura de la interfaz (`#0b0f19` y `#111827`).

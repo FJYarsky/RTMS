@@ -1,6 +1,14 @@
 <div align="center">
+
 <img src="gui/static/imagotype.svg" alt="RTMS" width="600">
-   
+
+<p align="center">
+  <a href="https://github.com/FJYarsky/RTMS/releases/latest">
+    <img src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Descargar%20RTMS-v2.8.0%20(Windows%20x64)-00E5FF?style=for-the-badge&logo=windows&logoColor=050b14" alt="Descargar RTMS v2.8.0 Portable">
+  </a>
+</p>
+
+[![Release](https://img.shields.io/github/v/release/FJYarsky/RTMS?color=0ea5e9&label=Versi%C3%B3n)](https://github.com/FJYarsky/RTMS/releases/latest)
 [![Website](https://img.shields.io/badge/Sitio%20Web-fjyarsky.github.io%2FRTMS-0ea5e9?logo=googlechrome&logoColor=white)](https://fjyarsky.github.io/RTMS/)
 [![Platform](https://img.shields.io/badge/Plataforma-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)](https://microsoft.com)
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20WebRTC%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
@@ -13,7 +21,7 @@
 
 **Servidor de video multicámara de baja latencia para Windows con ingesta desacoplada vía MediaMTX, SRT y UDP.**
 
-[Sitio Web Oficial](https://fjyarsky.github.io/RTMS/) • [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Discusiones](https://github.com/FJYarsky/RTMS/discussions) • [Contacto](#-contacto-y-soporte)
+[⬇️ Descargar Última Versión](https://github.com/FJYarsky/RTMS/releases/latest) • [Sitio Web Oficial](https://fjyarsky.github.io/RTMS/) • [Capturas](#-demostración-y-capturas-de-pantalla) • [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Discusiones](https://github.com/FJYarsky/RTMS/discussions) • [Contacto](#-contacto-y-soporte)
 
 ---
 
@@ -26,14 +34,58 @@
 Integra un servidor de medios embebido (**MediaMTX**) que desacopla la ingesta de la distribución, garantizando que las conexiones o desconexiones de clientes receptores nunca reinicien la cámara física. Cuenta con telemetría en tiempo real, persistencia transaccional ACID en SQLite WAL, blindaje de procesos a nivel de kernel mediante Windows Job Objects y cifrado criptográfico local con Windows DPAPI.
 
 > [!TIP]
-> 🌐 **Descarga Directa y Documentación**: Visita **[fjyarsky.github.io/RTMS](https://fjyarsky.github.io/RTMS/)** para descargar el paquete portable oficial compilado (`rtms.exe`), consultar la guía de inicio y revisar la compatibilidad de codificadores por hardware.
+> 🌐 **Descarga Directa y Documentación**: Visita **[fjyarsky.github.io/RTMS](https://fjyarsky.github.io/RTMS/)** o descarga el zip portable oficial desde **[GitHub Releases](https://github.com/FJYarsky/RTMS/releases/latest)**.
+
+---
+
+## 📸 Demostración y Capturas de Pantalla
+
+<div align="center">
+
+### Conexión Directa con OBS Studio y vMix
+<img src="docs/screenshots/02_dashboard_es.png" alt="Panel de Conexión RTMS" width="850">
+
+<br><br>
+
+### Gestión Individual de Dispositivos y Telemetría en Vivo
+<img src="docs/screenshots/03_cameras_view.png" alt="Gestión de Dispositivos y Flujos" width="850">
+
+<br><br>
+
+<table>
+  <tr>
+    <td width="50%">
+      <h4 align="center">⚙️ Ajustes de Baja Latencia y Calibración Automática</h4>
+      <img src="docs/screenshots/10_config_modal_es.png" alt="Modal de Configuración" width="100%">
+    </td>
+    <td width="50%">
+      <h4 align="center">📊 Telemetría en Tiempo Real de GPU, CPU y Red</h4>
+      <img src="docs/screenshots/07_telemetry_modal.png" alt="Telemetría Detallada" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <h4 align="center">⚡ Gobernador de Energía Dinámico de Windows</h4>
+      <img src="docs/screenshots/04_energy_view.png" alt="Gestión de Energía" width="100%">
+    </td>
+    <td width="50%">
+      <h4 align="center">🇦🇷 Modal Acerca de e Identidad Soberana</h4>
+      <img src="docs/screenshots/06_about_modal_malvinas.png" alt="Acerca de RTMS" width="100%">
+    </td>
+  </tr>
+</table>
+
+</div>
 
 ---
 
 ## ⚡ Inicio Rápido
 
 ### Opción 1: Ejecutable Portable Oficial (Recomendado)
-Descarga el archivo `.zip` desde [GitHub Releases](https://github.com/FJYarsky/RTMS/releases/tag/v2.7.0), descomprímelo en cualquier carpeta y ejecuta directamente `rtms.exe`. No requiere instalación de Python ni privilegios de administrador.
+
+[![Descargar RTMS](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Descargar%20%C3%9Altima%20Release-GitHub%20Releases-00E5FF?style=for-the-badge&logo=github&logoColor=050b14)](https://github.com/FJYarsky/RTMS/releases/latest)
+
+Descarga el archivo `.zip` de la última versión desde [GitHub Releases](https://github.com/FJYarsky/RTMS/releases/latest), descomprímelo en cualquier carpeta y ejecuta directamente `rtms.exe`. No requiere instalación de Python ni privilegios de administrador.
 
 ### Opción 2: Ejecución desde Código Fuente (Entorno de Desarrollo)
 ```bash
@@ -111,7 +163,7 @@ RTMS/
 ├── gui/                   # Interfaz de usuario (SPA, plantillas Jinja2, estilos y assets SVG)
 ├── docs/                  # Documentación técnica, manuales de usuario y branding
 ├── scripts/               # Scripts de descarga de binarios, sanitización y auditoría
-├── tests/                 # Suite de pruebas automatizadas con pytest (186 tests)
+├── tests/                 # Suite de pruebas automatizadas con pytest (345 tests)
 ├── config/                # Plantillas y configuraciones locales
 ├── main.py                # Punto de entrada principal y servidor ASGI
 ├── run.bat                # Lanzador de consola para Windows
@@ -124,7 +176,7 @@ RTMS/
 ## 🧪 Control de Calidad y Pruebas
 
 ```bash
-# Ejecutar la suite completa de pruebas unitarias e integración (186 tests):
+# Ejecutar la suite completa de pruebas unitarias e integración (345 tests):
 pytest tests/ -v
 
 # Verificación de linter y formateo de código con Ruff:
@@ -149,7 +201,7 @@ Desarrollado y mantenido por **Joaquín Yarsky**:
 
 <div align="center">
   <br>
-  <sub>Desarrollado en Argentina por un argentino</sub>
+  <sub>Hecho en Argentina • Las Malvinas son argentinas</sub>
 </div>
 
 ---

@@ -1,5 +1,37 @@
 # Changelog — RTMS (Real-Time Multicam System)
 
+## [2.8.0] — 2026-09-27
+
+### Streaming de Video Puro de Baja Latencia, Calibración Inteligente SRT/VLC, Rediseño UI Obsidian y Validación Integral
+- **Política Estricta de Video Puro y Latencia Optimizada (`core/command_builder.py`, `core/stream_proc.py`, `core/preview_mgr.py`)**:
+  - Inyección mandataria de la bandera `-an` en todas las tuberías de FFmpeg para la supresión total de pistas de audio y mitigación de desincronización A/V.
+  - Supresión de captura de audio DirectShow y eliminación de transcodificación de audio y grabación ISO, liberando un 100% de los recursos para el video en vivo.
+  - Estabilización del GOP en 15 fotogramas (250-500 ms) para enganche instantáneo en clientes receptores.
+  - Inyección de flags de bajo retardo: `-fflags nobuffer+flush_packets -flags low_delay`.
+  - Calibración de búfer VBV al 35% del bitrate (`bufk = int(bitrate * 0.35)k`), eliminando fluctuaciones y previniendo el congelamiento de decodificación en reproductores.
+- **Calibración Dinámica de Latencia SRT y Optimización VLC (`gui/templates/index.html`, `gui/static/app.js`, `core/command_builder.py`, `core/stream_proc.py`)**:
+  - Ocultación inteligente y fijación automática de Latencia de Búfer SRT en 50 ms cuando la opción `zerolatency` está activa, mostrando badge informativo y evitando contradicciones de configuración.
+  - Comando terminal VLC optimizado con `:network-caching=150`, erradicando el congelamiento de imagen y garantizando reproducción fluida a 60 FPS sin pérdida de fotogramas.
+  - Limpieza de acciones obsoletas en el modal de compartir/QR: eliminación de opciones redundantes de lanzamiento directo y playlist XSPF.
+- **Rediseño Completo de Interfaz Obsidian Dark Glassmorphism (`gui/static/styles.css`, `gui/templates/index.html`, `gui/static/app.js`)**:
+  - Paleta obsidian dark (`#070b14`), superficies translúcidas con desenfoque de fondo (`backdrop-filter: blur(20px)` en navegación y `blur(16px)` en tarjetas).
+  - Modernización integral de la sección "Dispositivos y Flujos": tarjetas con avatar de dispositivo, tablero de especificaciones técnicas, HUD de telemetría en vivo (FPS, bitrate, uptime) y conmutadores de auto-inicio.
+  - Barra de resumen de dispositivos con contadores de cámaras totales, activas en vivo, detenidas y virtuales.
+  - Menú superior despejado: botones de diagnóstico de ping y latencia trasladados a la pestaña de Configuración del Sistema.
+  - Selectores de idioma limpios ("ES" y "EN") y botón de compartir sin caracteres sobrantes.
+- **Bilingüismo 100% Estricto sin Mezclas (`gui/static/i18n.js`, `gui/templates/index.html`, `gui/static/app.js`)**:
+  - Erradicación absoluta de textos mixtos: 100% Español (Argentina) y 100% Inglés (Estados Unidos).
+  - Diccionarios bilingües simétricos con soporte para elementos estáticos, modales, alertas, toasts, atributos `title`, tooltips, opciones de desplegables `<select>` y grupos `<optgroup>`.
+  - Re-renderizado reactivo dinámico del DOM al alternar idioma en tiempo real sin recargar la página.
+- **Identidad Nacional y Acreditación Soberana (`gui/static/malvinas.svg`, `site/malvinas.svg`, `gui/templates/index.html`, `site/index.html`)**:
+  - Incorporación oficial del mapa-bandera vectorial SVG exacto de las Islas Malvinas proveniente de Wikimedia Commons.
+  - Insignia soberana: "Hecho en Argentina • Las Malvinas son argentinas".
+- **Aceleración por Hardware HEVC y AV1 de Nueva Generación (`core/hardware.py`, `core/command_builder.py`, `core/ffmpeg_tester.py`)**:
+  - Soporte ampliado para codificadores por hardware NVIDIA NVENC HEVC, Intel QuickSync HEVC, AMD AMF HEVC, libx265 CPU y perfiles AV1.
+- **Calidad de Código y Suites de Estrés**:
+  - 345 pruebas automatizadas pasando con éxito con cobertura de código integral.
+  - Inspección automatizada de 11 capturas de pantalla de alta resolución mediante Chrome DevTools Protocol (CDP) incluidas en la documentación oficial.
+
 ## [2.7.0] — 2026-09-24
 
 ### Ultra-Baja Latencia SRT/UDP, Zero GPU Bloat, Identidad Visual Oficial, Gobernanza Dinámica Energética y Seguridad Integral

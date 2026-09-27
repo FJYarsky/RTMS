@@ -182,7 +182,7 @@ async def stream_preview_frame(device_path: str):
 
 @router.post("/api/stream/{device_path:path}/ffplay", dependencies=[Depends(verify_api_token)])
 async def launch_external_ffplay(device_path: str):
-    """Lanza ventana nativa de ultra baja latencia con FFplay para monitorización dedicada."""
+    """Lanza ventana nativa de baja latencia con FFplay para monitorización dedicada."""
     cam = find_camera_by_id_or_path(device_path)
     if not cam:
         raise HTTPException(status_code=404, detail="Dispositivo de cámara no encontrado")

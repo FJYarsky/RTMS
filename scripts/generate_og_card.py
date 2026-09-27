@@ -492,7 +492,7 @@ HTML_CARD_TEMPLATE = """<!DOCTYPE html>
     <div>
       <h1 class="hero-headline">
         Streaming Multicámara<br>
-        <span class="gradient-text">de Ultra-Baja Latencia</span>
+        <span class="gradient-text">de Baja Latencia</span>
       </h1>
       <div class="target-platforms">
         <span class="target-title">Directo a tu producción</span>

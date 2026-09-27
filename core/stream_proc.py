@@ -8,7 +8,10 @@
 
 import asyncio
 import logging
+import os
 import re
+import shutil
+import subprocess
 import sys
 import urllib.parse
 from collections import deque
@@ -51,19 +54,19 @@ class State(str, Enum):
 
 
 def build_multicast_url(port: int) -> str:
-    """Calcula y retorna la URL multicast UDP para el puerto indicado con buffer optimizado de baja latencia."""
+    """Calcula y retorna la URL multicast UDP para el puerto indicado con buffer optimizado de baja latencia y TTL de red local."""
     p = int(port)
     if 9000 <= p <= 9200:
         ip_last_octet = (p - 9000) + 1
     else:
         ip_last_octet = ((p - 1024) % 250) + 1
-    return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&buffer_size=131072&overrun_nonfatal=1&fifo_size=50000"
+    return f"udp://239.255.0.{ip_last_octet}:{port}?pkt_size=1316&ttl=16&buffer_size=65536&overrun_nonfatal=1&fifo_size=5000"
 
 
 def build_unicast_url(port: int, host: str = "127.0.0.1") -> str:
     """Calcula y retorna la URL unicast UDP local/remota con buffer optimizado de baja latencia."""
     clean_host = host.strip() or "127.0.0.1"
-    return f"udp://{clean_host}:{port}?pkt_size=1316&buffer_size=131072&overrun_nonfatal=1&fifo_size=50000"
+    return f"udp://{clean_host}:{port}?pkt_size=1316&buffer_size=65536&overrun_nonfatal=1&fifo_size=5000"
 
 
 def build_stream_url(
@@ -71,7 +74,7 @@ def build_stream_url(
     port: int,
     passphrase: str = "",
     mode: str = "listener",
-    latency_ms: int = 120,
+    latency_ms: Optional[int] = None,
     zerolatency: bool = True,
     streamid: Optional[str] = None,
     udp_mode: str = "multicast",
@@ -84,16 +87,24 @@ def build_stream_url(
         return build_multicast_url(port)
 
     # Protocolo SRT
-    latency_us = int(latency_ms) * 1000
+    if zerolatency:
+        effective_latency_ms = 50
+    else:
+        effective_latency_ms = int(latency_ms) if latency_ms is not None else 120
+    latency_us = effective_latency_ms * 1000
+
     host = "0.0.0.0" if mode == "listener" else "127.0.0.1"
-    drop_flag = "1" if zerolatency else "0"
+    # En modo caller hacia MediaMTX y transmisiones en vivo, tlpktdrop debe ser 1 incondicionalmente
+    # para evitar retardo/ping acumulado infinito y rechazo ERROR:ROGUE en gosrt.
+    drop_flag = "1" if (mode == "caller" or zerolatency) else "0"
+    buf_size = "65536" if zerolatency else "262144"
     params = {
         "mode": mode,
         "latency": str(latency_us),
         "transtype": "live",
         "tlpktdrop": drop_flag,
-        "sndbuf": "262144",
-        "rcvbuf": "262144",
+        "sndbuf": buf_size,
+        "rcvbuf": buf_size,
         "pkt_size": "1316",
         "connect_timeout": "2000",
         "lossmaxttl": "40",
@@ -117,10 +128,11 @@ def build_client_urls(
     passphrase: str = "",
     mediamtx_port: int = 8890,
     udp_mode: str = "multicast",
-) -> Dict[str, str]:
+) -> Dict[str, Any]:
     """
     Construye las URLs canónicas y limpias para clientes (OBS/vMix) y reproductores como VLC.
     Garantiza sintaxis RFC 3986 (/?...) para SRT y prefijo @ para UDP en VLC sin parámetros de FFmpeg.
+    Proporciona comandos y banderas preconfiguradas de baja latencia fluida sin congelamientos.
     """
     clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
     clean_host = host.strip() or "127.0.0.1"
@@ -130,27 +142,103 @@ def build_client_urls(
         if passphrase:
             query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
         query = "&".join(query_parts)
-        url = f"srt://{clean_host}:{mediamtx_port}/?{query}"
-        return {"connect_url": url, "vlc_url": url}
-
-    if protocol == "udp_unicast" or udp_mode == "unicast":
+        url = f"srt://{clean_host}:{mediamtx_port}?{query}"
+        vlc_url = url
+        connect_url = url
+    elif protocol == "udp_unicast" or udp_mode == "unicast":
         target = "127.0.0.1" if clean_host in ("127.0.0.1", "localhost") else clean_host
-        return {
-            "connect_url": f"udp://{target}:{port}",
-            "vlc_url": f"udp://@:{port}",
-        }
-
-    # Default UDP Multicast
-    p = int(port)
-    if 9000 <= p <= 9200:
-        ip_last = (p - 9000) + 1
+        connect_url = f"udp://{target}:{port}"
+        vlc_url = f"udp://@:{port}"
     else:
-        ip_last = ((p - 1024) % 250) + 1
-    mcast_ip = f"239.255.0.{ip_last}"
+        # Default UDP Multicast
+        p = int(port)
+        if 9000 <= p <= 9200:
+            ip_last = (p - 9000) + 1
+        else:
+            ip_last = ((p - 1024) % 250) + 1
+        mcast_ip = f"239.255.0.{ip_last}"
+        connect_url = f"udp://{mcast_ip}:{port}"
+        vlc_url = f"udp://@{mcast_ip}:{port}"
+
+    vlc_command = f'vlc.exe "{vlc_url}" :network-caching=150'
+
     return {
-        "connect_url": f"udp://{mcast_ip}:{port}",
-        "vlc_url": f"udp://@{mcast_ip}:{port}",
+        "connect_url": connect_url,
+        "vlc_url": vlc_url,
+        "vlc_command": vlc_command,
+        "vlc_caching_ms": 50,
     }
+
+
+def get_vlc_binary_path() -> Optional[str]:
+    """Retorna la ruta al ejecutable VLC si está instalado en el sistema."""
+    vlc_candidates = [
+        r"C:\Program Files\VideoLAN\VLC\vlc.exe",
+        r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe",
+    ]
+    sys_vlc = shutil.which("vlc")
+    if sys_vlc:
+        vlc_candidates.insert(0, sys_vlc)
+
+    for cand in vlc_candidates:
+        if cand and os.path.exists(cand):
+            return cand
+    return None
+
+
+def generate_vlc_xspf_playlist(
+    stream_url: str,
+    title: str = "RTMS Stream",
+    caching_ms: int = 50,
+) -> str:
+    """Genera una lista de reproducción XML XSPF estándar con metadatos y opciones de baja latencia para VLC."""
+    safe_title = str(title).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+    safe_url = str(stream_url).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<playlist version="1" xmlns="http://xspf.org/ns/0/" xmlns:vlc="http://www.videolan.org/vlc/playlist/ns/0/">\n'
+        f"  <title>{safe_title}</title>\n"
+        "  <trackList>\n"
+        "    <track>\n"
+        f"      <location>{safe_url}</location>\n"
+        f"      <title>{safe_title} (Baja Latencia RTMS)</title>\n"
+        '      <extension application="http://www.videolan.org/vlc/playlist/0">\n'
+        f"        <vlc:option>network-caching={caching_ms}</vlc:option>\n"
+        "        <vlc:option>clock-jitter=0</vlc:option>\n"
+        "        <vlc:option>clock-synchro=0</vlc:option>\n"
+        "        <vlc:option>drop-late-frames</vlc:option>\n"
+        "        <vlc:option>skip-frames</vlc:option>\n"
+        "      </extension>\n"
+        "    </track>\n"
+        "  </trackList>\n"
+        "</playlist>\n"
+    )
+
+
+def launch_vlc_player(vlc_url: str, caching_ms: int = 50) -> bool:
+    """Ejecuta VLC Player localmente con parámetros de baja latencia."""
+    vlc_bin = get_vlc_binary_path()
+    if not vlc_bin:
+        logger.warning("No se encontró el ejecutable de VLC en el sistema.")
+        return False
+
+    cmd = [
+        vlc_bin,
+        vlc_url,
+        f":network-caching={caching_ms}",
+        ":clock-jitter=0",
+        ":clock-synchro=0",
+        ":drop-late-frames",
+        ":skip-frames",
+    ]
+    try:
+        subprocess.Popen(cmd, close_fds=True)
+        logger.info(f"VLC Player lanzado con URL {vlc_url} (:network-caching={caching_ms})")
+        return True
+    except Exception as e:
+        logger.error(f"Error lanzando VLC Player: {e}")
+        return False
 
 
 class StreamProc:
@@ -164,6 +252,7 @@ class StreamProc:
         self.error_count: int = 0
         self.next_retry_at: Optional[datetime] = None
         self.manual_intervention_required: bool = False
+        self.marked_for_removal: bool = False
         self.recovery_task: Optional[asyncio.Task] = None
         self.logs: deque = deque(maxlen=300)
         self._stop_evt = asyncio.Event()
@@ -187,6 +276,7 @@ class StreamProc:
         self.last_progress_at: Optional[datetime] = None
         self.mjpeg_supported: Optional[bool] = None
         self.mjpeg_input_failed: bool = False
+        self.dshow_options_failed: bool = False
 
     async def read_progress(self, stream: asyncio.StreamReader) -> None:
         """

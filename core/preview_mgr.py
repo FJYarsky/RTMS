@@ -84,6 +84,28 @@ class PreviewManager:
         for key in dead_keys:
             self._active_ffplay.pop(key, None)
 
+    def is_ffplay_running(self, url: Optional[str] = None) -> bool:
+        """Verifica si hay alguna instancia de FFplay activa (o para una URL específica)."""
+        self._reap_dead_processes()
+        if url:
+            proc = self._active_ffplay.get(url)
+            return proc is not None and proc.poll() is None
+        return any(proc.poll() is None for proc in self._active_ffplay.values())
+
+    def terminate_all_ffplay(self) -> None:
+        """Finaliza todos los procesos FFplay activos de forma limpia."""
+        for proc in list(self._active_ffplay.values()):
+            if proc and proc.poll() is None:
+                try:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=1.0)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                except Exception:
+                    pass
+        self._active_ffplay.clear()
+
     def launch_ffplay(
         self, url: str, title: str = "RTMS Preview", is_dshow: bool = False, is_virtual: bool = False
     ) -> bool:
@@ -246,6 +268,13 @@ class PreviewManager:
             p = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, creationflags=_WIN_FLAGS
             )
+            try:
+                from core.job_object import job_object_mgr
+
+                if p.pid:
+                    job_object_mgr.assign_process(p.pid)
+            except Exception:
+                pass
             stdout, _ = await asyncio.wait_for(p.communicate(), timeout=timeout)
             if p.returncode == 0 and stdout:
                 return stdout
@@ -342,6 +371,13 @@ class PreviewManager:
             proc = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, creationflags=_WIN_FLAGS
             )
+            try:
+                from core.job_object import job_object_mgr
+
+                if proc.pid:
+                    job_object_mgr.assign_process(proc.pid)
+            except Exception:
+                pass
             logger.info(f"Worker de vista previa iniciado para: {safe_source_log}")
 
             buffer = bytearray()

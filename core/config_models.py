@@ -22,7 +22,20 @@ class CameraConfig(BaseModel):
     fps: int = Field(default=30, ge=1, le=120)
     bitrate: int = Field(default=3000, ge=500, le=100000)
     protocol: Literal["srt", "udp"] = "srt"
-    encoder: Literal["auto", "h264_nvenc", "h264_qsv", "h264_amf", "libx264"] = "auto"
+    encoder: Literal[
+        "auto",
+        "h264_nvenc",
+        "h264_qsv",
+        "h264_amf",
+        "libx264",
+        "hevc_nvenc",
+        "hevc_qsv",
+        "hevc_amf",
+        "libx265",
+        "av1_nvenc",
+        "av1_qsv",
+        "av1_amf",
+    ] = "auto"
     srt_latency: int = Field(default=120, ge=10, le=5000)
     srt_passphrase: Optional[str] = ""
     zerolatency: bool = True

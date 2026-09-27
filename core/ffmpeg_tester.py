@@ -249,7 +249,7 @@ class VirtualCameraSource:
     ) -> List[str]:
         res_map = {"480p": "854x480", "720p": "1280x720", "1080p": "1920x1080", "1440p": "2560x1440", "4K": "3840x2160"}
         res_str = res_map.get(resolution, resolution)
-        gop = fps  # 1 keyframe por segundo para ultra-baja latencia y enganche inmediato
+        gop = max(15, int(fps * 0.5))  # keyframe cada 500 ms para baja latencia y enganche inmediato
 
         cmd = [
             self.ffmpeg_bin,
@@ -577,7 +577,7 @@ class FFmpegDiagnosticSuite:
             res.errors.append("No se pudo iniciar el emisor SRT Listener.")
             return res
 
-        await asyncio.sleep(0.4)
+        await asyncio.sleep(0.7)
 
         try:
             digest = await self.receiver.digest_stream(
@@ -587,6 +587,15 @@ class FFmpegDiagnosticSuite:
                 timeout_seconds=duration_seconds + 5.0,
                 extra_input_args=["-probesize", "128000", "-analyzeduration", "500000"],
             )
+            if not digest.is_connected and cam.process and cam.process.returncode is None:
+                await asyncio.sleep(0.5)
+                digest = await self.receiver.digest_stream(
+                    url=receiver_url,
+                    protocol="srt",
+                    duration_seconds=duration_seconds,
+                    timeout_seconds=duration_seconds + 5.0,
+                    extra_input_args=["-probesize", "128000", "-analyzeduration", "500000"],
+                )
         finally:
             await cam.stop()
 

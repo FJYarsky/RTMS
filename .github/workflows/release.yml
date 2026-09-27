@@ -23,13 +23,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: requirements-dev.txt
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "requirements*.txt"
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          uv pip install --system -r requirements-dev.txt
 
       - name: Download Multimedia Binaries
         shell: powershell
@@ -40,6 +43,52 @@ jobs:
         shell: cmd
         run: |
           call build_portable.bat
+
+      - name: Verify Distribution Artifacts Before Packaging
+        shell: powershell
+        run: |
+          $requiredFiles = @(
+            "dist/rtms/rtms.exe",
+            "dist/rtms/bin/ffmpeg.exe",
+            "dist/rtms/bin/ffplay.exe",
+            "dist/rtms/bin/mediamtx.exe",
+            "dist/rtms/config/mediamtx.example.yml",
+            "dist/rtms/config/config.example.json",
+            "dist/rtms/THIRD_PARTY_NOTICES.md",
+            "dist/rtms/icon.ico"
+          )
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file)) {
+              throw "Artefacto de release obligatorio ausente: $file"
+            }
+          }
+
+          $templateFound = (Test-Path "dist/rtms/gui/templates/index.html") -or (Test-Path "dist/rtms/_internal/gui/templates/index.html")
+          if (-not $templateFound) {
+            throw "Plantilla index.html ausente en artefactos de release."
+          }
+
+          $jsFound = (Test-Path "dist/rtms/gui/static/app.js") -or (Test-Path "dist/rtms/_internal/gui/static/app.js")
+          if (-not $jsFound) {
+            throw "Script app.js ausente en artefactos de release."
+          }
+
+          $i18nFound = (Test-Path "dist/rtms/gui/static/i18n.js") -or (Test-Path "dist/rtms/_internal/gui/static/i18n.js")
+          if (-not $i18nFound) {
+            throw "Diccionario i18n.js ausente en artefactos de release."
+          }
+
+          $cssFound = (Test-Path "dist/rtms/gui/static/styles.css") -or (Test-Path "dist/rtms/_internal/gui/static/styles.css")
+          if (-not $cssFound) {
+            throw "Estilos styles.css ausentes en artefactos de release."
+          }
+
+          $malvinasFound = (Test-Path "dist/rtms/gui/static/malvinas.svg") -or (Test-Path "dist/rtms/_internal/gui/static/malvinas.svg")
+          if (-not $malvinasFound) {
+            throw "Vector oficial de Islas Malvinas ausente en artefactos de release."
+          }
+
+          Write-Host "Todos los artefactos de la release fueron verificados exitosamente." -ForegroundColor Green
 
       - name: Create Release Archive
         shell: powershell

@@ -31,7 +31,22 @@ class CameraConfigUpdate(BaseModel):
     fps: Optional[int] = Field(default=None, ge=1, le=120)
     bitrate: Optional[int] = Field(default=None, ge=500, le=100000)
     protocol: Optional[Literal["srt", "udp"]] = None
-    encoder: Optional[Literal["auto", "h264_nvenc", "h264_qsv", "h264_amf", "libx264"]] = None
+    encoder: Optional[
+        Literal[
+            "auto",
+            "h264_nvenc",
+            "h264_qsv",
+            "h264_amf",
+            "libx264",
+            "hevc_nvenc",
+            "hevc_qsv",
+            "hevc_amf",
+            "libx265",
+            "av1_nvenc",
+            "av1_qsv",
+            "av1_amf",
+        ]
+    ] = None
     srt_latency: Optional[int] = Field(default=None, ge=10, le=5000)
     srt_passphrase: Optional[str] = None
     secret_action: Optional[Literal["keep", "set", "clear"]] = "keep"
@@ -81,7 +96,22 @@ class CameraPersistedConfig(BaseModel):
     fps: int = Field(default=30, ge=1, le=120)
     bitrate: int = Field(default=3000, ge=500, le=100000)
     protocol: Optional[Literal["srt", "udp"]] = "srt"
-    encoder: Optional[Literal["auto", "h264_nvenc", "h264_qsv", "h264_amf", "libx264"]] = "auto"
+    encoder: Optional[
+        Literal[
+            "auto",
+            "h264_nvenc",
+            "h264_qsv",
+            "h264_amf",
+            "libx264",
+            "hevc_nvenc",
+            "hevc_qsv",
+            "hevc_amf",
+            "libx265",
+            "av1_nvenc",
+            "av1_qsv",
+            "av1_amf",
+        ]
+    ] = "auto"
     srt_latency: Optional[int] = Field(default=120, ge=10, le=5000)
     srt_passphrase: Optional[str] = ""
     zerolatency: Optional[bool] = True

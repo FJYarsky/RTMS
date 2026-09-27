@@ -8,7 +8,7 @@ Este documento describe la matriz de compatibilidad validada de RTMS para captur
 
 | Codificador | Fabricante | Requisitos Mínimos | Latencia Típica | Perfil Recomendado |
 | :--- | :--- | :--- | :--- | :--- |
-| **`h264_nvenc`** | NVIDIA | GeForce GTX 900+ / RTX / Quadro / Tesla | Ultra Baja (<15 ms encoder) | `preset=p1`, `tune=ull`, `delay=0` |
+| **`h264_nvenc`** | NVIDIA | GeForce GTX 900+ / RTX / Quadro / Tesla | Baja (<15 ms encoder) | `preset=p1`, `tune=ull`, `delay=0` |
 | **`h264_qsv`** | Intel | Core i3/i5/i7/i9 6ta Gen+ / Intel Arc | Muy Baja (<25 ms encoder) | `preset=veryfast` |
 | **`h264_amf`** | AMD | Radeon RX 400+ / Vega / RDNA | Baja (<30 ms encoder) | `quality=speed`, `usage=ultralowlatency` |
 | **`libx264`** | CPU | Cualquier procesador x86_64 | Variable según núcleos | `preset=ultrafast`, `tune=zerolatency` |
