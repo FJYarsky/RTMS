@@ -528,4 +528,3 @@
 - Arquitectura desacoplada FastAPI + `pywebview` + FFmpeg DirectShow.
 - Soporte básico de UDP Multicast y SRT.
 - Optimizaciones de energía en Windows y reglas de firewall.
-
