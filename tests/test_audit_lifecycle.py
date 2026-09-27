@@ -104,4 +104,6 @@ def test_delete_camera_endpoint():
     # Verify camera was removed from disk
     reloaded = load_config()
     assert "cam_del_1" not in reloaded["cameras"]
+
+
 # rtms-sync

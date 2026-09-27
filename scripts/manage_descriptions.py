@@ -187,10 +187,10 @@ def _touch_file_cleanly(file_path: Path) -> bool:
     try:
         if suffix == ".py":
             content = file_path.read_text(encoding="utf-8")
-            if content.endswith("\n# rtms-sync\n"):
-                normalized = content[: -len("# rtms-sync\n")]
+            if content.endswith("\n\n# rtms-sync\n"):
+                normalized = content[: -len("\n\n# rtms-sync\n")]
             else:
-                normalized = content.rstrip("\r\n") + "\n# rtms-sync\n"
+                normalized = content.rstrip("\r\n") + "\n\n# rtms-sync\n"
             file_path.write_text(normalized, encoding="utf-8", newline="\n")
             return True
         elif suffix in [
@@ -207,6 +207,7 @@ def _touch_file_cleanly(file_path: Path) -> bool:
             ".css",
             ".ps1",
             ".toml",
+            ".lock",
         ] or file_path.name in ["justfile", ".gitignore", "LICENSE"]:
             content = file_path.read_text(encoding="utf-8")
             # Alternar salto neutro al final para asegurar que git detecte un diff real
@@ -217,9 +218,11 @@ def _touch_file_cleanly(file_path: Path) -> bool:
             file_path.write_text(normalized, encoding="utf-8", newline="\n")
             return True
         elif file_path.name == "icon.ico":
-            # Para icon.ico, verificar que exista y sea legible
             data = file_path.read_bytes()
-            file_path.write_bytes(data)
+            if data.endswith(b"\x00\x00"):
+                file_path.write_bytes(data[:-1])
+            else:
+                file_path.write_bytes(data + b"\x00")
             return True
         return False
     except Exception as e:
