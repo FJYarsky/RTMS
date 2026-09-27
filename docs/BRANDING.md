@@ -168,3 +168,4 @@ pyinstaller --noconfirm --onedir --windowed ^
   ...
 ```
 Garantizando que Windows Explorer, el menú Inicio, la barra de tareas y el System Tray muestren el icono nítido sin pixelación ni bordes distorsionados.
+
