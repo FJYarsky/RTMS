@@ -26,6 +26,13 @@ from core.pipeline_verifier import (
     draw_burned_in_header,
 )
 
+# ---------------------------------------------------------------------------
+# Condiciones de entorno para skip de pruebas que requieren binarios locales
+# ---------------------------------------------------------------------------
+_REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
+_HAS_MEDIAMTX = os.path.exists(os.path.join(_REPO_ROOT, "bin", "mediamtx.exe"))
+_HAS_FFMPEG_BIN = os.path.exists(os.path.join(_REPO_ROOT, "bin", "ffmpeg.exe"))
+
 
 def test_bit_encoding_decoding():
     """Valida la codificación y decodificación binaria de enteros sin pérdida."""
@@ -96,8 +103,14 @@ def test_cli_tester_help_and_dry_run():
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    not (_HAS_MEDIAMTX and _HAS_FFMPEG_BIN),
+    reason="Requiere binarios locales bin/mediamtx.exe y bin/ffmpeg.exe (no disponibles en CI headless).",
+)
 async def test_pipeline_verifier_srt_end_to_end():
     """Prueba E2E real: genera stream virtual de reloj, publica en MediaMTX vía SRT y verifica recepción."""
     verifier = CorePipelineVerifier()
     res = await verifier.verify_srt_unencrypted()
-    assert res.status == "PASS", f"La prueba de SRT sin cifrar falló: {res.details} ({res.error})"
+    assert res.status == "PASS", (
+        f"La prueba de SRT sin cifrar falló: {res.details} | error={res.error}"
+    )

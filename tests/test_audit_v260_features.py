@@ -54,8 +54,13 @@ async def test_command_builder_progress_pipe():
 
 @pytest.mark.asyncio
 async def test_command_builder_mjpeg_silicon_negotiation():
-    """Valida la inyección de -vcodec mjpeg para webcams físicas USB DirectShow."""
-    # Cámara física -> debe tener -vcodec mjpeg antes de -i
+    """Valida la inyección de -vcodec mjpeg cuando use_mjpeg_input=True está explícito.
+
+    El sondeo dinámico (ADR-0002) opera en hardware real, por lo que en CI se usa
+    use_mjpeg_input=True para verificar que el CommandBuilder inyecte -vcodec mjpeg,
+    y use_mjpeg_input=False para verificar que lo suprima.
+    """
+    # Cámara física con MJPEG explícito -> debe tener -vcodec mjpeg antes de -i
     cmd_physical, _, _ = await build_ffmpeg_command(
         {
             "friendly_name": "HD Pro Webcam C920",
@@ -66,6 +71,7 @@ async def test_command_builder_mjpeg_silicon_negotiation():
             "protocol": "srt",
             "port": 9000,
             "is_virtual": False,
+            "use_mjpeg_input": True,  # Explícito para pruebas sin hardware real (CI/headless)
         }
     )
     assert "-vcodec" in cmd_physical
