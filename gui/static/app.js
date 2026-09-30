@@ -2247,4 +2247,3 @@ async function runLatencyBenchmarkTest() {
         if (btn) btn.disabled = false;
     }
 }
-
