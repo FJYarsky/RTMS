@@ -49,4 +49,3 @@
 ### 🛡️ Calidad de Código, Fuzzing y Estrés
 - **345 Pruebas Automatizadas Pasando**: 100% de éxito en suites unitarias, de integración, concurrencia, límites, fuzzing y benchmarking, con cobertura de código integral.
 - **Auditoría Visual y Capturas Reales**: 11 capturas de pantalla de alta resolución integradas en la documentación y README demostrando la interfaz real en funcionamiento.
-
