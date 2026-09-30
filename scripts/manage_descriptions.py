@@ -187,10 +187,10 @@ def _touch_file_cleanly(file_path: Path) -> bool:
     try:
         if suffix == ".py":
             content = file_path.read_text(encoding="utf-8")
-            if content.endswith("\n\n# rtms-sync\n"):
-                normalized = content[: -len("\n\n# rtms-sync\n")].rstrip("\r\n") + "\n"
+            if "# rtms-sync" in content:
+                normalized = re.sub(r"\n+# rtms-sync\s*$", "\n", content).rstrip("\r\n") + "\n"
             else:
-                normalized = content.rstrip("\r\n") + "\n\n# rtms-sync\n"
+                normalized = content.rstrip("\r\n") + "\n\n\n# rtms-sync\n"
             file_path.write_text(normalized, encoding="utf-8", newline="\n")
             return True
         elif suffix in [
