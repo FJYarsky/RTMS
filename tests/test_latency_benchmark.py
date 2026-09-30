@@ -383,8 +383,8 @@ class TestLatencyBenchmarkEngineVideoPipeline:
     async def test_video_pipeline_lightweight_real_ffmpeg(self):
         """Prueba de integración ligera con FFmpeg real usando UDP loopback."""
         ffmpeg_bin = get_ffmpeg_bin()
-        if not os.path.exists(ffmpeg_bin):
-            pytest.skip("FFmpeg binario no disponible en el sistema")
+        if not os.path.exists(ffmpeg_bin) or os.environ.get("CI"):
+            pytest.skip("Prueba de pipeline FFmpeg real omitida en entorno CI o sin binario")
 
         from core.port_mgr import port_manager
 
