@@ -689,13 +689,61 @@ function setAppLanguage(lang, persist = true) {
     window.dispatchEvent(new CustomEvent("rtmsLanguageChanged", { detail: { lang } }));
 }
 
+/**
+ * Asigna de forma segura el contenido traducido a un elemento del DOM.
+ * Si el texto no contiene etiquetas HTML en línea, se asigna directamente mediante textContent.
+ * Si contiene etiquetas permitidas (strong, code, em, b, i), se analizan y se reconstruyen
+ * únicamente nodos de texto y elementos permitidos sin atributos, erradicando cualquier
+ * riesgo de inyección XSS y eliminando el sink de innerHTML detectado por CodeQL.
+ *
+ * @param {HTMLElement} el - Elemento del DOM donde se inyectará el texto traducido.
+ * @param {string} content - Cadena traducida.
+ */
+function setSafeTranslatedContent(el, content) {
+    if (!el || content === null || content === undefined) return;
+    const str = String(content);
+
+    // Caso general y seguro: texto plano sin marcado HTML
+    if (!/<(?:strong|code|em|b|i)\b/i.test(str)) {
+        el.textContent = str;
+        return;
+    }
+
+    // Para cadenas con formato en línea (strong, code, em), construir nodos DOM seguros
+    // evitando el sink de innerHTML y validando únicamente elementos autorizados sin atributos
+    const parser = new DOMParser();
+    const parsedDoc = parser.parseFromString(`<body>${str}</body>`, "text/html");
+    const allowedTags = new Set(["STRONG", "CODE", "EM", "B", "I"]);
+
+    // Limpiar contenido existente
+    while (el.firstChild) {
+        el.removeChild(el.firstChild);
+    }
+
+    function appendSafeNodes(sourceNode, targetEl) {
+        sourceNode.childNodes.forEach(child => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                targetEl.appendChild(document.createTextNode(child.textContent || ""));
+            } else if (child.nodeType === Node.ELEMENT_NODE && allowedTags.has(child.tagName)) {
+                const safeEl = document.createElement(child.tagName.toLowerCase());
+                appendSafeNodes(child, safeEl);
+                targetEl.appendChild(safeEl);
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                targetEl.appendChild(document.createTextNode(child.textContent || ""));
+            }
+        });
+    }
+
+    appendSafeNodes(parsedDoc.body, el);
+}
+
 function applyI18nToDOM() {
     const elements = document.querySelectorAll("[data-i18n]");
     elements.forEach(el => {
         const key = el.getAttribute("data-i18n");
         const translation = getTranslation(key);
         if (translation) {
-            el.innerHTML = translation;
+            setSafeTranslatedContent(el, translation);
         }
     });
 

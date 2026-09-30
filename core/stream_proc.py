@@ -242,7 +242,7 @@ def launch_vlc_player(vlc_url: str, caching_ms: int = 50) -> bool:
     ]
     try:
         subprocess.Popen(cmd, close_fds=True)
-        logger.info(f"VLC Player lanzado con URL {vlc_url} (:network-caching={caching_ms})")
+        logger.info("VLC Player lanzado exitosamente (:network-caching=%d)", caching_ms)
         return True
     except Exception as e:
         logger.error(f"Error lanzando VLC Player: {e}")
