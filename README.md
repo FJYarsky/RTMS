@@ -179,6 +179,8 @@ RTMS/
 ├── core/                  # Motor multimedia FFmpeg, detección DirectShow, Job Objects y SQLite
 ├── gui/                   # Interfaz de usuario (SPA, plantillas Jinja2, estilos y assets SVG)
 ├── docs/                  # Documentación técnica, manuales de usuario y branding
+│   ├── adr/               # Architecture Decision Records (ADRs oficiales)
+│   └── rfc/               # Solicitudes de Comentarios y Especificaciones Técnicas (RFCs)
 ├── scripts/               # Scripts de descarga de binarios, sanitización y auditoría
 ├── tests/                 # Suite de pruebas automatizadas con pytest (345 tests)
 ├── config/                # Plantillas y configuraciones locales
@@ -190,7 +192,18 @@ RTMS/
 
 ---
 
+## 📚 Documentación de Arquitectura y Especificaciones Técnicas
+
+Para auditar y conocer en profundidad los fundamentos de diseño y los protocolos implementados en el núcleo de RTMS:
+- 🏛️ **[Catálogo Oficial de ADRs (Architecture Decision Records)](docs/adr/README.md)**: Registros inmutables de las decisiones fundamentales del sistema (adopción de MediaMTX, negociación DirectShow MJPEG/RAW, cifrado AES en SRT, telemetría óptica, distribución UDP Multicast, etc.).
+- 📜 **[Índice de RFCs (Request for Comments)](docs/rfc/README.md)**: Especificaciones formales detalladas, incluyendo el protocolo de verificación E2E y medición de ping sub-milisegundo ([RFC-0001](docs/rfc/RFC-0001-protocolo-verificacion-e2e-y-benchmark-optico.md)) y la arquitectura de distribución multicámara ([RFC-0002](docs/rfc/RFC-0002-arquitectura-distribucion-multicam-baja-latencia.md)).
+- ⚙️ **[Guía de Silicio y Aceleración por Hardware](docs/HARDWARE.md)**: Optimización de buses USB, asignación de codificadores GPU y mitigación de cuellos de botella.
+- 🔧 **[Guía de Solución de Problemas](docs/TROUBLESHOOTING.md)**: Diagnóstico rápido de errores comunes de red y controladores.
+
+---
+
 ## 🧪 Control de Calidad y Pruebas
+
 
 ```bash
 # Ejecutar la suite completa de pruebas unitarias e integración (345 tests):
