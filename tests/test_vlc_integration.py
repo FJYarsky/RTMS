@@ -381,13 +381,22 @@ async def test_api_vlc_endpoints():
         import core.stream_proc
 
         original_launch = core.stream_proc.launch_vlc_player
+        original_get_bin = core.stream_proc.get_vlc_binary_path
         core.stream_proc.launch_vlc_player = MagicMock(return_value=True)
+        core.stream_proc.get_vlc_binary_path = MagicMock(return_value=r"C:\Program Files\VideoLAN\VLC\vlc.exe")
         try:
             res_launch = await ac.post("/api/stream/%40device%3Apnp%3Avlc_test_cam/launch_vlc", headers=headers)
             assert res_launch.status_code == 200
             assert res_launch.json()["status"] == "ok"
+
+            # 4. Probar launch_vlc cuando VLC no está instalado
+            core.stream_proc.get_vlc_binary_path = MagicMock(return_value=None)
+            res_no_vlc = await ac.post("/api/stream/%40device%3Apnp%3Avlc_test_cam/launch_vlc", headers=headers)
+            assert res_no_vlc.status_code == 400
+            assert "no se encuentra instalado" in res_no_vlc.json()["detail"]
         finally:
             core.stream_proc.launch_vlc_player = original_launch
+            core.stream_proc.get_vlc_binary_path = original_get_bin
 
 
 @pytest.mark.asyncio
