@@ -44,7 +44,9 @@
 
 ---
 
-## Estilo de Código
-- Código Python conforme a directivas PEP 8.
-- Tipado estricto con anotaciones de tipo (`typing`).
+## Estilo de Código y Arquitectura
+- Código Python conforme a directivas PEP 8 y formateado con `ruff format`.
+- Tipado estricto con anotaciones de tipo (`typing`) verificado por `mypy`.
 - Manejo explícito de excepciones evitando cláusulas `except Exception: pass` sin registro de logs.
+- **Decisiones de Arquitectura y Nuevos Protocolos**: Si tu contribución altera la arquitectura del núcleo, introduce nuevos protocolos o modifica los contratos de red/hardware, acompáñala de un **ADR** en [`docs/adr/`](docs/adr/README.md) o un **RFC** en [`docs/rfc/`](docs/rfc/README.md) utilizando las plantillas oficiales provistas.
+
