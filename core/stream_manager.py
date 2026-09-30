@@ -193,6 +193,17 @@ class StreamManager:
                 logger.debug(f"Aviso sondeando MJPEG para {raw_dev}: {pe}")
                 proc.mjpeg_supported = False
 
+        # Asegurar que MediaMTX esté activo bajo demanda si el protocolo es SRT
+        if proc.config.get("protocol", "srt") == "srt":
+            try:
+                from core.mediamtx_mgr import mediamtx_manager
+
+                if not mediamtx_manager.is_running():
+                    logger.info("MediaMTX no está activo; iniciándolo bajo demanda para el flujo SRT...")
+                    await mediamtx_manager.start()
+            except Exception as me:
+                logger.error(f"Error asegurando el estado de MediaMTX: {me}")
+
         try:
             cmd, url, actual_encoder = await self.build_command(proc.config, force_cpu=force_cpu, proc=proc)
             proc.config["_url"] = url

@@ -104,12 +104,24 @@ async def build_ffmpeg_command(
         escaped_device = dev_name.replace(":", "\\:")
         dshow_args = ["-f", "dshow"]
         # Optimización de Silicio USB (v2.6.0):
-        # Si el dispositivo no es virtual y use_mjpeg_input no está deshabilitado explícitamente,
-        # inyectamos -vcodec mjpeg para compresión por hardware en el sensor DirectShow (>95% ahorro de bus).
-        use_mjpeg = cfg.get("use_mjpeg_input", True)
+        # Si el dispositivo no es virtual, verificar si el sensor DirectShow soporta compresión MJPEG.
+        # Si use_mjpeg_input está configurado explícitamente se respeta; de lo contrario se sondea dinámicamente.
+        explicit_mjpeg = cfg.get("use_mjpeg_input")
+        if explicit_mjpeg is not None:
+            use_mjpeg = bool(explicit_mjpeg)
+        elif proc and proc.mjpeg_supported is not None:
+            use_mjpeg = bool(proc.mjpeg_supported)
+        else:
+            try:
+                from core.hardware import probe_device_mjpeg_support
+
+                use_mjpeg = await probe_device_mjpeg_support(raw_device)
+                if proc:
+                    proc.mjpeg_supported = use_mjpeg
+            except Exception:
+                use_mjpeg = False
+
         if proc and getattr(proc, "mjpeg_input_failed", False):
-            use_mjpeg = False
-        elif proc and getattr(proc, "mjpeg_supported", None) is False:
             use_mjpeg = False
 
         if use_mjpeg:
