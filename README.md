@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/FJYarsky/RTMS/releases/latest">
-    <img src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Descargar%20RTMS-v2.8.0%20(Windows%20x64)-00E5FF?style=for-the-badge&logo=windows&logoColor=050b14" alt="Descargar RTMS v2.8.0 Portable">
+    <img src="https://img.shields.io/badge/Descargar%20RTMS-Windows%20x64%20(Portable)-0ea5e9?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar RTMS Portable para Windows x64">
   </a>
 </p>
 
@@ -38,44 +38,63 @@ Integra un servidor de medios embebido (**MediaMTX**) que desacopla la ingesta d
 
 ---
 
-## 📸 Demostración y Capturas de Pantalla
+## 📸 Interfaz y Arquitectura del Sistema
 
 <div align="center">
 
-### Conexión Directa con OBS Studio y vMix
-<img src="docs/screenshots/02_dashboard_es.png" alt="Panel de Conexión RTMS" width="850">
-
-<br><br>
-
-### Gestión Individual de Dispositivos y Telemetría en Vivo
-<img src="docs/screenshots/03_cameras_view.png" alt="Gestión de Dispositivos y Flujos" width="850">
-
-<br><br>
-
-<table>
-  <tr>
-    <td width="50%">
-      <h4 align="center">⚙️ Ajustes de Baja Latencia y Calibración Automática</h4>
-      <img src="docs/screenshots/10_config_modal_es.png" alt="Modal de Configuración" width="100%">
-    </td>
-    <td width="50%">
-      <h4 align="center">📊 Telemetría en Tiempo Real de GPU, CPU y Red</h4>
-      <img src="docs/screenshots/07_telemetry_modal.png" alt="Telemetría Detallada" width="100%">
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <h4 align="center">⚡ Gobernador de Energía Dinámico de Windows</h4>
-      <img src="docs/screenshots/04_energy_view.png" alt="Gestión de Energía" width="100%">
-    </td>
-    <td width="50%">
-      <h4 align="center">🇦🇷 Modal Acerca de e Identidad Soberana</h4>
-      <img src="docs/screenshots/06_about_modal_malvinas.png" alt="Acerca de RTMS" width="100%">
-    </td>
-  </tr>
-</table>
+<img src="docs/screenshots/dashboard_timeless.png" alt="Panel de Control y Conexión de RTMS" width="880">
 
 </div>
+
+### 🔄 Pipeline de Transmisión e Ingesta Desacoplada
+
+```mermaid
+flowchart LR
+    subgraph INGEST [" Ingesta DirectShow "]
+        CAM1["Cámara USB 1<br/>(MJPEG / YUY2)"]
+        CAM2["Cámara USB 2<br/>(MJPEG / YUY2)"]
+        CAMN["Capturadora HDMI / Virtual"]
+    end
+
+    subgraph ENGINE [" Núcleo RTMS "]
+        DS["Detección Hardware & Win32 Job Objects"]
+        FF1["Worker FFmpeg 1<br/>(NVENC / QSV / AMF)"]
+        FF2["Worker FFmpeg 2<br/>(NVENC / QSV / AMF)"]
+        FFN["Worker FFmpeg N<br/>(CPU Fallback)"]
+    end
+
+    subgraph RELAY [" MediaMTX Relay Embebido "]
+        MTX["Loopback Local<br/>Desacople Total de Ingesta"]
+        SRT["SRT Server (:8890)<br/>&lt;100ms Latencia"]
+        WHEP["WebRTC WHEP (:8889)<br/>Vista Previa Web"]
+        UDP["UDP Multicast (:8888)<br/>Red Local"]
+    end
+
+    subgraph OUTPUTS [" Software de Producción "]
+        OBS["OBS Studio<br/>(SRT Caller)"]
+        VMIX["vMix / Wirecast"]
+        VLC["VLC Media Player<br/>(Desktop & Mobile QR)"]
+    end
+
+    CAM1 --> FF1
+    CAM2 --> FF2
+    CAMN --> FFN
+    DS -.-> FF1
+    DS -.-> FF2
+    DS -.-> FFN
+
+    FF1 -->|"Loopback Ingest"| MTX
+    FF2 -->|"Loopback Ingest"| MTX
+    FFN -->|"Loopback Ingest"| MTX
+
+    MTX --> SRT
+    MTX --> WHEP
+    MTX --> UDP
+
+    SRT --> OBS
+    SRT --> VMIX
+    SRT --> VLC
+```
 
 ---
 
@@ -83,9 +102,7 @@ Integra un servidor de medios embebido (**MediaMTX**) que desacopla la ingesta d
 
 ### Opción 1: Ejecutable Portable Oficial (Recomendado)
 
-[![Descargar RTMS](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Descargar%20%C3%9Altima%20Release-GitHub%20Releases-00E5FF?style=for-the-badge&logo=github&logoColor=050b14)](https://github.com/FJYarsky/RTMS/releases/latest)
-
-Descarga el archivo `.zip` de la última versión desde [GitHub Releases](https://github.com/FJYarsky/RTMS/releases/latest), descomprímelo en cualquier carpeta y ejecuta directamente `rtms.exe`. No requiere instalación de Python ni privilegios de administrador.
+Descarga el paquete `.zip` oficial de la última versión desde **[GitHub Releases](https://github.com/FJYarsky/RTMS/releases/latest)**, descomprímelo en cualquier carpeta y ejecuta directamente `rtms.exe`. No requiere instalación previa de Python ni privilegios de administrador.
 
 ### Opción 2: Ejecución desde Código Fuente (Entorno de Desarrollo)
 ```bash
@@ -201,7 +218,7 @@ Desarrollado y mantenido por **Joaquín Yarsky**:
 
 <div align="center">
   <br>
-  <sub>Hecho en Argentina • Las Malvinas son argentinas</sub>
+  <sub>Desarrollado y mantenido con dedicación en Argentina</sub>
 </div>
 
 ---

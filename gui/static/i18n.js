@@ -60,6 +60,8 @@ const I18N_DICTIONARY = {
         obs_step_3_desc: "En el campo <strong>Entrada</strong>, pega la URL de SRT copiada arriba (ej: <code>srt://192.168.1.X:8890?streamid=read:cam_id...</code>).",
         obs_step_4_title: "Formato de entrada",
         obs_step_4_label: "En el campo <strong>Formato de entrada</strong> escribe o copia:",
+        obs_step_5_title: "Búfer de Red y Baja Latencia (<100ms)",
+        obs_step_5_desc: "En la configuración de la Fuente multimedia en OBS, reduce <strong>Búfer de red (Network Buffering)</strong> a <strong>1 MB</strong> o 0 para erradicar retrasos de 500-1000ms. Alternativamente, utiliza <strong>Fuente de video VLC</strong> con <code>:network-caching=50</code>.",
         btn_copy_chip: "📋 Copiar",
         btn_copy_url: "Copiar",
         btn_share_qr: "Compartir QR",
@@ -159,7 +161,7 @@ const I18N_DICTIONARY = {
         btn_save_port: "Guardar Puerto MediaMTX",
         sys_server_info_header: "Información del Servidor y Entorno",
         sys_table_version: "Versión RTMS",
-        sys_table_version_val: "v2.8.0 (Compilación Oficial)",
+        sys_table_version_val: "v2.8.1 (Compilación Oficial)",
         sys_table_os: "Sistema Operativo",
         sys_table_build: "Compilación Windows",
         sys_table_release: "Versión de Lanzamiento",
@@ -190,6 +192,9 @@ const I18N_DICTIONARY = {
         cfg_srt_latency: "Latencia de Buffer SRT (ms)",
         cfg_srt_pass: "Frase de Paso / Passphrase SRT (Opcional)",
         cfg_srt_pass_placeholder: "Entre 10 y 79 caracteres",
+        btn_reset_cam_defaults: "Restablecer por Defecto",
+        btn_reset_cam_defaults_tooltip: "Restablecer configuración a valores predeterminados (720p, 30 FPS, 3000 kbps, SRT)",
+        msg_cam_defaults_restored: "Valores predeterminados cargados en el formulario. Haz clic en 'Guardar y Aplicar' para persistir.",
         btn_save_apply: "Guardar y Aplicar",
 
         // Opciones de Preset
@@ -223,7 +228,7 @@ const I18N_DICTIONARY = {
         // Modal Acerca de
         about_title: "Acerca de RTMS",
         about_subtitle: "Estación de Ingesta y Transmisión Multicámara de Baja Latencia",
-        about_version_tag: "v2.8.0 • Producción y Streaming",
+        about_version_tag: "v2.8.1 • Producción y Streaming",
         arg_tribute_made: "Hecho en Argentina",
         arg_tribute_malvinas: "Las Malvinas son argentinas",
         official_website_btn: "Sitio Web Oficial",
@@ -258,7 +263,7 @@ const I18N_DICTIONARY = {
         qr_vlc_launch: "Abrir en VLC (~50ms)",
         qr_vlc_download: "Playlist .xspf",
         qr_vlc_cmd_label: "Comando de terminal VLC de baja latencia:",
-        qr_vlc_hint: "Copia y ejecuta el comando de terminal provisto arriba para reproducir en VLC con <code>:network-caching=150</code> de forma fluida y sin caídas de FPS.",
+        qr_vlc_hint: "Copia y ejecuta el comando de terminal provisto arriba para reproducir en VLC con <code>:network-caching=50 :clock-jitter=0 :clock-synchro=0</code> de forma fluida y sin caídas de FPS.",
 
         // Modal Diagnóstico de Ping y Latencia
         nav_latency_ping: "Ping & Latencia",
@@ -377,6 +382,8 @@ const I18N_DICTIONARY = {
         obs_step_3_desc: "In the <strong>Input</strong> field, paste the copied SRT URL above (e.g. <code>srt://192.168.1.X:8890?streamid=read:cam_id...</code>).",
         obs_step_4_title: "Input Format",
         obs_step_4_label: "In the <strong>Input Format</strong> field, type or copy:",
+        obs_step_5_title: "Network Buffering & Ultra-Low Latency (<100ms)",
+        obs_step_5_desc: "In OBS Media Source, reduce <strong>Network Buffering</strong> to <strong>1 MB</strong> or 0 to eliminate 500-1000ms delays, or use a <strong>VLC Video Source</strong> with <code>:network-caching=50</code>.",
         btn_copy_chip: "📋 Copy",
         btn_copy_url: "Copy",
         btn_share_qr: "Share QR",
@@ -476,7 +483,7 @@ const I18N_DICTIONARY = {
         btn_save_port: "Save MediaMTX Port",
         sys_server_info_header: "Server & Runtime Environment Information",
         sys_table_version: "RTMS Version",
-        sys_table_version_val: "v2.8.0 (Official Build)",
+        sys_table_version_val: "v2.8.1 (Official Build)",
         sys_table_os: "Operating System",
         sys_table_build: "Windows Build",
         sys_table_release: "Release Version",
@@ -507,6 +514,9 @@ const I18N_DICTIONARY = {
         cfg_srt_latency: "SRT Buffer Latency (ms)",
         cfg_srt_pass: "SRT Passphrase (Optional)",
         cfg_srt_pass_placeholder: "Between 10 and 79 characters",
+        btn_reset_cam_defaults: "Reset to Defaults",
+        btn_reset_cam_defaults_tooltip: "Reset settings to default values (720p, 30 FPS, 3000 kbps, SRT)",
+        msg_cam_defaults_restored: "Default values loaded into form. Click 'Save & Apply' to persist.",
         btn_save_apply: "Save & Apply",
 
         // Preset options
@@ -540,7 +550,7 @@ const I18N_DICTIONARY = {
         // About Modal
         about_title: "About RTMS",
         about_subtitle: "Real-Time Low-Latency Multicamera Ingestion & Streaming Station",
-        about_version_tag: "v2.8.0 • Production & Streaming",
+        about_version_tag: "v2.8.1 • Production & Streaming",
         arg_tribute_made: "Made in Argentina",
         arg_tribute_malvinas: "The Malvinas Islands are Argentine",
         official_website_btn: "Official Website",
@@ -575,7 +585,7 @@ const I18N_DICTIONARY = {
         qr_vlc_launch: "Open in VLC (~50ms)",
         qr_vlc_download: ".xspf Playlist",
         qr_vlc_cmd_label: "Low-latency VLC terminal command:",
-        qr_vlc_hint: "Copy and run the terminal command provided above to play in VLC with <code>:network-caching=150</code> smoothly without dropping FPS.",
+        qr_vlc_hint: "Copy and run the terminal command provided above to play in VLC with <code>:network-caching=50 :clock-jitter=0 :clock-synchro=0</code> smoothly without dropping FPS.",
 
         // Ping & Latency Diagnostics Modal
         nav_latency_ping: "Ping & Latency",

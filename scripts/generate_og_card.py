@@ -2,7 +2,7 @@
 """
 Script generador del banner oficial para Open Graph y Twitter Cards de RTMS.
 Genera la imagen 'site/brand_preview.png' a 1200x630 píxeles optimizada para:
-- WhatsApp / Telegram / Discord / Slack (rich link preview cards)
+- Telegram / Discord / Slack (rich link preview cards)
 - Twitter / X (summary_large_image)
 - Facebook / LinkedIn (Open Graph preview)
 

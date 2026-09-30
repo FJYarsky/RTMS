@@ -22,9 +22,10 @@ def test_preview_slot_concurrency():
         assert ok1 is True
         assert "cam1" in pm._active_camera_previews
 
-        # Second request for cam1 must be rejected (per-camera slot busy)
+        # Second request for cam1 must succeed (safe re-entry / auto-replace without 429)
         ok1_dup = await pm.acquire_slot("cam1")
-        assert ok1_dup is False
+        assert ok1_dup is True
+        assert "cam1" in pm._active_camera_previews
 
         # Acquire cam2 and cam3 (reaching semaphore limit of 3)
         ok2 = await pm.acquire_slot("cam2")

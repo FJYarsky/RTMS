@@ -17,13 +17,15 @@ from core.system_env import setup_firewall_rules
 
 
 def test_v280_srt_urls_no_slash_before_query():
-    """Valida que las URLs SRT generadas no contengan barra diagonal antes de '?' (libsrt / VLC Android)."""
+    """Valida que las URLs SRT generadas no contengan barra diagonal antes de '?' (libsrt / VLC Android) e incluyan parámetros de baja latencia."""
     urls = build_client_urls("srt", "192.168.1.100", 9000, "cam_test", passphrase="test_secret")
     assert "srt://192.168.1.100:8890?streamid=read:cam_test" in urls["connect_url"]
     assert "/?" not in urls["connect_url"]
     assert "/?" not in urls["vlc_url"]
     assert "passphrase=test_secret" in urls["connect_url"]
-    assert "latency=" not in urls["vlc_url"]
+    assert "latency=50000" in urls["vlc_url"]
+    assert "rcvbuf=65536" in urls["vlc_url"]
+    assert "tlpktdrop=1" in urls["vlc_url"]
 
 
 def test_v280_firewall_rules_covers_mediamtx_port():
@@ -252,3 +254,92 @@ def test_v280_ecs_json_formatter():
     assert data["service.name"] == "rtms-test"
     assert "@timestamp" in data
     assert "process.pid" in data
+
+
+def test_v280_gui_modal_scroll_and_reset_button():
+    """Valida soporte de scroll responsivo en CSS, botón de reset en index.html y función en app.js e i18n."""
+    import os
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    css_path = os.path.join(base_dir, "gui", "static", "styles.css")
+    html_path = os.path.join(base_dir, "gui", "templates", "index.html")
+    js_path = os.path.join(base_dir, "gui", "static", "app.js")
+    i18n_path = os.path.join(base_dir, "gui", "static", "i18n.js")
+
+    with open(css_path, "r", encoding="utf-8") as f:
+        css = f.read()
+    assert "max-height: calc(100vh - 40px)" in css
+    assert "overflow-y: auto" in css
+    assert ".modal-body" in css
+    assert ".modal-foot" in css
+    assert ".btn-secondary" in css
+
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    assert "btn-reset-cam-defaults" in html
+    assert 'data-i18n="btn_reset_cam_defaults"' in html
+    assert "resetCameraConfigToDefaults()" in html
+
+    with open(js_path, "r", encoding="utf-8") as f:
+        js = f.read()
+    assert "function resetCameraConfigToDefaults()" in js
+    assert "applyQualityPreset('default')" in js
+
+    with open(i18n_path, "r", encoding="utf-8") as f:
+        i18n = f.read()
+    assert 'btn_reset_cam_defaults: "Restablecer por Defecto"' in i18n
+    assert 'btn_reset_cam_defaults: "Reset to Defaults"' in i18n
+
+
+def test_v280_main_window_maximized():
+    """Valida que main.py configure la ventana nativa pywebview maximizada por defecto."""
+    import os
+
+    main_py_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "main.py")
+    with open(main_py_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    assert "maximized=True" in content
+
+
+@pytest.mark.asyncio
+async def test_v280_preview_reconnect_flags_and_safe_reentry():
+    """Valida que preview_manager soporte auto-reemplazo seguro de slot y banderas de reconexión FFmpeg."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from core.preview_mgr import PreviewManager
+
+    pm = PreviewManager()
+
+    # 1. Slot re-entry seguro para la misma cámara
+    assert await pm.acquire_slot("cam_stream_1") is True
+    assert await pm.acquire_slot("cam_stream_1") is True  # Re-entry exitoso sin 429
+    assert "cam_stream_1" in pm._active_camera_previews
+
+    # 2. Banderas de reconexión FFmpeg en generate_mjpeg_stream
+    captured_cmd = []
+
+    async def fake_subprocess(*args, **kwargs):
+        captured_cmd.extend(args)
+        mock_p = MagicMock()
+        mock_p.pid = 999
+        mock_p.stdout = AsyncMock()
+        mock_p.stdout.read = AsyncMock(return_value=b"")
+        mock_p.returncode = 0
+        mock_p.terminate = MagicMock()
+        mock_p.wait = AsyncMock(return_value=0)
+        return mock_p
+
+    with (
+        patch("core.preview_mgr.has_ffmpeg_binary", return_value=True),
+        patch("asyncio.create_subprocess_exec", side_effect=fake_subprocess),
+    ):
+        gen = pm.generate_mjpeg_stream("srt://127.0.0.1:8890?streamid=read:cam_stream_1", identifier="cam_stream_1")
+        _ = [chunk async for chunk in gen]
+
+    assert "-reconnect" in captured_cmd
+    assert "-reconnect_at_eof" in captured_cmd
+    assert "-reconnect_streamed" in captured_cmd
+    assert "-reconnect_delay_max" in captured_cmd
+
+    await pm.stop_all()
+    assert len(pm._active_camera_previews) == 0

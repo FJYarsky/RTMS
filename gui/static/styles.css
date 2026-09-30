@@ -713,6 +713,19 @@ main {
     transform: translateY(-1px);
 }
 
+.btn-secondary {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: rgba(20, 184, 166, 0.15);
+    border-color: var(--teal);
+    color: var(--teal);
+    transform: translateY(-1px);
+}
+
 .btn:active:not(:disabled) {
     transform: translateY(0);
 }
@@ -1206,6 +1219,8 @@ select option:checked {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-overlay.active {
@@ -1219,6 +1234,9 @@ select option:checked {
     border-radius: var(--radius-lg);
     width: 100%;
     max-width: min(660px, 94vw);
+    max-height: calc(100vh - 40px);
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
     transform: translateY(15px);
     transition: transform 0.25s ease;
@@ -1238,6 +1256,7 @@ select option:checked {
     font-weight: 800;
     font-size: 1.05rem;
     color: var(--teal);
+    flex-shrink: 0;
 }
 
 .modal-close {
@@ -1255,6 +1274,10 @@ select option:checked {
 
 .modal-body {
     padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 180px);
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-foot {
@@ -1263,6 +1286,31 @@ select option:checked {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
+    flex-shrink: 0;
+}
+
+/* Scrollbars responsivos para cuerpo de modales y contenedor principal */
+.modal-body::-webkit-scrollbar,
+main::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track,
+main::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb,
+main::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.25);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover,
+main::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 189, 248, 0.5);
 }
 
 /* LOGS BOX */
@@ -2042,6 +2090,7 @@ input[type="checkbox"]:checked + .switch-toggle::after {
 
     .modal-card {
         max-width: 100vw;
+        max-height: calc(100vh - 20px);
         border-radius: var(--radius-md);
     }
 
@@ -2052,6 +2101,25 @@ input[type="checkbox"]:checked + .switch-toggle::after {
     .ip-display-box {
         flex-direction: column;
         text-align: center;
+    }
+}
+
+@media (max-height: 720px) {
+    .modal-overlay {
+        padding: 10px;
+    }
+    .modal-card {
+        max-height: calc(100vh - 20px);
+    }
+    .modal-hdr {
+        padding: 12px 18px;
+    }
+    .modal-body {
+        padding: 16px;
+        max-height: calc(100vh - 130px);
+    }
+    .modal-foot {
+        padding: 12px 18px;
     }
 }
 

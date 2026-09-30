@@ -4,6 +4,26 @@ Historial completo y notas oficiales de lanzamiento organizadas cronológicament
 
 ---
 
+## RTMS v2.8.1 — Optimización de Latencia en OBS/VLC, Modales Responsivos y Auditoría de Privacidad
+*(2026-09-30)*
+
+### ⚡ Optimización Integral de Latencia en OBS Studio y VLC
+- **Inyección Forzada de Parámetros SRT**: Las URLs de recepción ahora inyectan mandatariamente `&latency=50000&rcvbuf=65536&tlpktdrop=1` para evitar buffers excesivos en clientes SRT.
+- **Sintonización en VLC**: Comando terminal con `:network-caching=50 :clock-jitter=0 :clock-synchro=0` para erradicar el retardo de buffer.
+- **Guía de Búfer en OBS**: Instrucción directa en la interfaz para configurar *Network Buffering* a 1 MB o 0 en Fuente Multimedia, solucionando el delay acumulado de 500-1000 ms.
+- **Herramienta Práctica de Cronómetro Milimétrico (`scripts/test_obs_latency_clock.py`)**: Video sintético de alta precisión (>115 FPS) con reloj y código óptico para medir y comprobar la latencia física cuadro a cuadro de forma 100% verídica.
+
+### 🖥️ Interfaz Responsiva, Pantalla Completa y Corrección de Vista Previa
+- **Arranque Maximizado**: La aplicación se inicia siempre en pantalla completa / maximizada por defecto (`maximized=True`).
+- **Modales Responsivos con Scroll**: Estructura flexbox con `overflow-y: auto` en `.modal-body` y cabeceras/pies fijos, evitando que los botones de acción queden fuera de pantalla.
+- **Restablecer por Defecto en Cámaras**: Botón y función dedicada en el modal de configuración de cámara para restaurar parámetros estándar con soporte bilingüe.
+- **Estabilidad de Vista Previa**: Re-entry seguro de slots concurrentes, reemplazo ordenado de workers y reconexión automática en FFmpeg MJPEG.
+
+### 🛡️ Privacidad, Documentación y Sitemap Search Console
+- **Saneamiento de Privacidad**: Supresión completa de números de WhatsApp en estilos y scripts, dejando únicamente correo oficial y GitHub.
+- **README Atemporal y Moderno**: Nuevo botón de descarga estilo pill enlazado a releases, captura sin versión estática, diagrama de arquitectura Mermaid y pie neutral.
+- **Sitemap Google Search Console**: Redirección inteligente en `site/404.html` para resolver discrepancias de mayúsculas/minúsculas en GitHub Pages, archivo `site/.nojekyll` y esquema XML W3C actualizado.
+
 ## RTMS v2.8.0 — Streaming de Video Puro de Baja Latencia, Calibración Inteligente SRT/VLC, Rediseño UI Obsidian y Validación Integral
 *(2026-09-27)*
 

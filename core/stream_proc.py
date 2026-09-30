@@ -128,6 +128,7 @@ def build_client_urls(
     passphrase: str = "",
     mediamtx_port: int = 8890,
     udp_mode: str = "multicast",
+    latency_ms: Optional[int] = 50,
 ) -> Dict[str, Any]:
     """
     Construye las URLs canónicas y limpias para clientes (OBS/vMix) y reproductores como VLC.
@@ -136,9 +137,16 @@ def build_client_urls(
     """
     clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
     clean_host = host.strip() or "127.0.0.1"
+    effective_lat_ms = int(latency_ms) if latency_ms is not None else 50
+    latency_us = effective_lat_ms * 1000
 
     if protocol == "srt":
-        query_parts = [f"streamid=read:{clean_cam_id}"]
+        query_parts = [
+            f"streamid=read:{clean_cam_id}",
+            f"latency={latency_us}",
+            "rcvbuf=65536",
+            "tlpktdrop=1",
+        ]
         if passphrase:
             query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
         query = "&".join(query_parts)
@@ -160,7 +168,7 @@ def build_client_urls(
         connect_url = f"udp://{mcast_ip}:{port}"
         vlc_url = f"udp://@{mcast_ip}:{port}"
 
-    vlc_command = f'vlc.exe "{vlc_url}" :network-caching=150'
+    vlc_command = f'vlc.exe "{vlc_url}" :network-caching=50 :clock-jitter=0 :clock-synchro=0'
 
     return {
         "connect_url": connect_url,

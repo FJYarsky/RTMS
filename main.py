@@ -171,7 +171,7 @@ def patch_proactor_connection_lost() -> None:
         import socket
         from asyncio.proactor_events import _ProactorBasePipeTransport
 
-        orig_call = _ProactorBasePipeTransport._call_connection_lost
+        orig_call = _ProactorBasePipeTransport._call_connection_lost  # type: ignore[attr-defined]
 
         def safe_call_connection_lost(self, exc):
             try:
@@ -200,7 +200,7 @@ def patch_proactor_connection_lost() -> None:
             except Exception:
                 orig_call(self, exc)
 
-        _ProactorBasePipeTransport._call_connection_lost = safe_call_connection_lost
+        _ProactorBasePipeTransport._call_connection_lost = safe_call_connection_lost  # type: ignore[attr-defined]
         logger.debug("Parche defensivo para _ProactorBasePipeTransport instalado con éxito.")
     except Exception as e:
         logger.debug(f"Aviso al parchear _ProactorBasePipeTransport: {e}")
@@ -554,6 +554,7 @@ if __name__ == "__main__":
             width=1280,
             height=820,
             min_size=(980, 620),
+            maximized=True,
             background_color="#0b0f19",
         )
         if _main_window is not None:

@@ -443,7 +443,7 @@ async def test_preview_manager_concurrency_slots():
     """Valida el límite de slots de concurrencia de PreviewManager."""
     pm = PreviewManager()
     assert await pm.acquire_slot("slot_1") is True
-    assert await pm.acquire_slot("slot_1") is False  # Misma cámara rechazada
+    assert await pm.acquire_slot("slot_1") is True  # Misma cámara: re-entry seguro sin 429
 
     assert await pm.acquire_slot("slot_2") is True
     assert await pm.acquire_slot("slot_3") is True

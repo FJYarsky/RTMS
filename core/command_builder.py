@@ -41,7 +41,13 @@ async def build_ffmpeg_command(
     fps = cfg.get("fps", 30)
     zerolatency = cfg.get("zerolatency", True)
     # En modo zerolatency el GOP se calibra a 15 cuadros (500 ms a 30 fps) para enganche IDR de baja latencia sin saturar el decodificador
-    gop = max(15, int(fps * 0.5)) if zerolatency else (fps * 2)
+    if "gop" in cfg and cfg["gop"] is not None:
+        try:
+            gop = int(cfg["gop"])
+        except (ValueError, TypeError):
+            gop = max(15, int(fps * 0.5)) if zerolatency else (fps * 2)
+    else:
+        gop = max(15, int(fps * 0.5)) if zerolatency else (fps * 2)
     raw_bitrate = cfg.get("bitrate", 3000)
     try:
         if isinstance(raw_bitrate, str):

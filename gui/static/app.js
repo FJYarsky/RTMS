@@ -1232,6 +1232,66 @@ function closeConfigModal() {
     document.getElementById('config-modal-overlay').classList.remove('active');
 }
 
+function resetCameraConfigToDefaults() {
+    // 1. Preset 'default' (720p @ 30 FPS, 3000 kbps)
+    const presetEl = document.getElementById('config-preset');
+    if (presetEl) {
+        presetEl.value = 'default';
+    }
+    applyQualityPreset('default');
+
+    // 2. Protocolo 'srt'
+    const protoEl = document.getElementById('config-protocol');
+    if (protoEl) {
+        protoEl.value = 'srt';
+        handleProtocolChange('srt');
+    }
+
+    // 3. Encoder 'auto'
+    const encEl = document.getElementById('config-encoder');
+    if (encEl) {
+        encEl.value = 'auto';
+    }
+
+    // 4. Automatización y rendimiento por defecto
+    const autoEl = document.getElementById('config-cam-autostart');
+    if (autoEl) {
+        autoEl.checked = true;
+    }
+
+    const zeroEl = document.getElementById('config-zerolatency');
+    if (zeroEl) {
+        zeroEl.checked = true;
+        handleZerolatencyChange();
+    }
+
+    const virtEl = document.getElementById('config-is-virtual');
+    if (virtEl) {
+        virtEl.checked = false;
+    }
+
+    // 5. Ajustes avanzados SRT
+    const latEl = document.getElementById('config-srt-latency');
+    if (latEl) {
+        latEl.value = 120;
+    }
+
+    const passEl = document.getElementById('config-srt-passphrase');
+    if (passEl) {
+        passEl.value = '';
+    }
+
+    const udpHostEl = document.getElementById('config-udp-host');
+    if (udpHostEl) {
+        udpHostEl.value = '127.0.0.1';
+    }
+
+    if (typeof showToast === 'function') {
+        const msg = (typeof t === 'function' ? t('msg_cam_defaults_restored') : null) || 'Valores predeterminados cargados en el formulario.';
+        showToast(msg, 'info');
+    }
+}
+
 async function deleteCurrentCamera() {
     const dp = document.getElementById('config-device-path').value;
     if (!dp) return;
@@ -1674,6 +1734,7 @@ function triggerImportConfiguration() {
 
 // CONTROLADOR DEL MODAL DE VISTA PREVIA ON-DEMAND (WebRTC WHEP CON FALLBACK MJPEG)
 let _whepPeerConnection = null;
+let _previewActiveStream = null;
 
 async function openPreviewModal(index) {
     const stream = _streams[index];
@@ -1688,6 +1749,7 @@ async function openPreviewModal(index) {
     const loader = document.getElementById('preview-loader');
 
     if (!modal) return;
+    _previewActiveStream = stream;
 
     titleEl.textContent = `${t('preview_modal_title')} — ${stream.friendly_name}`;
     const isRunning = stream.status.state === 'running';
@@ -1702,9 +1764,103 @@ async function openPreviewModal(index) {
         : `<span class="status-badge stopped"><span class="status-dot"></span>${stoppedText}</span>`;
 
     loader.style.display = 'flex';
-    if (imgEl) { imgEl.style.display = 'none'; imgEl.src = ''; }
-    if (videoEl) { videoEl.style.display = 'none'; videoEl.srcObject = null; }
+    if (imgEl) {
+        imgEl.onload = null;
+        imgEl.onerror = null;
+        imgEl.style.display = 'none';
+        imgEl.src = '';
+    }
+    if (videoEl) {
+        videoEl.style.display = 'none';
+        videoEl.srcObject = null;
+    }
     modal.classList.add('active');
+
+    let mjpegStarted = false;
+    let mjpegHasLoaded = false;
+    let mjpegRetryCount = 0;
+    const MAX_MJPEG_RETRIES = 2;
+
+    const startMjpegFallback = async () => {
+        if (!modal.classList.contains('active') || _previewActiveStream !== stream) return;
+        if (mjpegStarted) return;
+        mjpegStarted = true;
+
+        if (_whepPeerConnection) {
+            try { _whepPeerConnection.close(); } catch (e) {}
+            _whepPeerConnection = null;
+        }
+        if (videoEl) {
+            try { videoEl.pause(); } catch (e) {}
+            videoEl.srcObject = null;
+            videoEl.style.display = 'none';
+        }
+
+        if (!imgEl) return;
+
+        let ticket = null;
+        try {
+            const ticketRes = await apiFetch('/api/preview/ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_path: stream.device_path, ttl_seconds: 60 })
+            });
+            if (ticketRes.ok) {
+                const ticketData = await ticketRes.json();
+                ticket = ticketData.ticket;
+            }
+        } catch (e) {
+            console.warn("No se pudo obtener ticket efímero de preview, recurriendo a fallback:", e);
+        }
+
+        if (!modal.classList.contains('active') || _previewActiveStream !== stream) return;
+
+        let previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?t=${Date.now()}`;
+        if (ticket) {
+            previewUrl += `&ticket=${encodeURIComponent(ticket)}`;
+        }
+
+        imgEl.onload = () => {
+            if (!modal.classList.contains('active') || _previewActiveStream !== stream) return;
+            mjpegHasLoaded = true;
+            mjpegRetryCount = 0;
+            loader.style.display = 'none';
+            imgEl.style.display = 'block';
+            const errTag = infoEl.querySelector('.preview-error-tag');
+            if (errTag) errTag.remove();
+        };
+
+        imgEl.onerror = () => {
+            // Si el modal ya fue cerrado o se cambió de cámara, ignorar el evento
+            if (!modal.classList.contains('active') || _previewActiveStream !== stream) return;
+
+            // Si la vista previa ya estaba reproduciéndose correctamente y sufre una caída transitoria, reintentar suavemente
+            if (mjpegHasLoaded && mjpegRetryCount < MAX_MJPEG_RETRIES) {
+                mjpegRetryCount++;
+                console.info(`Reintentando conexión MJPEG (${mjpegRetryCount}/${MAX_MJPEG_RETRIES})...`);
+                setTimeout(() => {
+                    if (modal.classList.contains('active') && _previewActiveStream === stream) {
+                        mjpegStarted = false;
+                        startMjpegFallback();
+                    }
+                }, 800);
+                return;
+            }
+
+            loader.style.display = 'none';
+            if (!infoEl.querySelector('.preview-error-tag')) {
+                const errSpan = document.createElement('span');
+                errSpan.className = 'preview-error-tag';
+                errSpan.style.color = 'var(--status-red)';
+                errSpan.style.fontSize = '0.75rem';
+                errSpan.style.marginLeft = '8px';
+                errSpan.textContent = t('preview_unavailable') || '(No disponible o límite alcanzado)';
+                infoEl.appendChild(errSpan);
+            }
+        };
+
+        imgEl.src = previewUrl;
+    };
 
     // 1. Intentar primero WebRTC WHEP de baja latencia (<40ms) si el flujo está activo
     let whepStarted = false;
@@ -1719,6 +1875,22 @@ async function openPreviewModal(index) {
                 iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
             });
             _whepPeerConnection = pc;
+
+            pc.onconnectionstatechange = () => {
+                if (!modal.classList.contains('active') || _previewActiveStream !== stream) return;
+                if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                    console.warn(`WebRTC connectionState: ${pc.connectionState}. Fallback automático a MJPEG...`);
+                    startMjpegFallback();
+                }
+            };
+
+            pc.oniceconnectionstatechange = () => {
+                if (!modal.classList.contains('active') || _previewActiveStream !== stream) return;
+                if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+                    console.warn(`WebRTC iceConnectionState: ${pc.iceConnectionState}. Fallback automático a MJPEG...`);
+                    startMjpegFallback();
+                }
+            };
 
             pc.addTransceiver('video', { direction: 'recvonly' });
 
@@ -1751,6 +1923,8 @@ async function openPreviewModal(index) {
                     sdp: answerSdp
                 }));
                 whepStarted = true;
+            } else {
+                console.debug("WHEP endpoint returned non-OK, falling back to MJPEG.");
             }
         } catch (webrtcErr) {
             console.debug("WebRTC WHEP no disponible, utilizando generador MJPEG fallback:", webrtcErr);
@@ -1762,38 +1936,8 @@ async function openPreviewModal(index) {
     }
 
     // 2. Fallback a MJPEG si WebRTC no se pudo iniciar o la cámara está detenida
-    if (!whepStarted && imgEl) {
-        let ticket = null;
-        try {
-            const ticketRes = await apiFetch('/api/preview/ticket', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ device_path: stream.device_path, ttl_seconds: 60 })
-            });
-            if (ticketRes.ok) {
-                const ticketData = await ticketRes.json();
-                ticket = ticketData.ticket;
-            }
-        } catch (e) {
-            console.warn("No se pudo obtener ticket efímero de preview, recurriendo a fallback:", e);
-        }
-
-        let previewUrl = `/api/stream/${encodeURIComponent(stream.device_path)}/preview?t=${Date.now()}`;
-        if (ticket) {
-            previewUrl += `&ticket=${encodeURIComponent(ticket)}`;
-        }
-
-        imgEl.onload = () => {
-            loader.style.display = 'none';
-            imgEl.style.display = 'block';
-        };
-
-        imgEl.onerror = () => {
-            loader.style.display = 'none';
-            infoEl.innerHTML += ` <span style="color:var(--status-red); font-size:0.75rem;">${t('preview_unavailable')}</span>`;
-        };
-
-        imgEl.src = previewUrl;
+    if (!whepStarted) {
+        startMjpegFallback();
     }
 
     if (ffplayBtn) {
@@ -1805,6 +1949,12 @@ function closePreviewModal() {
     const modal = document.getElementById('preview-modal');
     const imgEl = document.getElementById('preview-modal-img');
     const videoEl = document.getElementById('preview-video');
+    const infoEl = document.getElementById('preview-modal-info');
+    _previewActiveStream = null;
+
+    if (modal) {
+        modal.classList.remove('active');
+    }
     if (_whepPeerConnection) {
         try { _whepPeerConnection.close(); } catch (e) {}
         _whepPeerConnection = null;
@@ -1815,11 +1965,14 @@ function closePreviewModal() {
         videoEl.style.display = 'none';
     }
     if (imgEl) {
+        imgEl.onload = null;
+        imgEl.onerror = null;
         imgEl.src = '';
         imgEl.style.display = 'none';
     }
-    if (modal) {
-        modal.classList.remove('active');
+    if (infoEl) {
+        const errTag = infoEl.querySelector('.preview-error-tag');
+        if (errTag) errTag.remove();
     }
 }
 

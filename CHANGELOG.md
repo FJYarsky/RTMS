@@ -1,5 +1,26 @@
 # Changelog — RTMS (Real-Time Multicam System)
 
+## [2.8.1] — 2026-09-30
+
+### Optimización de Latencia en OBS/VLC, Reset de Cámara, Modales Responsivos y Auditoría de Privacidad
+- **Optimización Integral de Latencia en Clientes OBS Studio y VLC (`core/stream_proc.py`, `core/command_builder.py`, `gui/templates/index.html`)**:
+  - Inyección mandataria de parámetros SRT de ultra-baja latencia en URLs de cliente (`&latency=50000&rcvbuf=65536&tlpktdrop=1`), erradicando buffers por defecto en libsrt.
+  - Sintonización de VLC con comando libre de colas artificiales: `:network-caching=50 :clock-jitter=0 :clock-synchro=0`.
+  - Nueva instrucción en guía OBS para reducir *Network Buffering* a 1 MB o 0 en Fuente Multimedia, resolviendo el retardo acumulado de 500-1000 ms.
+- **Herramienta Práctica de Medición de Latencia y Ping (`scripts/test_obs_latency_clock.py`)**:
+  - Generador de video sintético en tiempo real (>115 FPS) con reloj milimétrico quemado en pantalla y cabecera óptica binaria para constatar matemáticamente el retardo en OBS.
+  - Modo `--auto-test` automatizado y modo `--publish` para comprobación visual lado a lado.
+- **Mejoras en GUI, Modales Responsivos y Pantalla Completa (`main.py`, `gui/static/styles.css`, `gui/templates/index.html`, `gui/static/app.js`)**:
+  - Apertura del software siempre en pantalla completa / maximizado por defecto (`maximized=True` en WebView2).
+  - Corrección de desbordamiento vertical en modales y pestañas: estructura flexbox con `overflow-y: auto`, cabeceras y pies fijos con botones siempre visibles sin necesidad de presionar `Esc`.
+  - Nueva opción en configuración de cámaras para "Restablecer por Defecto" (`resetCameraConfigToDefaults()`) con soporte multi-idioma.
+  - Resolución del bug de vista previa ("No disponible o límite alcanzado") con re-entry seguro de slots, sustitución ordenada de procesos y reconexión automática en FFmpeg.
+- **Sanitización de Privacidad y Refactorización de README (`README.md`, `gui/static/styles.css`, `site/`, `scripts/sanitize_history.py`)**:
+  - Supresión completa de números de WhatsApp y estilos asociados en todos los archivos activos.
+  - Herramienta para purga retroactiva de historial Git con `git-filter-repo`.
+  - README profesional con nuevo botón pill de descarga, captura atemporal sin versión fija, diagrama de arquitectura Mermaid y pie neutral.
+  - Solución al error de Sitemap en Google Search Console mediante `site/404.html` (redirección sensible a mayúsculas/minúsculas), `site/.nojekyll` y esquema XML W3C.
+
 ## [2.8.0] — 2026-09-27
 
 ### Streaming de Video Puro de Baja Latencia, Calibración Inteligente SRT/VLC, Rediseño UI Obsidian y Validación Integral

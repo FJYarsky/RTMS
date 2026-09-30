@@ -1,8 +1,8 @@
-# RTMS v2.8.0 — Streaming de Video Puro de Baja Latencia, Calibración Inteligente SRT/VLC, Rediseño UI Obsidian y Validación Integral
+# RTMS v2.8.1 — Optimización de Latencia en OBS/VLC, Modales Responsivos y Auditoría de Privacidad
 
-**Fecha:** 27 de Septiembre de 2026 | **Versión:** `v2.8.0`
+**Fecha:** 30 de Septiembre de 2026 | **Versión:** `v2.8.1`
 
-[![Descargar RTMS v2.8.0](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Descargar%20RTMS-v2.8.0%20(Windows%20x64)-00E5FF?style=for-the-badge&logo=windows&logoColor=050b14)](https://github.com/FJYarsky/RTMS/releases/latest)
+[![Descargar RTMS v2.8.1](https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Descargar%20RTMS-v2.8.1%20(Windows%20x64)-0ea5e9?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/FJYarsky/RTMS/releases/latest)
 
 ---
 

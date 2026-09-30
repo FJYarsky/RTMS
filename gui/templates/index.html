@@ -229,6 +229,13 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="obs-guide-step">
+                                <div class="step-number">5</div>
+                                <div class="step-details">
+                                    <div class="step-title" data-i18n="obs_step_5_title">Búfer de red y Baja Latencia (&lt;100ms)</div>
+                                    <div class="step-desc" data-i18n="obs_step_5_desc">En la configuración de la Fuente multimedia en OBS, reduce <strong>Búfer de red (Network Buffering)</strong> a <strong>1 MB</strong> o 0 para erradicar retrasos de 500-1000ms. Alternativamente, utiliza <strong>Fuente de video VLC</strong> con <code>:network-caching=50</code>.</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -726,13 +733,22 @@
                 </form>
             </div>
             <div class="modal-foot">
-                <button class="btn btn-danger btn-sm" type="button" style="margin-right: auto;" onclick="deleteCurrentCamera()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
-                        <polyline points="3 6 5 6 21 6"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                    <span data-i18n="btn_confirm_delete">Eliminar Cámara</span>
-                </button>
+                <div style="margin-right: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-danger btn-sm" type="button" onclick="deleteCurrentCamera()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        <span data-i18n="btn_confirm_delete">Eliminar Cámara</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="btn-reset-cam-defaults" type="button" onclick="resetCameraConfigToDefaults()" title="Restablecer configuración a valores por defecto" data-i18n-attr="title:btn_reset_cam_defaults_tooltip">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        <span data-i18n="btn_reset_cam_defaults">Restablecer por Defecto</span>
+                    </button>
+                </div>
                 <button class="btn btn-ghost" onclick="closeConfigModal()" data-i18n="btn_cancel">Cancelar</button>
                 <button class="btn btn-primary" onclick="document.getElementById('form-submit-hidden').click()" data-i18n="btn_save_apply">Guardar y Aplicar</button>
             </div>

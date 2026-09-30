@@ -300,11 +300,15 @@ def test_udp_low_latency_parameters():
 def test_client_vlc_low_latency_caching():
     """Valida que los comandos generados para VLC incluyan los modificadores de baja latencia fluida sin congelamientos."""
     res_srt = build_client_urls("srt", "127.0.0.1", 9000, "cam_test")
-    assert ":network-caching=150" in res_srt["vlc_command"]
+    assert ":network-caching=50" in res_srt["vlc_command"]
+    assert ":clock-jitter=0" in res_srt["vlc_command"]
+    assert ":clock-synchro=0" in res_srt["vlc_command"]
     assert res_srt["vlc_caching_ms"] == 50
 
     res_udp = build_client_urls("udp", "127.0.0.1", 9000, "cam_test", udp_mode="multicast")
-    assert ":network-caching=150" in res_udp["vlc_command"]
+    assert ":network-caching=50" in res_udp["vlc_command"]
+    assert ":clock-jitter=0" in res_udp["vlc_command"]
+    assert ":clock-synchro=0" in res_udp["vlc_command"]
     assert "udp://@239.255.0.1:9000" in res_udp["vlc_url"]
 
 

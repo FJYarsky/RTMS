@@ -49,6 +49,7 @@ class PreviewManager:
 
     def __init__(self):
         self._active_ffplay: Dict[str, subprocess.Popen] = {}
+        self._active_mjpeg_procs: Dict[str, asyncio.subprocess.Process] = {}
         self._preview_semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_PREVIEWS)
         self._active_camera_previews: Set[str] = set()
         self._concurrency_lock = asyncio.Lock()
@@ -59,10 +60,14 @@ class PreviewManager:
         return has_ffmpeg_binary()
 
     async def acquire_slot(self, identifier: str) -> bool:
-        """Adquiere un slot de visualización concurrente (máximo global configurable, uno por cámara)."""
+        """
+        Adquiere un slot de visualización concurrente (máximo global configurable, re-entry seguro por cámara).
+        Si la misma cámara ya tiene un slot activo (reapertura de modal o reconexión),
+        se reutiliza/reemplaza la ranura sin lanzar 429 ni agotar ranuras globales.
+        """
         async with self._concurrency_lock:
             if identifier in self._active_camera_previews:
-                return False
+                return True
             try:
                 # Usar wait_for con timeout 0 para intento no bloqueante
                 await asyncio.wait_for(self._preview_semaphore.acquire(), timeout=0.01)
@@ -74,9 +79,14 @@ class PreviewManager:
     async def release_slot(self, identifier: str):
         """Libera el slot de visualización ocupado."""
         async with self._concurrency_lock:
+            # Si un worker más reciente sigue activo para esta cámara, no liberar prematuramente
+            active_proc = self._active_mjpeg_procs.get(identifier)
+            if active_proc and active_proc.returncode is None:
+                return
             if identifier in self._active_camera_previews:
                 self._active_camera_previews.remove(identifier)
                 self._preview_semaphore.release()
+                self._active_mjpeg_procs.pop(identifier, None)
 
     def _reap_dead_processes(self):
         """Limpia referencias a procesos FFplay que ya terminaron para evitar acumulación de handles muertos."""
@@ -352,6 +362,14 @@ class PreviewManager:
                 "nobuffer+flush_packets",
                 "-flags",
                 "low_delay",
+                "-reconnect",
+                "1",
+                "-reconnect_at_eof",
+                "1",
+                "-reconnect_streamed",
+                "1",
+                "-reconnect_delay_max",
+                "2",
                 "-i",
                 input_source,
                 "-vf",
@@ -365,12 +383,23 @@ class PreviewManager:
                 "-",
             ]
 
+        # Auto-reemplazo seguro: Si ya había un worker para este identifier, terminarlo de inmediato
+        if identifier and identifier in self._active_mjpeg_procs:
+            old_proc = self._active_mjpeg_procs.pop(identifier, None)
+            if old_proc and old_proc.returncode is None:
+                try:
+                    old_proc.terminate()
+                except Exception:
+                    pass
+
         proc = None
         safe_source_log = sanitize_url(input_source)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL, creationflags=_WIN_FLAGS
             )
+            if identifier:
+                self._active_mjpeg_procs[identifier] = proc
             try:
                 from core.job_object import job_object_mgr
 
@@ -437,10 +466,13 @@ class PreviewManager:
                         pass
                 logger.info(f"Worker de vista previa detenido ({safe_source_log}). Consumo: 0.0%")
             if identifier:
-                await self.release_slot(identifier)
+                # Solo liberar si este proc no fue sustituido por un worker más reciente
+                if self._active_mjpeg_procs.get(identifier) in (None, proc):
+                    self._active_mjpeg_procs.pop(identifier, None)
+                    await self.release_slot(identifier)
 
     async def stop_all(self):
-        """Detiene todas las ventanas de FFplay y libera todos los slots de previsualización."""
+        """Detiene todas las ventanas de FFplay, workers MJPEG y libera todos los slots de previsualización."""
         for proc in list(self._active_ffplay.values()):
             if proc.poll() is None:
                 try:
@@ -453,6 +485,17 @@ class PreviewManager:
                 except Exception:
                     pass
         self._active_ffplay.clear()
+
+        for mjpeg_proc in list(self._active_mjpeg_procs.values()):
+            if mjpeg_proc and mjpeg_proc.returncode is None:
+                try:
+                    mjpeg_proc.terminate()
+                except Exception:
+                    try:
+                        mjpeg_proc.kill()
+                    except Exception:
+                        pass
+        self._active_mjpeg_procs.clear()
 
         async with self._concurrency_lock:
             self._active_camera_previews.clear()

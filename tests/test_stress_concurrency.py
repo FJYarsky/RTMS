@@ -50,9 +50,9 @@ async def test_preview_manager_semaphore_contention_and_slot_uniqueness():
     acquired_cams = [cams[i] for i, ok in enumerate(results) if ok]
     rejected_cam = [cams[i] for i, ok in enumerate(results) if not ok][0]
 
-    # 2. La misma cámara ya activa intenta pedir otra ranura -> rechazo inmediato (ranura única por cámara)
+    # 2. La misma cámara ya activa intenta pedir otra ranura -> re-entry seguro (reutilización sin 429)
     duplicate_try = await pm.acquire_slot(acquired_cams[0])
-    assert duplicate_try is False
+    assert duplicate_try is True
 
     # 3. Liberar una de las ranuras ocupadas
     await pm.release_slot(acquired_cams[0])
