@@ -653,8 +653,15 @@ const I18N_DICTIONARY = {
 let _currentLanguage = "es";
 
 function getTranslation(key) {
+    if (!key || typeof key !== "string") return "";
     const langDict = I18N_DICTIONARY[_currentLanguage] || I18N_DICTIONARY["es"];
-    return langDict[key] || I18N_DICTIONARY["es"][key] || key;
+    if (Object.prototype.hasOwnProperty.call(langDict, key)) {
+        return langDict[key];
+    }
+    if (Object.prototype.hasOwnProperty.call(I18N_DICTIONARY["es"], key)) {
+        return I18N_DICTIONARY["es"][key];
+    }
+    return key;
 }
 
 // Helper corto global
@@ -692,9 +699,9 @@ function setAppLanguage(lang, persist = true) {
 /**
  * Asigna de forma segura el contenido traducido a un elemento del DOM.
  * Si el texto no contiene etiquetas HTML en línea, se asigna directamente mediante textContent.
- * Si contiene etiquetas permitidas (strong, code, em, b, i), se analizan y se reconstruyen
- * únicamente nodos de texto y elementos permitidos sin atributos, erradicando cualquier
- * riesgo de inyección XSS y eliminando el sink de innerHTML detectado por CodeQL.
+ * Si contiene etiquetas permitidas (strong, code, em, b, i), se construyen nodos DOM
+ * sin invocar ningún parser HTML ni sink (sin innerHTML ni llamadas a parsers externos),
+ * erradicando cualquier riesgo de XSS (CodeQL js/xss-through-dom, CWE-079 / CWE-116).
  *
  * @param {HTMLElement} el - Elemento del DOM donde se inyectará el texto traducido.
  * @param {string} content - Cadena traducida.
@@ -709,32 +716,33 @@ function setSafeTranslatedContent(el, content) {
         return;
     }
 
-    // Para cadenas con formato en línea (strong, code, em), construir nodos DOM seguros
-    // evitando el sink de innerHTML y validando únicamente elementos autorizados sin atributos
-    const parser = new DOMParser();
-    const parsedDoc = parser.parseFromString(`<body>${str}</body>`, "text/html");
-    const allowedTags = new Set(["STRONG", "CODE", "EM", "B", "I"]);
-
     // Limpiar contenido existente
     while (el.firstChild) {
         el.removeChild(el.firstChild);
     }
 
-    function appendSafeNodes(sourceNode, targetEl) {
-        sourceNode.childNodes.forEach(child => {
-            if (child.nodeType === Node.TEXT_NODE) {
-                targetEl.appendChild(document.createTextNode(child.textContent || ""));
-            } else if (child.nodeType === Node.ELEMENT_NODE && allowedTags.has(child.tagName)) {
-                const safeEl = document.createElement(child.tagName.toLowerCase());
-                appendSafeNodes(child, safeEl);
-                targetEl.appendChild(safeEl);
-            } else if (child.nodeType === Node.ELEMENT_NODE) {
-                targetEl.appendChild(document.createTextNode(child.textContent || ""));
-            }
-        });
+    // Construcción de nodos segura sin intermediación de parsers HTML ni serializadores DOM
+    const tagRegex = /<(strong|code|em|b|i)>([\s\S]*?)<\/\1>/gi;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = tagRegex.exec(str)) !== null) {
+        // Texto plano previo a la etiqueta
+        if (match.index > lastIndex) {
+            el.appendChild(document.createTextNode(str.slice(lastIndex, match.index)));
+        }
+        const tagName = match[1].toLowerCase();
+        const tagText = match[2];
+        const safeEl = document.createElement(tagName);
+        safeEl.textContent = tagText;
+        el.appendChild(safeEl);
+        lastIndex = tagRegex.lastIndex;
     }
 
-    appendSafeNodes(parsedDoc.body, el);
+    // Texto plano posterior a la última etiqueta
+    if (lastIndex < str.length) {
+        el.appendChild(document.createTextNode(str.slice(lastIndex)));
+    }
 }
 
 function applyI18nToDOM() {
