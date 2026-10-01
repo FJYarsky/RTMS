@@ -42,7 +42,13 @@ def test_issue_forms_valid_yaml_and_schema():
     root = get_repo_root()
     issue_dir = root / ".github" / "ISSUE_TEMPLATE"
 
-    expected_templates = ["bug.yml", "feature.yml", "hardware-compatibility.yml", "documentation.yml"]
+    expected_templates = [
+        "bug.yml",
+        "feature.yml",
+        "hardware-compatibility.yml",
+        "documentation.yml",
+        "accessibility.yml",
+    ]
     allowed_types = {"markdown", "textarea", "input", "dropdown", "checkboxes"}
 
     for tmpl in expected_templates:
