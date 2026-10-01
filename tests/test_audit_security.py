@@ -186,5 +186,6 @@ def test_i18n_set_safe_translated_content_no_html_sink():
     content = i18n_path.read_text(encoding="utf-8")
     assert "DOMParser" not in content, "i18n.js no debe invocar DOMParser para evitar sinks de XSS"
     assert "parseFromString" not in content, "i18n.js no debe utilizar parseFromString"
-    assert "document.createElement(tagName)" in content
+    assert 'document.createElement("strong")' in content
+    assert 'document.createElement("code")' in content
     assert "tagRegex = /<(strong|code|em|b|i)>" in content
