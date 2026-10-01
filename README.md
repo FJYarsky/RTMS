@@ -9,6 +9,7 @@
 </p>
 
 [![Release](https://img.shields.io/github/v/release/FJYarsky/RTMS?color=0ea5e9&label=Versi%C3%B3n)](https://github.com/FJYarsky/RTMS/releases/latest)
+[![Wiki](https://img.shields.io/badge/Wiki-Documentaci%C3%B3n-blue?logo=gitbook&logoColor=white)](https://github.com/FJYarsky/RTMS/wiki)
 [![Website](https://img.shields.io/badge/Sitio%20Web-fjyarsky.github.io%2FRTMS-0ea5e9?logo=googlechrome&logoColor=white)](https://fjyarsky.github.io/RTMS/)
 [![Platform](https://img.shields.io/badge/Plataforma-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)](https://microsoft.com)
 [![Protocol](https://img.shields.io/badge/Streaming-SRT%20%7C%20WebRTC%20%7C%20UDP-0d9488)](https://www.srtalliance.org/)
@@ -21,7 +22,7 @@
 
 **Servidor de video multicámara de baja latencia para Windows con ingesta desacoplada vía MediaMTX, SRT y UDP.**
 
-[⬇️ Descargar Última Versión](https://github.com/FJYarsky/RTMS/releases/latest) • [Sitio Web Oficial](https://fjyarsky.github.io/RTMS/) • [Capturas](#-demostración-y-capturas-de-pantalla) • [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Discusiones](https://github.com/FJYarsky/RTMS/discussions) • [Contacto](#-contacto-y-soporte)
+[⬇️ Descargar Última Versión](https://github.com/FJYarsky/RTMS/releases/latest) • [📖 Wiki Oficial](https://github.com/FJYarsky/RTMS/wiki) • [Sitio Web Oficial](https://fjyarsky.github.io/RTMS/) • [Capturas](#-demostración-y-capturas-de-pantalla) • [Inicio Rápido](#-inicio-rápido) • [Configuración OBS](#-configuración-en-obs-studio) • [Características](#-características) • [Seguridad](#-seguridad) • [Discusiones](https://github.com/FJYarsky/RTMS/discussions) • [Contacto](#-contacto-y-soporte)
 
 ---
 
