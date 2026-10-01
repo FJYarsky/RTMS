@@ -10,3 +10,6 @@ contact_links:
   - name: "📖 Documentación y Guías de RTMS"
     url: https://github.com/FJYarsky/RTMS/tree/main/docs
     about: "Explora la documentación técnica, guías de arquitectura y resolución de problemas frecuentes."
+  - name: "♿ Compromiso y Reporte de Accesibilidad"
+    url: https://github.com/FJYarsky/RTMS/blob/main/.github/ACCESSIBILITY.md
+    about: "¿Encontraste una barrera de accesibilidad o necesitas mejoras de inclusión? Consulta nuestras pautas de accesibilidad."
