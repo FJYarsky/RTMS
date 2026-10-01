@@ -14,6 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import List, Set, Tuple
+from urllib.parse import urlsplit, urlunsplit
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _DOCS_DIR = _REPO_ROOT / "docs"
@@ -268,9 +269,11 @@ def deploy_wiki(
 
     target_url = wiki_repo_url
     if token:
-        # Inyectar token en la URL de autenticación
-        if "github.com/" in target_url:
-            target_url = target_url.replace("https://github.com/", f"https://x-access-token:{token}@github.com/")
+        # Inyectar token en la URL de autenticación tras validar de forma segura el host
+        parsed = urlsplit(wiki_repo_url)
+        if parsed.scheme == "https" and parsed.netloc.lower() in {"github.com", "www.github.com"}:
+            netloc_with_token = f"x-access-token:{token}@{parsed.netloc}"
+            target_url = urlunsplit((parsed.scheme, netloc_with_token, parsed.path, parsed.query, parsed.fragment))
 
     print(f"Comprobando disponibilidad de: {wiki_repo_url}")
     # Comprobar si el repositorio de la wiki existe / está inicializado
@@ -278,17 +281,40 @@ def deploy_wiki(
     res_check = subprocess.run(check_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     if res_check.returncode != 0:
+        msg = (
+            "La Wiki de GitHub debe activarse por primera vez en la interfaz web antes de permitir el acceso vía Git.\n"
+            "Pasos:\n"
+            "1. Abre en tu navegador: https://github.com/FJYarsky/RTMS/wiki\n"
+            "2. Haz clic en 'Create the first page' o 'Set up your first page'.\n"
+            "3. Guarda la página (Save page).\n"
+            "4. En el próximo push o ejecución de 'just wiki-deploy', las 37 páginas se sincronizarán automáticamente."
+        )
         print("\n" + "=" * 80)
         print("[AVISO IMPORTANTE: WIKI DE GITHUB NO INICIALIZADA]")
         print("=" * 80)
-        print("GitHub requiere que la Wiki sea activada en la interfaz web antes de permitir")
-        print("el acceso vía Git (retorna 'repository not found').")
-        print("\nPasos para activarla en 30 segundos:")
-        print("1. Abre en tu navegador: https://github.com/FJYarsky/RTMS/wiki")
-        print("2. Haz clic en el botón verde 'Create the first page' o 'Set up your first page'.")
-        print("3. Guarda la página (puedes dejar cualquier título o 'Home').")
-        print("4. Vuelve a ejecutar 'just wiki-deploy' o activa el workflow de GitHub Actions.")
+        print(msg)
         print("=" * 80 + "\n")
+
+        # Notificar en GitHub Actions si se ejecuta en CI
+        if os.environ.get("GITHUB_ACTIONS"):
+            print(
+                "::warning title=GitHub Wiki no inicializada::La Wiki debe activarse en https://github.com/FJYarsky/RTMS/wiki"
+            )
+            summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+            if summary_file:
+                with open(summary_file, "a", encoding="utf-8") as f:
+                    f.write("### ⚠️ GitHub Wiki Pendiente de Activación Inicial\n\n")
+                    f.write(
+                        "GitHub requiere que la Wiki sea activada en la interfaz web antes de permitir el acceso vía Git (`repository not found`).\n\n"
+                    )
+                    f.write("**Pasos para activarla en 30 segundos:**\n")
+                    f.write("1. Abre [https://github.com/FJYarsky/RTMS/wiki](https://github.com/FJYarsky/RTMS/wiki).\n")
+                    f.write("2. Haz clic en el botón verde **Create the first page** o **Set up your first page**.\n")
+                    f.write("3. Guarda la página (*Save page*).\n\n")
+                    f.write(
+                        "Una vez guardada, este workflow volcará automáticamente las 37 páginas de documentación técnica.\n"
+                    )
+            return 0
         return 2
 
     # Clonar repositorio existente
