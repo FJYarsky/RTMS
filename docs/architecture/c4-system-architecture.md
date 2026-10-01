@@ -12,23 +12,23 @@
 El diagrama de contexto ilustra cómo RTMS interactúa con los operadores humanos, los dispositivos de captura de video físicos del entorno local y los sistemas receptores de producción audiovisual en red.
 
 ```mermaid
-C4Context
-    title Diagrama de Contexto de Sistema — RTMS (Real-Time Multicam System)
-
-    Person(operator, "Operador de Transmisión", "Controla el encuadre, parámetros de codificación, previsualización y orquestación de cámaras.")
+flowchart TB
+    operator["Operador de Transmisión<br/>(Controla encuadre, parámetros de codificación, vistas previas y orquestación)"]
     
-    System(rtms, "RTMS", "Estación de transmisión multicámara de baja latencia para Windows con ingesta desacoplada, blindaje de procesos y telemetría a 10 Hz.")
+    subgraph RTMS_SYSTEM [" Sistema RTMS (Real-Time Multicam System) "]
+        rtms["RTMS Core & Services<br/>Estación multicámara de baja latencia para Windows con ingesta desacoplada, blindaje de procesos y telemetría a 10 Hz"]
+    end
 
-    System_Ext(cameras, "Dispositivos de Entrada DirectShow", "Cámaras web USB, capturadoras HDMI PCIe/USB y dispositivos virtuales de video.")
-    System_Ext(obs, "OBS Studio / vMix", "Software de producción en vivo y mezcla de video conectado vía SRT (Caller) o UDP.")
-    System_Ext(vlc, "Reproductores VLC / LAN", "Puestos de monitoreo técnico local, monitores de retorno y dispositivos móviles vía QR.")
-    System_Ext(browser, "Navegadores Web / Control Remoto", "Operadores remotos en la misma LAN auditando video vía WebRTC WHEP y API REST.")
+    cameras["Dispositivos de Entrada DirectShow<br/>(Cámaras web USB, capturadoras HDMI PCIe/USB y dispositivos virtuales)"]
+    obs["OBS Studio / vMix<br/>(Software de producción en vivo y mezcla de video conectado vía SRT Listener o UDP)"]
+    vlc["Reproductores VLC / LAN<br/>(Puestos de monitoreo técnico local, retorno y dispositivos móviles vía QR)"]
+    browser["Navegadores Web / Control Remoto<br/>(Operadores en red local auditando video vía WebRTC WHEP y API REST)"]
 
-    Rel(operator, rtms, "Configura parámetros, inicia/detiene señales y monitorea telemetría", "HTTPS / WebSocket / GUI")
-    Rel(cameras, rtms, "Entregan cuadros de video crudos o MJPEG", "DirectShow API / USB Bus")
-    Rel(rtms, obs, "Retransmite señales H.264 multiplexadas cifradas (<100 ms)", "SRT Listener (AES-128)")
-    Rel(rtms, vlc, "Emite flujos multicast y unicast de baja latencia", "UDP / SRT")
-    Rel(rtms, browser, "Emite telemetría a 10 Hz y vistas previas en tiempo real", "WebRTC WHEP / MJPEG Multipart")
+    operator -->|"Configura parámetros, inicia/detiene señales y monitorea telemetría"| rtms
+    cameras -->|"Entregan cuadros de video crudos o MJPEG vía DirectShow API"| rtms
+    rtms -->|"Retransmite señales H.264 multiplexadas cifradas (latencia menor a 100 ms)"| obs
+    rtms -->|"Emite flujos multicast y unicast de baja latencia"| vlc
+    rtms -->|"Emite telemetría a 10 Hz y vistas previas en tiempo real"| browser
 ```
 
 ---
@@ -38,34 +38,32 @@ C4Context
 El diagrama de contenedores desglosa la aplicación RTMS en sus entornos de ejecución, almacenes de datos y procesos concurrentes desacoplados.
 
 ```mermaid
-C4Container
-    title Diagrama de Contenedores — RTMS
+flowchart TB
+    user["Operador Técnico<br/>(Interacciona con la aplicación)"]
 
-    Person(user, "Operador Técnico", "Interacciona con la aplicación")
+    subgraph RTMS_APP [" RTMS Portable Application Boundary "]
+        gui["Interfaz de Usuario (SPA)<br/>HTML5, CSS3, Vanilla JS, WebRTC WHEP, WebSockets<br/>(Dashboard reactivo con telemetría HUD y modales de control)"]
+        webview["Ventana Nativa WebView2<br/>pywebview / Edge Chromium Engine<br/>(Escritorio con VSync a 60 FPS y persistencia al System Tray)"]
+        backend["Servidor API Backend<br/>FastAPI, Uvicorn, Python 3.12+ (asyncio)<br/>(Orquesta ciclo de vida, expone REST, autentica tokens y emite telemetría)"]
+        mediamtx["Broker de Streaming Embebido<br/>MediaMTX (Go Mono-binario)<br/>(Conmutador multiplexor 1-a-N para SRT :8890, WebRTC WHEP :8889 y RTSP)"]
+        workers["Workers de Ingesta FFmpeg<br/>FFmpeg 7.x/8.x (Subprocesos Win32)<br/>(Captura DirectShow, CBR y aceleración por silicio NVENC/QSV/AMF/CPU)"]
+        database[("Base de Datos Transaccional<br/>SQLite WAL (config/rtms.db)<br/>(Persistencia ACID de configuración, variables y migraciones)")]
+        tray["Bandeja del Sistema (System Tray)<br/>pystray, Win32 Message Pump<br/>(Icono interactivo en la barra de tareas de Windows)"]
+    end
 
-    Container_Boundary(rtms_app, "RTMS Portable Application Boundary") {
-        Container(gui, "Interfaz de Usuario (SPA)", "HTML5, CSS3, Vanilla JS, WebRTC WHEP, WebSockets", "Dashboard reactivo con telemetría HUD, gestión de cámaras y modales de configuración.")
-        Container(webview, "Ventana Nativa WebView2", "pywebview / Edge Chromium Engine", "Ejecutable de escritorio con control de VSync (60 FPS) y persistencia al System Tray.")
-        Container(backend, "Servidor API Backend", "FastAPI, Uvicorn, Python 3.12+ (asyncio)", "Orquesta el ciclo de vida, expone endpoints REST, autentica mediante tokens y distribuye telemetría a 10 Hz.")
-        Container(mediamtx, "Broker de Streaming Embebido", "MediaMTX (Go Mono-binario)", "Conmutador de paquetes multiplexor 1-a-N para SRT (:8890), WebRTC WHEP (:8889) y RTSP.")
-        Container(workers, "Workers de Ingesta FFmpeg", "FFmpeg 7.x/8.x (Subprocesos Win32)", "Capturan DirectShow, aplican rate control CBR y codifican con aceleración por silicio (NVENC/QSV/AMF/CPU).")
-        ContainerDb(database, "Base de Datos Transaccional", "SQLite WAL (config/rtms.db)", "Persistencia ACID de configuración de cámaras, parámetros globales y migraciones de esquema.")
-        Container(tray, "Bandeja del Sistema (System Tray)", "pystray, Win32 Message Pump", "Icono interactivo de notificación en la barra de tareas de Windows para control en segundo plano.")
-    }
+    dshow_hardware["Sensores DirectShow USB<br/>(Cámaras Físicas)"]
+    clients["Clientes de Producción<br/>(OBS Studio, vMix, VLC)"]
 
-    System_Ext(dshow_hardware, "Sensores DirectShow USB", "Cámaras Físicas")
-    System_Ext(clients, "Clientes de Producción", "OBS Studio, vMix, VLC")
-
-    Rel(user, webview, "Interactúa visualmente", "Win32 Window")
-    Rel(webview, gui, "Renderiza", "Chromium DOM")
-    Rel(gui, backend, "Peticiones REST y WebSocket", "HTTP / WS (localhost:8000)")
-    Rel(backend, database, "Lee y escribe configuraciones bajo WAL", "SQL (aiosqlite / sqlite3)")
-    Rel(backend, mediamtx, "Supervisa proceso y registra rutas vía REST", "HTTP Control / Win32 Job Object")
-    Rel(backend, workers, "Controla ciclo de vida y lee telemetría", "asyncio.subprocess / stdout pipe:1")
-    Rel(backend, tray, "Sincroniza eventos de detención y salida", "Threadsafe callbacks")
-    Rel(dshow_hardware, workers, "Transfiere cuadros crudos", "DirectShow Drivers")
-    Rel(workers, mediamtx, "Empuja flujos SRT multiplexados", "SRT Loopback (127.0.0.1:8890)")
-    Rel(mediamtx, clients, "Distribuye flujos concurrentes sin recodificar", "SRT AES-128 / WebRTC / UDP")
+    user -->|"Interactúa visualmente"| webview
+    webview -->|"Renderiza"| gui
+    gui -->|"Peticiones REST y WebSocket"| backend
+    backend -->|"Lee y escribe configuraciones bajo WAL"| database
+    backend -->|"Supervisa proceso y registra rutas vía REST"| mediamtx
+    backend -->|"Controla ciclo de vida y lee telemetría"| workers
+    backend -->|"Sincroniza eventos de detención y salida"| tray
+    dshow_hardware -->|"Transfiere cuadros crudos"| workers
+    workers -->|"Empuja flujos SRT multiplexados (127.0.0.1:8890)"| mediamtx
+    mediamtx -->|"Distribuye flujos concurrentes sin recodificar"| clients
 ```
 
 ---
@@ -75,43 +73,41 @@ C4Container
 El diagrama de componentes detalla la estructura modular interna del backend de RTMS y la interacción entre sus administradores especializados.
 
 ```mermaid
-C4Component
-    title Diagrama de Componentes — RTMS Core & API
+flowchart TB
+    subgraph API_BOUNDARY [" Capa de API REST (FastAPI) "]
+        streams_router["StreamsRouter (api/routes/streams.py)<br/>Endpoints para arranque, parada, reinicio y estado de flujos"]
+        preview_router["PreviewRouter (api/routes/preview.py)<br/>Endpoints de tickets efímeros y streaming multipart MJPEG"]
+        ws_router["WebSocketRouter (api/routes/ws.py)<br/>Endpoint bidireccional /api/ws/telemetry"]
+        deps["SecurityDeps (api/deps.py)<br/>Validación X-RTMS-Token, cookie HttpOnly y PreviewTicketManager"]
+    end
 
-    Container_Boundary(core_boundary, "Núcleo del Sistema (RTMS Core)") {
-        Component(stream_mgr, "StreamManager", "core/stream_manager.py", "Supervisa la FSM de cada stream, ejecuta el watchdog de autorrecuperación y orquesta los reinicios.")
-        Component(cmd_builder, "CommandBuilder", "core/command_builder.py", "Calcula cadenas deterministas de flags para FFmpeg con calibración CBR y optimización de latencia.")
-        Component(hw_scanner, "DirectShowDeviceScanner", "core/hardware.py", "Sondea dispositivos mediante coalescencia single-flight y caché TTL de 4 segundos.")
-        Component(enc_detector, "HardwareCapabilityDetector", "core/hardware.py", "Detecta aceleradores de silicio (NVENC, QSV, AMF) con caché de prueba única en el arranque.")
-        Component(job_mgr, "JobObjectManager", "core/job_object.py", "Blinda los subprocesos en el kernel con JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.")
-        Component(power_mgr, "PowerManager & SystemEnv", "core/power_mgr.py", "Previene suspensión del SO, ajusta PnPCapabilities de red y fija el reloj del kernel a 1 ms.")
-        Component(secrets_mgr, "SecretsManager", "core/secrets_mgr.py", "Cifra y descifra credenciales en reposo mediante Windows DPAPI (CryptProtectData).")
-        Component(port_mgr, "PortManager", "core/port_mgr.py", "Asigna y revalida sockets libres en el rango 9000-9200, resolviendo colisiones.")
-        Component(preview_mgr, "PreviewManager", "core/preview_mgr.py", "Controla la admisión (máximo 3) y extrae fragmentos JPEG delimitados por cabeceras SOI/EOI.")
-        Component(telemetry_hub, "TelemetryWebSocketHub", "core/telemetry_hub.py", "Ejecuta el ticker de 10 Hz activado por demanda y notifica eventos reactivos.")
-        Component(config_repo, "ConfigRepository", "core/repository/", "Capa de abstracción relacional sobre SQLite con migraciones idempotentes.")
-    }
+    subgraph CORE_BOUNDARY [" Núcleo del Sistema (RTMS Core) "]
+        stream_mgr["StreamManager (core/stream_manager.py)<br/>Supervisa FSM, watchdog y autorrecuperación"]
+        cmd_builder["CommandBuilder (core/command_builder.py)<br/>Cadenas deterministas de flags FFmpeg CBR"]
+        hw_scanner["DirectShowDeviceScanner (core/hardware.py)<br/>Coalescencia single-flight y caché TTL de 4s"]
+        enc_detector["HardwareCapabilityDetector (core/hardware.py)<br/>Detección de silicio NVENC/QSV/AMF"]
+        job_mgr["JobObjectManager (core/job_object.py)<br/>Win32 Job Object KILL_ON_JOB_CLOSE"]
+        power_mgr["PowerManager & SystemEnv (core/power_mgr.py)<br/>Prevención de suspensión y reloj kernel a 1 ms"]
+        secrets_mgr["SecretsManager (core/secrets_mgr.py)<br/>Cifrado DPAPI CryptProtectData en reposo"]
+        port_mgr["PortManager (core/port_mgr.py)<br/>Asignación dinámica en rango 9000-9200"]
+        preview_mgr["PreviewManager (core/preview_mgr.py)<br/>Admisión semáforo máx 3 y extracción SOI/EOI"]
+        telemetry_hub["TelemetryWebSocketHub (core/telemetry_hub.py)<br/>Ticker 10 Hz on-demand y broadcast reactivo"]
+        config_repo["ConfigRepository (core/repository/)<br/>Abstracción relacional SQLite WAL y migraciones"]
+    end
 
-    Container_Boundary(api_boundary, "Capa de API REST (FastAPI)") {
-        Component(streams_router, "StreamsRouter", "api/routes/streams.py", "Endpoints para arranque, parada, reinicio y estado de flujos.")
-        Component(preview_router, "PreviewRouter", "api/routes/preview.py", "Endpoints de generación de tickets efímeros y streaming multipart.")
-        Component(ws_router, "WebSocketRouter", "api/routes/ws.py", "Endpoint bidireccional /api/ws/telemetry.")
-        Component(deps, "SecurityDeps", "api/deps.py", "Validación de cabecera X-RTMS-Token, cookie HttpOnly y PreviewTicketManager.")
-    }
-
-    Rel(streams_router, stream_mgr, "Invoca start_stream, stop_stream")
-    Rel(streams_router, deps, "Verifica token de sesión")
-    Rel(preview_router, preview_mgr, "Solicita stream MJPEG y valida slots")
-    Rel(preview_router, deps, "Consume tickets efímeros")
-    Rel(ws_router, telemetry_hub, "Registra suscriptores WebSocket")
-    Rel(stream_mgr, cmd_builder, "Solicita lista de argumentos")
-    Rel(cmd_builder, enc_detector, "Consulta mejor encoder")
-    Rel(stream_mgr, job_mgr, "Asigna subprocesos recién creados")
-    Rel(stream_mgr, port_mgr, "Reserva puertos de escucha")
-    Rel(stream_mgr, config_repo, "Obtiene y persiste configuraciones")
-    Rel(stream_mgr, hw_scanner, "Sincroniza inventario físico")
-    Rel(config_repo, secrets_mgr, "Cifra passphrases al persistir")
-    Rel(telemetry_hub, stream_mgr, "Lee contadores de FPS y bitrate")
+    streams_router -->|"start_stream, stop_stream"| stream_mgr
+    streams_router -->|"Verifica token de sesión"| deps
+    preview_router -->|"Solicita stream MJPEG"| preview_mgr
+    preview_router -->|"Consume tickets efímeros"| deps
+    ws_router -->|"Registra suscriptores WebSocket"| telemetry_hub
+    stream_mgr -->|"Solicita lista de argumentos"| cmd_builder
+    cmd_builder -->|"Consulta mejor encoder"| enc_detector
+    stream_mgr -->|"Asigna subprocesos recién creados"| job_mgr
+    stream_mgr -->|"Reserva puertos de escucha"| port_mgr
+    stream_mgr -->|"Obtiene y persiste configuraciones"| config_repo
+    stream_mgr -->|"Sincroniza inventario físico"| hw_scanner
+    config_repo -->|"Cifra passphrases al persistir"| secrets_mgr
+    telemetry_hub -->|"Lee contadores de FPS y bitrate"| stream_mgr
 ```
 
 ---
@@ -159,7 +155,7 @@ flowchart TD
     end
 
     subgraph CLIENTS [" Receptores de Producción "]
-        EGRESS_SRT -->|"srt://host:8890?streamid=read:{cam_id}&passphrase=..."| OBS["OBS Studio (Latencia <100ms)"]
+        EGRESS_SRT -->|"srt://host:8890?streamid=read:{cam_id}&passphrase=..."| OBS["OBS Studio (Latencia menor a 100 ms)"]
         EGRESS_WHEP -->|"POST /whep/{cam_id} (SDP Offer/Answer)"| WEB["Dashboard HTML5 (Video Tag)"]
         EGRESS_UDP -->|"udp://@239.255.0.x:{port}"| VLC["Monitores VLC en Red Local"]
     end

@@ -34,7 +34,7 @@ Se adopta la **Opción C**:
 1. Se implementa la clase singleton [`JobObjectManager`](file:///C:/Users/joaqu/Desktop/RTMS/core/job_object.py) en `core/job_object.py`.
 2. Al iniciar la aplicación en plataformas Win32, se invoca `kernel32.CreateJobObjectW(None, None)`.
 3. Se estructura una llamada a `kernel32.SetInformationJobObject` con la clase de información `JobObjectExtendedLimitInformation` (valor 9), inyectando la estructura `JOBOBJECT_EXTENDED_LIMIT_INFORMATION` con el flag:
-   $$\text{BasicLimitInformation.LimitFlags} = \text{JOB\_OBJECT\_LIMIT\_KILL\_ON\_JOB\_CLOSE} \; (0x2000)$$
+   `BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE (0x2000)`
 4. En [`core/stream_manager.py`](file:///C:/Users/joaqu/Desktop/RTMS/core/stream_manager.py), [`core/mediamtx_mgr.py`](file:///C:/Users/joaqu/Desktop/RTMS/core/mediamtx_mgr.py) y [`core/preview_mgr.py`](file:///C:/Users/joaqu/Desktop/RTMS/core/preview_mgr.py), cada vez que se crea un subproceso mediante `asyncio.create_subprocess_exec` o `subprocess.Popen`, se invoca `job_object_manager.assign_process_to_job(proc)`.
 5. Se utiliza `kernel32.AssignProcessToJobObject(self.job_handle, handle)` pasando el descriptor del proceso obtenido mediante `kernel32.OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, False, pid)`.
 6. Al cerrarse el handle del Job (lo cual el kernel de Windows ejecuta incondicionalmente al destruirse el proceso padre, incluso en un Kernel Panic o crash fatal), el planificador de Windows envía una señal de terminación forzada a nivel de kernel a todos los procesos registrados en el Job.

@@ -35,11 +35,11 @@ RTMS ejecuta un servidor HTTP FastAPI en el puerto local de la máquina (`127.0.
 ## 4. Decisión
 Se adopta la **Opción C**:
 1. En `main.py`, se genera el token de sesión único:
-   $$\text{API\_TOKEN} = \text{secrets.token\_urlsafe}(32)$$
+   `API_TOKEN = secrets.token_urlsafe(32)`
    y se asocia al estado global de la aplicación.
 2. En [`api/deps.py`](file:///C:/Users/joaqu/Desktop/RTMS/api/deps.py), el middleware de autenticación `verify_api_token()`:
    - Verifica si existe el parámetro `token` en la query string. Si está presente, lanza inmediatamente:
-     $$\text{HTTP 403 Forbidden: "Token en query string prohibido por seguridad"}$$
+     `HTTP 403 Forbidden: "Token en query string prohibido por seguridad"`
    - Valida la cabecera `X-RTMS-Token` o la cookie `rtms_session` utilizando comparación en tiempo constante:
      `secrets.compare_digest(provided, expected_token)`
      para evitar vulnerabilidades de canal lateral basadas en tiempo (*timing attacks*).

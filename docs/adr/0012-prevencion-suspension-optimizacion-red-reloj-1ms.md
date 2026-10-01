@@ -36,7 +36,9 @@ En emisiones y producciones de video en vivo de misión crítica que se extiende
 ## 4. Decisión
 Se adopta la **Opción C**:
 1. En [`core/power_mgr.py`](file:///C:/Users/joaqu/Desktop/RTMS/core/power_mgr.py) y [`core/system_env.py`](file:///C:/Users/joaqu/Desktop/RTMS/core/system_env.py), al iniciar el sistema o una transmisión, se invoca:
-   $$\text{SetThreadExecutionState}(\text{ES\_CONTINUOUS} \mid \text{ES\_SYSTEM\_REQUIRED} \mid \text{ES\_AWAYMODE\_REQUIRED})$$
+   ```c
+   SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED);
+   ```
    Esto informa al Administrador de Energía del kernel que el hilo está ejecutando operaciones críticas de fondo que no deben ser interrumpidas por temporizadores de inactividad.
 2. Se implementa `set_high_resolution_timer(enable=True)` mediante `ctypes.windll.winmm.timeBeginPeriod(1)`. Al apagar la aplicación, se invoca `timeEndPeriod(1)`, devolviendo la resolución del reloj al valor global del sistema operativo.
 3. Se implementa `apply_network_power_settings()` manipulando directamente mediante `winreg` la clave:

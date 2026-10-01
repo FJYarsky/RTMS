@@ -109,10 +109,12 @@ sequenceDiagram
 El algoritmo de migración automática desde `config.json` hacia `rtms.db` se rige por las siguientes etapas deterministas:
 
 1. **Evaluación de Precondición**:
-   $$\text{RequiereMigración} = \text{Existe}(F_{\text{json}}) \land (\text{Filas}(\text{cameras}) = 0) \land (\text{Filas}(\text{system\_settings}) = 0)$$
+   Se evalúa la condición booleana de migración requerida:
+   $$\text{MigracionRequerida} = \text{Existe}(F_{\mathrm{json}}) \land (N_{\mathrm{cameras}} = 0) \land (N_{\mathrm{settings}} = 0)$$
+   donde $N_{\mathrm{cameras}}$ representa las filas registradas en la tabla `cameras` y $N_{\mathrm{settings}}$ en `system_settings`.
 2. **Creación de Respaldo Inmutable**:
-   Antes de abrir cualquier transacción, se copia el archivo original con marca de versión:
-   $$F_{\text{backup}} = F_{\text{json}} + \text{".v2.4.1.bak"}$$
+   Antes de abrir cualquier transacción, se copia el archivo original con sufijo de versión:
+   `config.json` $\rightarrow$ `config.json.v2.4.1.bak`
 3. **Transacción Atómica de Ingestión**:
    Bajo una única transacción de base de datos, se itera sobre la lista de cámaras del JSON y se insertan con normalización de claves y tipos. Si alguna sentencia falla, se ejecuta `ROLLBACK` y el archivo `config.json` permanece intacto.
 4. **Verificación Post-Commit**:

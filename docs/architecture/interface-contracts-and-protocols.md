@@ -118,12 +118,12 @@ Emitido instantáneamente ante transiciones de estado, desconexión de hardware 
 * **Modo de Conexión**: `mode=caller` (FFmpeg empuja el flujo al broker local).
 * **Dirección de Enlace**: `srt://127.0.0.1:8890?streamid=publish:{cam_id}&...`
 * **Parámetros de Capa de Transporte**:
-  $$\text{latency} = 50000 \; \mu\text{s (50 ms en zerolatency)}$$
-  $$\text{tlpktdrop} = 1 \; (\text{Incondicional en caller: descarta paquetes tardíos para evitar acumular buffer})$$
-  $$\text{transtype} = \text{live}$$
-  $$\text{sndbuf} = 65536 \; \text{bytes}, \quad \text{rcvbuf} = 65536 \; \text{bytes}$$
-  $$\text{pkt\_size} = 1316 \; \text{bytes (Exactamente 7 paquetes MPEG-TS de 188 bytes)}$$
-  $$\text{smoother} = \text{deshabilitado en modo caller para erradicar retardo artificial de pacing}$$
+  - `latency = 50000` ($\mu\text{s}$, 50 ms en zerolatency).
+  - `tlpktdrop = 1` (incondicional en caller: descarta paquetes tardíos para evitar acumular buffer).
+  - `transtype = live`
+  - `sndbuf = 65536` bytes, `rcvbuf = 65536` bytes.
+  - `pkt_size = 1316` bytes (exactamente 7 paquetes MPEG-TS de 188 bytes).
+  - `smoother` = deshabilitado en modo caller para erradicar retardo artificial de pacing.
 
 ### 3.2 Canal de Distribución y Lectura (MediaMTX Broker $\rightarrow$ OBS / vMix / VLC)
 * **Modo de Conexión**: `mode=listener` (MediaMTX escucha conexiones entrantes de clientes).
@@ -138,8 +138,8 @@ Emitido instantáneamente ante transiciones de estado, desconexión de hardware 
 ### 4.2 Mapeo Canónico de Direcciones Multicast
 Para evitar colisiones entre múltiples cámaras dentro del segmento LAN, RTMS calcula de forma determinista la IP del grupo multicast en base al puerto de transmisión:
 
-$$P \in [9000, 9200] \implies \text{IP}_{\text{multicast}} = \texttt{239.255.0.} \left( (P - 9000) + 1 \right)$$
-$$P \notin [9000, 9200] \implies \text{IP}_{\text{multicast}} = \texttt{239.255.0.} \left( ((P - 1024) \bmod 250) + 1 \right)$$
+$$P \in [9000, 9200] \implies \mathrm{IP}_{\mathrm{multicast}} = \texttt{239.255.0.} \left( (P - 9000) + 1 \right)$$
+$$P \notin [9000, 9200] \implies \mathrm{IP}_{\mathrm{multicast}} = \texttt{239.255.0.} \left( ((P - 1024) \bmod 250) + 1 \right)$$
 
 * **Parámetros del Socket Multicast**:
   - `pkt_size=1316`: Tamaño óptimo de payload MTU.
@@ -158,6 +158,7 @@ $$P \notin [9000, 9200] \implies \text{IP}_{\text{multicast}} = \texttt{239.255.
 Para autorizar solicitudes de imágenes o flujos sin cabeceras HTTP personalizadas:
 1. **Generación**: El cliente envía `POST /api/preview/ticket` con cabecera `X-RTMS-Token`. El backend responde con un token urlsafe de 32 bytes (`ticket`).
 2. **Asociación**: El token queda ligado a la ruta de la cámara y a una marca de tiempo de expiración:
-   $$t_{\text{exp}} = \text{time.time}() + \text{ttl\_seconds} \; (\text{por defecto 60 segundos})$$
+   $$t_{\mathrm{exp}} = t_{\mathrm{actual}} + \Delta t_{\mathrm{ttl}} \quad (\text{con } \Delta t_{\mathrm{ttl}} = 60\text{ s por defecto})$$
+   donde el tiempo de vida en segundos se configura mediante el parámetro `ttl_seconds`.
 3. **Consumo Atómico**: Al recibir `GET /api/preview/mjpeg/{cam_id}?ticket={ticket}`, la función `consume_ticket()` extrae y borra atómicamente el ticket bajo `threading.Lock()`. Cualquier petición posterior con el mismo ticket es rechazada con `HTTP 403`.
 4. **Desalojo por Capacidad**: Máximo 100 tickets simultáneos en memoria. Al alcanzar el límite, el ticket más antiguo es purgado automáticamente.

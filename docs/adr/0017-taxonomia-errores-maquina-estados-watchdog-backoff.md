@@ -62,8 +62,8 @@ Se adopta la **Opción C**:
    - Esto evita el infame deadlock de pipes de Windows donde el subproceso se bloquea si el buffer de stderr del sistema operativo (4 KB) se llena y el padre no lo lee a tiempo.
 4. **Política del Watchdog y Recuperación**:
    - En [`core/stream_manager.py`](file:///C:/Users/joaqu/Desktop/RTMS/core/stream_manager.py), el watchdog evalúa cada 2 segundos los procesos activos.
-   - Si un stream falla, incrementa `error_count` y calcula el tiempo de espera:
-     $$T_{\text{wait}} = \min(2^{\text{error\_count}}, 30) \; \text{segundos}$$
+   - Si un stream falla, incrementa `error_count` ($k$) y calcula el tiempo de espera con backoff exponencial:
+     $$T_{\mathrm{wait}} = \min(2^k, 30) \quad (\text{segundos})$$
    - Si un stream permanece en estado `RUNNING` durante más de 60 segundos continuos (`STABILITY_THRESHOLD_SECONDS`), se reinicia `error_count = 0` reconociendo la estabilidad de la transmisión.
    - Si `error_count >= 5`, se cancelan los reintentos automáticos y se transiciona a `MANUAL_INTERVENTION_REQUIRED`, protegiendo la CPU y notificando al operador en el HUD.
 

@@ -38,13 +38,13 @@ sequenceDiagram
     participant PVM as PreviewManager
     participant FF as Worker FFmpeg (MJPEG Pipe)
 
-    GUI->>API: POST /api/preview/ticket {device_path, ttl: 60} [con X-RTMS-Token]
+    GUI->>API: POST /api/preview/ticket [con X-RTMS-Token]
     API->>TKM: create_ticket(device_path, 60)
-    TKM-->>API: ticket = "a8f7c9e1..." (token criptográfico 32b)
-    API-->>GUI: 200 OK {ticket: "a8f7c9e1..."}
+    TKM-->>API: ticket generado (token criptográfico 32b)
+    API-->>GUI: 200 OK con ticket efímero
 
-    GUI->>API: GET /api/preview/mjpeg/{cam_id}?ticket=a8f7c9e1...
-    API->>TKM: consume_ticket("a8f7c9e1...", device_path)
+    GUI->>API: GET /api/preview/mjpeg/{cam_id}?ticket=token
+    API->>TKM: consume_ticket(ticket, device_path)
     Note over TKM: Validación atómica y eliminación (Single-Use)
     TKM-->>API: Válido (True)
 
@@ -68,17 +68,17 @@ sequenceDiagram
 flowchart TD
     subgraph INGEST [" Ingesta de Medios "]
         CAM["Cámara DirectShow"] --> ENC["FFmpeg NVENC / QSV / CPU"]
-        ENC -->|SRT Loopback :8890| MTX["MediaMTX Broker"]
+        ENC -->|"SRT Loopback :8890"| MTX["MediaMTX Broker"]
     end
 
     subgraph PREVIEWS [" Vías de Previsualización "]
-        MTX -->|Ruta WHEP :8889| WHEP["WebRTC Egress WHEP<br/>(&lt;50 ms Latencia)"]
-        CAM -.->|Bajo Demanda (Max 3 Slots)| EXTRACT["FFmpeg MJPEG Extractor<br/>(Buffer Capped 4 MB)"]
+        MTX -->|"Ruta WHEP :8889"| WHEP["WebRTC Egress WHEP<br/>(Latencia menor a 50 ms)"]
+        CAM -.->|"Bajo Demanda - Máx 3 Slots"| EXTRACT["FFmpeg MJPEG Extractor<br/>(Buffer Capped 4 MB)"]
     end
 
     subgraph CLIENT [" Presentación en Frontend "]
-        WHEP -->|RTC Data/Media Track| CANVAS["Canvas / Video Tag<br/>(Modo Preferente)"]
-        EXTRACT -->|Multipart Stream| IMG["Image Tag Fallback<br/>(Modo Universal)"]
+        WHEP -->|"RTC Data/Media Track"| CANVAS["Canvas / Video Tag<br/>(Modo Preferente)"]
+        EXTRACT -->|"Multipart Stream"| IMG["Image Tag Fallback<br/>(Modo Universal)"]
     end
 ```
 
@@ -86,18 +86,19 @@ flowchart TD
 El algoritmo de desempaquetado de cuadros JPEG en memoria implementa una máquina de estados binaria sobre fragmentos de 32 KB:
 
 1. **Definición de Marcadores JPEG**:
-   $$\text{SOI} = \texttt{0xFFD8} \; (\text{Start of Image})$$
-   $$\text{EOI} = \texttt{0xFFD9} \; (\text{End of Image})$$
+   - $\mathrm{SOI} = \texttt{0xFFD8}$ (Start of Image).
+   - $\mathrm{EOI} = \texttt{0xFFD9}$ (End of Image).
 2. **Algoritmo de Detección de Límites**:
    Sea $B$ el acumulador en memoria. En cada lectura de fragmento $c \leftarrow \text{stream.read}(32768)$:
    $$B \leftarrow B \mathbin{\Vert} c$$
-   Si $\text{len}(B) > \text{MAX\_JPEG\_BUFFER} \; (4 \times 1024 \times 1024)$:
-   $$\text{logger.warning("Buffer overflow, truncando...");} \; B \leftarrow B[-65536:]$$
+   Si $\text{longitud}(B) > B_{\mathrm{max}}$ (donde $B_{\mathrm{max}} = 4 \times 1024 \times 1024\text{ bytes} = 4\text{ MB}$ por `MAX_JPEG_BUFFER`):
+   se trunca el buffer al margen de seguridad ($B \leftarrow B[-65536:]$) emitiendo una advertencia de desbordamiento en el log.
+   
    Se buscan las posiciones de los marcadores:
-   $$p_{\text{soi}} = \text{find}(B, \text{SOI}), \quad p_{\text{eoi}} = \text{find}(B[p_{\text{soi}}:], \text{EOI}) + p_{\text{soi}} + 2$$
-   Si $p_{\text{soi}} \neq -1 \land p_{\text{eoi}} > p_{\text{soi}}$:
-   $$\text{Cuadro} = B[p_{\text{soi}} : p_{\text{eoi}}]$$
-   $$B \leftarrow B[p_{\text{eoi}}:]$$
+   $$p_{\mathrm{soi}} = \mathrm{find}(B, \mathrm{SOI}), \quad p_{\mathrm{eoi}} = \mathrm{find}(B[p_{\mathrm{soi}}:], \mathrm{EOI}) + p_{\mathrm{soi}} + 2$$
+   Si $p_{\mathrm{soi}} \neq -1 \land p_{\mathrm{eoi}} > p_{\mathrm{soi}}$:
+   $$\text{Cuadro} = B[p_{\mathrm{soi}} : p_{\mathrm{eoi}}]$$
+   $$B \leftarrow B[p_{\mathrm{eoi}}:]$$
    Se emite el encabezado de bloque MIME y los bytes del cuadro inmediatamente.
 
 ---

@@ -61,14 +61,14 @@ Se implementa el patrón **Cross-Thread Bridge** mediante `asyncio.run_coroutine
 ```mermaid
 sequenceDiagram
     autonumber
-    participant TRAY as Thread 2: System Tray (pystray)
+    participant TRAY as Thread 2 - System Tray (pystray)
     participant MAIN as main.py Bridge
-    participant LOOP as Thread 1: asyncio Event Loop
+    participant LOOP as Thread 1 - asyncio Event Loop
     participant MGR as StreamManager
 
-    TRAY->>MAIN: Click en "Detener Streams" (Callback Síncrono)
+    TRAY->>MAIN: Clic en Detener Streams (Callback Síncrono)
     Note over MAIN: Obtiene target_loop = app.state.loop
-    MAIN->>LOOP: asyncio.run_coroutine_threadsafe(stream_manager.stop_all(), loop)
+    MAIN->>LOOP: run_coroutine_threadsafe(stop_all, loop)
     Note over LOOP: Despacha la corrutina en el hilo de asyncio
     LOOP->>MGR: await stop_all() (Ejecución Asíncrona Segura)
     MGR-->>LOOP: Completado

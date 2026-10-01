@@ -35,9 +35,9 @@ Si múltiples usuarios abren la interfaz web desde distintos dispositivos o si u
 ## 4. Decisión
 Se adopta la **Opción C**:
 1. Se crea [`PreviewManager`](file:///C:/Users/joaqu/Desktop/RTMS/core/preview_mgr.py) en `core/preview_mgr.py`.
-2. Se define el límite de concurrencia:
-   $$\text{MAX\_CONCURRENT\_PREVIEWS} = 3$$
-   $$\text{MAX\_JPEG\_BUFFER} = 4 \times 1024 \times 1024 \; \text{(4 MB)}$$
+2. Se definen las constantes de límite de concurrencia y buffer:
+   - `MAX_CONCURRENT_PREVIEWS = 3` (máximo de 3 vistas previas simultáneas).
+   - `MAX_JPEG_BUFFER = 4 * 1024 * 1024` (4 MB de buffer máximo por cuadro).
 3. **Algoritmo de Admisión y Reentrada**:
    - `acquire_slot(identifier)` evalúa si `identifier` (ruta o ID de la cámara) ya se encuentra en `_active_camera_previews`.
    - Si ya está registrado, retorna `True` inmediatamente, permitiendo que la nueva conexión asuma el control del stream sin agotar el semáforo global.

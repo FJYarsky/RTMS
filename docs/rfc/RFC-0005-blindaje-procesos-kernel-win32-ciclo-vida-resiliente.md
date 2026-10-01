@@ -79,9 +79,9 @@ sequenceDiagram
     RTMS->>KRN: CreateJobObjectW(NULL, NULL)
     KRN-->>RTMS: Handle hJob
     RTMS->>KRN: SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, flags=0x2000)
-    Note over JOB: Flag activo:<br/>JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+    Note over JOB: Flag activo - JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
 
-    RTMS->>KRN: CreateProcess / asyncio.subprocess ("ffmpeg.exe ...")
+    RTMS->>KRN: CreateProcess / asyncio.subprocess (ffmpeg.exe)
     KRN-->>RTMS: Subprocess PID
     RTMS->>KRN: OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE, PID)
     KRN-->>RTMS: Handle hProcess
@@ -92,10 +92,10 @@ sequenceDiagram
         RTMS->>FF: SIGTERM / stop_stream()
         FF-->>RTMS: Exit 0
     else Caso Catastrófico: Crash de RTMS / TerminateProcess
-        Note over RTMS: Proceso RTMS muere instantáneamente
+        Note over RTMS: Proceso RTMS finaliza inesperadamente
         KRN->>JOB: Cierre automático de todos los handles de hJob
         KRN->>FF: TerminateProcess(FF, 1) ejecutado directamente por el Kernel
-        Note over FF: Subproceso liquidado en &lt;1 ms.<br/>Hardware liberado inmediatamente.
+        Note over FF: Subproceso liquidado en menos de 1 ms - Hardware liberado
     end
 ```
 

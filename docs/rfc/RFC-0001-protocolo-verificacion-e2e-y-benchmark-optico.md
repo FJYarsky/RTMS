@@ -44,8 +44,9 @@ Cada bit se dibuja como un bloque monocromático de alto contraste:
 * Borde de aislamiento: Fondo negro de 2 píxeles rodeando toda la cabecera para evitar contaminación lumínica del fondo.
 
 El decodificador en [`core/pipeline_verifier.py`](file:///C:/Users/joaqu/Desktop/RTMS/core/pipeline_verifier.py) no realiza OCR ni transformadas de Hough. En su lugar, calcula el **centroide geométrico** exacto de cada celda:
-$$X_i = 10 + (i \times \text{BLOCK\_SIZE}) + \left(\frac{\text{BLOCK\_SIZE}}{2}\right)$$
-$$Y = \text{BARCODE\_Y\_POS} + \left(\frac{\text{BLOCK\_SIZE}}{2}\right)$$
+$$X_i = 10 + (i \cdot S_{\mathrm{block}}) + \left(\frac{S_{\mathrm{block}}}{2}\right)$$
+$$Y = Y_{\mathrm{barcode}} + \left(\frac{S_{\mathrm{block}}}{2}\right)$$
+donde el tamaño de celda es $S_{\mathrm{block}} = 10\text{ px}$ (`BLOCK_SIZE`) y la posición vertical es $Y_{\mathrm{barcode}} = 10\text{ px}$ (`BARCODE_Y_POS`).
 
 Para cada centroide $(X_i, Y)$, se extrae el promedio de los canales de color del buffer de píxeles decodificados en memoria (`rgb24`):
 $$\text{Luminancia}_i = \frac{R(X_i, Y) + G(X_i, Y) + B(X_i, Y)}{3}$$

@@ -36,10 +36,12 @@ Se adopta la **Opción C**:
    - `schema_migrations`: Registro inmutable de versiones de migración aplicadas con marca de tiempo.
    - `ignored_devices`: Lista negra de dispositivos de video excluidos del inventario.
 2. Se configuran de manera innegociable los siguientes pragmas de rendimiento y estabilidad en cada conexión:
-   $$\text{PRAGMA journal\_mode = WAL;}$$
-   $$\text{PRAGMA synchronous = NORMAL;}$$
-   $$\text{PRAGMA busy\_timeout = 5000;}$$
-   $$\text{PRAGMA foreign\_keys = ON;}$$
+   ```sql
+   PRAGMA journal_mode = WAL;
+   PRAGMA synchronous = NORMAL;
+   PRAGMA busy_timeout = 5000;
+   PRAGMA foreign_keys = ON;
+   ```
 3. El modo **Write-Ahead Logging (WAL)** desacopla completamente los lectores de los escritores: las consultas de lectura de la API o la GUI acceden a la base de datos sin bloquear ni ser bloqueadas por transacciones de escritura activas.
 4. Se implementa [`core/repository/migrator.py`](file:///C:/Users/joaqu/Desktop/RTMS/core/repository/migrator.py) para la migración atómica y transparente del archivo heredado `config/config.json` hacia `config/rtms.db`, creando automáticamente una copia de respaldo inmutable (`config.json.v2.4.1.bak`) antes de la transacción.
 5. Se expone una capa de acceso desacoplada [`ConfigRepository`](file:///C:/Users/joaqu/Desktop/RTMS/core/repository/config_repository.py) con métodos concurrentes seguros (`get_camera`, `upsert_camera`, `delete_camera`, `get_all_cameras_sync`).
