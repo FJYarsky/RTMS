@@ -6,14 +6,10 @@ on:
     branches: [ "main" ]
     paths-ignore:
       - "site/**"
-      - "*.md"
-      - "docs/**"
   pull_request:
     branches: [ "main" ]
     paths-ignore:
       - "site/**"
-      - "*.md"
-      - "docs/**"
 
 permissions:
   contents: read
@@ -55,10 +51,15 @@ jobs:
       - name: Code Quality & Linting (Ruff)
         run: |
           ruff check .
+          ruff format --check .
 
       - name: Type Checking (Mypy)
         run: |
           mypy core api
+
+      - name: Architecture & Documentation Governance (ADR / RFC Standards)
+        run: |
+          pytest tests/test_adr_rfc_standards.py -v
 
       - name: Run Pytest Suite with Coverage
         run: |
