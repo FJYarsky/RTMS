@@ -23,6 +23,10 @@ test:
 test-cov:
     pytest -v --cov=core --cov=api --cov-report=term-missing tests/
 
+# Verificación de gobernanza arquitectónica y documental (ADRs y RFCs)
+test-docs:
+    pytest tests/test_adr_rfc_standards.py -v
+
 # Análisis estático y linter con Ruff
 lint:
     ruff check .
