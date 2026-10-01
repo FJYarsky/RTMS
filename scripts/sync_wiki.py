@@ -119,6 +119,12 @@ def sync_docs_to_wiki_sources() -> int:
     _WIKI_SRC_DIR.mkdir(parents=True, exist_ok=True)
     count = 0
 
+    def _write_if_changed(target_path: Path, new_content: str) -> bool:
+        if target_path.exists() and target_path.read_text(encoding="utf-8") == new_content:
+            return False
+        target_path.write_text(new_content, encoding="utf-8")
+        return True
+
     # 1. Copiar y adaptar ADRs
     adr_dir = _DOCS_DIR / "adr"
     if adr_dir.exists():
@@ -129,8 +135,8 @@ def sync_docs_to_wiki_sources() -> int:
             target = _WIKI_SRC_DIR / f"{slug}.md"
             content = adr_file.read_text(encoding="utf-8")
             adapted = sanitize_markdown_for_wiki(content, slug)
-            target.write_text(adapted, encoding="utf-8", newline="\n")
-            count += 1
+            if _write_if_changed(target, adapted):
+                count += 1
 
     # 2. Copiar y adaptar RFCs
     rfc_dir = _DOCS_DIR / "rfc"
@@ -142,8 +148,8 @@ def sync_docs_to_wiki_sources() -> int:
             target = _WIKI_SRC_DIR / f"{slug}.md"
             content = rfc_file.read_text(encoding="utf-8")
             adapted = sanitize_markdown_for_wiki(content, slug)
-            target.write_text(adapted, encoding="utf-8", newline="\n")
-            count += 1
+            if _write_if_changed(target, adapted):
+                count += 1
 
     # 3. Documentos estructurales de Arquitectura y Operaciones
     mappings = {
@@ -162,8 +168,8 @@ def sync_docs_to_wiki_sources() -> int:
             slug = Path(target_name).stem
             content = src_path.read_text(encoding="utf-8")
             adapted = sanitize_markdown_for_wiki(content, slug)
-            target.write_text(adapted, encoding="utf-8", newline="\n")
-            count += 1
+            if _write_if_changed(target, adapted):
+                count += 1
 
     return count
 
