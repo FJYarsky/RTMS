@@ -1,0 +1,98 @@
+# RTMS — Plantilla interactiva de reporte de accesibilidad (GitHub Issue Form)
+name: "Reporte de Accesibilidad (A11y)"
+description: "Reporta una barrera de acceso, problemas con lectores de pantalla, navegación por teclado o contraste."
+title: "[A11Y]: "
+labels: ["accessibility", "a11y", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        El proyecto RTMS está comprometido con la accesibilidad digital inclusiva conforme a las directrices **WCAG 2.2 Nivel AA**.
+        Gracias por ayudarnos a identificar y remover barreras de acceso. Para más detalles técnicos, consulta nuestra [Declaración de Accesibilidad](https://github.com/FJYarsky/RTMS/blob/main/.github/ACCESSIBILITY.md).
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Verificaciones Previas
+      description: Por favor confirma los siguientes puntos antes de enviar el reporte.
+      options:
+        - label: He buscado en los issues abiertos y cerrados para asegurarme de que esta barrera de accesibilidad no haya sido reportada previamente.
+          required: true
+        - label: He comprobado que estoy utilizando la versión más reciente liberada de RTMS (o el portal web oficial actualizado).
+          required: true
+        - label: He verificado que los datos o capturas adjuntas no expongan contraseñas, tokens SRT ni información personal sensible.
+          required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente o Interfaz Afectada
+      description: Selecciona el área del sistema donde experimentaste la barrera de accesibilidad.
+      options:
+        - "Sitio Web Oficial (site/)"
+        - "Panel de Control y Web GUI (gui/)"
+        - "Navegación por Teclado (Foco visible, Skip Links, Tabulación)"
+        - "Lectores de Pantalla / Semántica ARIA (NVDA, Narrador, JAWS)"
+        - "Contraste Cromático, Tipografía o Legibilidad Visual"
+        - "Preferencia de Movimiento Reducido (prefers-reduced-motion)"
+        - "Aplicación de Escritorio / Notificaciones de Bandeja (System Tray)"
+        - "Documentación Técnica y Manuales (docs/)"
+        - "Otro"
+    validations:
+      required: true
+
+  - type: input
+    id: assistive_tech
+    attributes:
+      label: Tecnología de Asistencia Empleada
+      description: Especifica el lector de pantalla, software de aumento o modo de navegación utilizado.
+      placeholder: ej. NVDA 2026.1, Narrador de Windows 11, JAWS 2025, Navegación exclusiva por teclado, Lupa de Windows
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Entorno de Ejecución (SO y Navegador / App)
+      description: Indica la versión de Windows, navegador web o contexto de ejecución.
+      placeholder: ej. Windows 11 Pro 23H2 (Build 22631), Edge 128 / Chrome 128 / RTMS v2.8.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: barrier_description
+    attributes:
+      label: Descripción de la Barrera de Accesibilidad
+      description: Explica con claridad la dificultad encontrada y cuál debería ser el comportamiento accesible esperado.
+      placeholder: |
+        Al interactuar con el control de selección de cámaras, el lector de pantalla no anuncia el estado actual del selector...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Pasos para Reproducir la Dificultad
+      description: Pasos secuenciales para experimentar la barrera de acceso.
+      placeholder: |
+        1. Abrir el panel de control web en http://localhost:8000
+        2. Navegar usando la tecla Tab hasta la sección de previsualización
+        3. Observar que el foco visual desaparece y no se puede activar el botón con Enter o Espacio...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested_solution
+    attributes:
+      label: Sugerencia o Solución Técnica Accesible (Opcional)
+      description: Si tienes una propuesta técnica (ej. adición de atributo aria-label, corrección de relación de contraste, cambio en tabindex), compártela aquí.
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots_context
+    attributes:
+      label: Capturas de Pantalla o Información Adicional (Opcional)
+      description: Adjunta imágenes del árbol de accesibilidad, inspectores de contraste o cualquier contexto adicional relevante.
+    validations:
+      required: false
