@@ -1,13 +1,12 @@
 # RTMS — Plantilla de discusión de Soporte y Consultas de Streaming (GitHub Discussion Form)
 title: "💬 [Q&A]: "
 labels: ["question", "support", "streaming"]
-description: "Consultas técnicas sobre configuración de streaming, OBS Studio, vMix, SRT, MediaMTX y redes locales."
 body:
   - type: markdown
     attributes:
       value: |
         ### 💬 Centro de Consultas y Soporte Técnico — RTMS
-        ¿Tienes dudas sobre cómo conectar RTMS con OBS Studio, sincronizar múltiples cámaras, configurar SRT o resolver problemas de latencia y red?
+        ¿Tienes dudas sobre cómo conectar RTMS con OBS Studio, sincronizar múltiples cámaras, configurar SRT o resolver problemas de latencia y red? Este es el espacio para consultas técnicas sobre configuración de streaming, OBS Studio, vMix, SRT, MediaMTX y redes locales.
         
         > [!TIP]
         > Revisa antes la [Guía de Configuración de OBS Studio](https://github.com/FJYarsky/RTMS#-%EF%B8%8F-configuraci%C3%B3n-en-obs-studio) y la documentación de arquitectura en [`docs/ARCHITECTURE.md`](https://github.com/FJYarsky/RTMS/blob/main/docs/ARCHITECTURE.md).

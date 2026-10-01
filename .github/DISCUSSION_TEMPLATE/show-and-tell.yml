@@ -1,13 +1,12 @@
 # RTMS — Plantilla de demostración de producciones y casos de éxito (GitHub Discussion Form)
 title: "🚀 [Show & Tell]: "
 labels: ["showcase", "community", "production"]
-description: "Muestra tu producción en vivo, evento, estudio o configuración multicámara utilizando RTMS."
 body:
   - type: markdown
     attributes:
       value: |
         ### 🚀 Muro de Producciones Comunitarias — RTMS Show & Tell
-        ¡Nos encanta ver cómo se utiliza RTMS en el mundo real! Comparte fotos de tu cabina de control, capturas de OBS/vMix, diagramas de red o grabaciones de tu evento.
+        ¡Nos encanta ver cómo se utiliza RTMS en el mundo real! Comparte fotos de tu cabina de control, capturas de OBS/vMix, diagramas de red o grabaciones de tu evento. Muestra tu producción en vivo, evento, estudio o configuración multicámara utilizando RTMS.
         
         > [!TIP]
         > Puedes arrastrar y soltar fotos de tu mesa de producción o capturas de pantalla directamente en el editor.

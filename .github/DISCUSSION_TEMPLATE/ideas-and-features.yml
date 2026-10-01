@@ -1,13 +1,12 @@
 # RTMS — Plantilla de discusión de Ideas y Mejoras de la Comunidad (GitHub Discussion Form)
 title: "💡 [Idea]: "
 labels: ["idea", "rfc", "enhancement"]
-description: "Propón nuevas ideas, protocolos, mejoras de arquitectura o interfaz para RTMS."
 body:
   - type: markdown
     attributes:
       value: |
         ### 💡 Propuestas de Evolución y Nuevas Características — RTMS
-        ¿Tienes una propuesta para hacer que RTMS sea aún más potente, eficiente o intuitivo para transmisiones en vivo?
+        ¿Tienes una propuesta para hacer que RTMS sea aún más potente, eficiente o intuitivo para transmisiones en vivo? Propón nuevas ideas, protocolos, mejoras de arquitectura o interfaz para RTMS.
         
         > [!NOTE]
         > Este espacio permite discutir la viabilidad técnica, arquitectura y diseño de nuevas características con el autor (**Joaquín Yarsky**) y la comunidad antes de formalizar un Issue de desarrollo.

@@ -1,13 +1,12 @@
 # RTMS — Plantilla de discusión comunitaria de Hardware y Setups (GitHub Discussion Form)
 title: "🎥 [Setup]: "
 labels: ["hardware", "compatibility", "showcase"]
-description: "Comparte cámaras, capturadoras HDMI, buses USB/PCIe y setups de estudio verificados en RTMS."
 body:
   - type: markdown
     attributes:
       value: |
         ### 🎥 Base de Conocimiento de Hardware Verificado — RTMS
-        Bienvenido al espacio de la comunidad para documentar hardware y estaciones multicámara funcionando con **RTMS (Real-Time Multicam System)**.
+        Bienvenido al espacio de la comunidad para documentar hardware y estaciones multicámara funcionando con **RTMS (Real-Time Multicam System)**. Comparte cámaras, capturadoras HDMI, buses USB/PCIe y setups de estudio verificados.
         
         > [!TIP]
         > Tus pruebas ayudan a otros creadores, realizadores de streaming y productores a seleccionar dispositivos estables y optimizar el rendimiento de baja latencia (<100ms) en Windows 10/11.
