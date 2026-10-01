@@ -1,0 +1,45 @@
+name: Wiki Sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "scripts/sync_wiki.py"
+      - ".github/workflows/wiki-sync.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-wiki:
+    name: Sincronizar GitHub Wiki
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio principal
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Configurar entorno Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compilar y validar distribución de la Wiki
+        run: |
+          python scripts/sync_wiki.py --build
+          python scripts/sync_wiki.py --check
+
+      - name: Sincronizar y publicar en GitHub Wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/sync_wiki.py --deploy --token "$GITHUB_TOKEN"
