@@ -721,7 +721,7 @@ function setSafeTranslatedContent(el, content) {
         el.removeChild(el.firstChild);
     }
 
-    // Construcción de nodos segura sin intermediación de parsers HTML ni serializadores DOM
+    // Construcción de nodos segura sin intermediación de parsers HTML ni elementos dinámicos
     const tagRegex = /<(strong|code|em|b|i)>([\s\S]*?)<\/\1>/gi;
     let lastIndex = 0;
     let match;
@@ -733,9 +733,26 @@ function setSafeTranslatedContent(el, content) {
         }
         const tagName = match[1].toLowerCase();
         const tagText = match[2];
-        const safeEl = document.createElement(tagName);
-        safeEl.textContent = tagText;
-        el.appendChild(safeEl);
+        let safeEl = null;
+
+        if (tagName === "strong") {
+            safeEl = document.createElement("strong");
+        } else if (tagName === "code") {
+            safeEl = document.createElement("code");
+        } else if (tagName === "em") {
+            safeEl = document.createElement("em");
+        } else if (tagName === "b") {
+            safeEl = document.createElement("b");
+        } else if (tagName === "i") {
+            safeEl = document.createElement("i");
+        }
+
+        if (safeEl) {
+            safeEl.textContent = tagText;
+            el.appendChild(safeEl);
+        } else {
+            el.appendChild(document.createTextNode(match[0]));
+        }
         lastIndex = tagRegex.lastIndex;
     }
 
@@ -749,20 +766,32 @@ function applyI18nToDOM() {
     const elements = document.querySelectorAll("[data-i18n]");
     elements.forEach(el => {
         const key = el.getAttribute("data-i18n");
-        const translation = getTranslation(key);
-        if (translation) {
-            setSafeTranslatedContent(el, translation);
+        if (!key || typeof key !== "string") return;
+        const langDict = I18N_DICTIONARY[_currentLanguage] || I18N_DICTIONARY["es"];
+        if (Object.prototype.hasOwnProperty.call(langDict, key)) {
+            setSafeTranslatedContent(el, langDict[key]);
+        } else if (Object.prototype.hasOwnProperty.call(I18N_DICTIONARY["es"], key)) {
+            setSafeTranslatedContent(el, I18N_DICTIONARY["es"][key]);
+        } else {
+            el.textContent = key;
         }
     });
 
     const attrElements = document.querySelectorAll("[data-i18n-attr]");
     attrElements.forEach(el => {
         const config = el.getAttribute("data-i18n-attr");
+        if (!config || typeof config !== "string") return;
         const pairs = config.split(",");
         pairs.forEach(pair => {
             const [attr, key] = pair.split(":").map(s => s.trim());
             if (attr && key) {
-                const translation = getTranslation(key);
+                const langDict = I18N_DICTIONARY[_currentLanguage] || I18N_DICTIONARY["es"];
+                let translation = "";
+                if (Object.prototype.hasOwnProperty.call(langDict, key)) {
+                    translation = langDict[key];
+                } else if (Object.prototype.hasOwnProperty.call(I18N_DICTIONARY["es"], key)) {
+                    translation = I18N_DICTIONARY["es"][key];
+                }
                 if (translation) {
                     el.setAttribute(attr, translation);
                 }
