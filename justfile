@@ -70,3 +70,16 @@ prune-remote:
 # Construcción de empaquetado portable para Windows
 build:
     cmd /c build_portable.bat
+
+# Compilación y ensamblado de la GitHub Wiki
+wiki-build:
+    python scripts/sync_wiki.py --build
+
+# Verificación de integridad y enlaces de la GitHub Wiki
+wiki-check:
+    python scripts/sync_wiki.py --check
+
+# Despliegue de la documentación a la GitHub Wiki
+wiki-deploy:
+    python scripts/sync_wiki.py --deploy
+
