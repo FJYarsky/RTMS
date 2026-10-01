@@ -1,7 +1,7 @@
 # ADR-0006: Desacoplamiento de FastAPI Asíncrono, GUI Web y System Tray Nativo
 
 * **Fecha**: 2026-09-16
-* **Estado**: Aceptado
+* **Estado**: Reemplazado por [ADR-0019](0019-interfaz-nativa-escritorio-webview2-bandeja-sistema.md)
 * **Autores**: Joaquín Yarsky (<joaquinyarsky@gmail.com>)
 * **Área de Impacto**: GUI / Core / Concurrencia
 * **Revisores**: Equipo de Desarrollo RTMS
