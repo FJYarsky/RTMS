@@ -45,8 +45,8 @@ def test_v282_version_bump_consistency():
 
 
 @pytest.mark.asyncio
-async def test_v282_directshow_nv12_and_passthrough():
-    """Valida que entradas DirectShow en zerolatency soliciten pixel_format nv12 y fps_mode passthrough."""
+async def test_v282_directshow_nv12_and_cfr():
+    """Valida que entradas DirectShow en zerolatency soliciten pixel_format nv12 y fps_mode cfr para timestamps monótonos."""
     cfg = {
         "device_path": "Webcam Pro HD",
         "resolution": "1080p",
@@ -65,7 +65,7 @@ async def test_v282_directshow_nv12_and_passthrough():
 
     assert "-fps_mode" in cmd
     fps_mode_idx = cmd.index("-fps_mode")
-    assert cmd[fps_mode_idx + 1] == "passthrough"
+    assert cmd[fps_mode_idx + 1] == "cfr"
 
 
 @pytest.mark.asyncio
