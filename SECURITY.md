@@ -38,3 +38,4 @@ Por favor incluye en tu mensaje:
 4. Versión y entorno de prueba (versión de RTMS y build de Windows).
 
 Todas las comunicaciones se tratarán con estricta confidencialidad y se responderá en un plazo máximo de 48 horas con la evaluación técnica y el cronograma de mitigación.
+
