@@ -155,15 +155,12 @@ def build_client_urls(
     is_loopback = dest_ip in ("127.0.0.1", "localhost")
 
     if latency_ms is not None:
-        effective_lat_ms = int(latency_ms)
+        srt_lat_ms = int(latency_ms)
     elif zerolatency:
-        if actual_proto in ("udp", "udp_unicast") and udp_mode == "unicast" and not is_loopback:
-            effective_lat_ms = 300
-        else:
-            effective_lat_ms = 50 if str(network_type).lower() == "wifi" else 15
+        srt_lat_ms = 50 if str(network_type).lower() == "wifi" else 15
     else:
-        effective_lat_ms = 300
-    latency_us = effective_lat_ms * 1000
+        srt_lat_ms = 120
+    latency_us = srt_lat_ms * 1000
 
     query_parts = [
         f"streamid=read:{clean_cam_id}",
@@ -208,19 +205,8 @@ def build_client_urls(
         publish_url = connect_url
         receive_url = vlc_url
 
-    class VLCCommandStr(str):
-        """String que permite compatibilidad con aserciones heredadas mientras expone comando limpio."""
-
-        def __contains__(self, item):
-            if item in (":clock-jitter=0", ":clock-synchro=0", f":network-caching={effective_lat_ms}"):
-                return True
-            return super().__contains__(item)
-
-    if effective_lat_ms < 250:
-        vlc_cmd_raw = f'vlc.exe "{vlc_url}" :network-caching={effective_lat_ms} :clock-jitter=0 :clock-synchro=0 :drop-late-frames :skip-frames'
-    else:
-        vlc_cmd_raw = f'vlc.exe "{vlc_url}" :network-caching={effective_lat_ms} :drop-late-frames :skip-frames'
-    vlc_command = VLCCommandStr(vlc_cmd_raw)
+    vlc_caching_ms = 300
+    vlc_command = f'vlc.exe "{vlc_url}" :network-caching={vlc_caching_ms} :drop-late-frames :skip-frames'
 
     return {
         "srt": srt_url,
@@ -234,7 +220,7 @@ def build_client_urls(
         "connect_url": connect_url,
         "vlc_url": vlc_url,
         "vlc_command": vlc_command,
-        "vlc_caching_ms": effective_lat_ms,
+        "vlc_caching_ms": vlc_caching_ms,
     }
 
 
@@ -263,17 +249,16 @@ def generate_vlc_xspf_playlist(
     safe_title = str(title).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
     safe_url = str(stream_url).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    opts = [f"        <vlc:option>network-caching={caching_ms}</vlc:option>"]
-    if caching_ms < 250:
-        opts.append("        <vlc:option>clock-jitter=0</vlc:option>")
-        opts.append("        <vlc:option>clock-synchro=0</vlc:option>")
-    opts.append("        <vlc:option>drop-late-frames</vlc:option>")
-    opts.append("        <vlc:option>skip-frames</vlc:option>")
+    opts = [
+        f"        <vlc:option>network-caching={caching_ms}</vlc:option>",
+        "        <vlc:option>drop-late-frames</vlc:option>",
+        "        <vlc:option>skip-frames</vlc:option>",
+    ]
     opts_str = "\n".join(opts)
 
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        "<!-- RTMS low-latency: network-caching=50 profile calibrated to 300ms -->\n"
+        "<!-- RTMS low-latency: safe monitoring profile calibrated to 300ms -->\n"
         '<playlist version="1" xmlns="http://xspf.org/ns/0/" xmlns:vlc="http://www.videolan.org/vlc/playlist/ns/0/">\n'
         f"  <title>{safe_title}</title>\n"
         "  <trackList>\n"
@@ -300,12 +285,9 @@ def launch_vlc_player(vlc_url: str, caching_ms: int = 300) -> bool:
         vlc_bin,
         vlc_url,
         f":network-caching={caching_ms}",
+        ":drop-late-frames",
+        ":skip-frames",
     ]
-    if caching_ms < 250:
-        cmd.append(":clock-jitter=0")
-        cmd.append(":clock-synchro=0")
-    cmd.append(":drop-late-frames")
-    cmd.append(":skip-frames")
     try:
         subprocess.Popen(cmd, close_fds=True)
         logger.info("VLC Player lanzado exitosamente (:network-caching=%d)", caching_ms)

@@ -23,14 +23,7 @@ _DB_DIR = os.path.join(get_base_dir(), "config")
 _DB_PATH = os.path.join(_DB_DIR, "rtms.db")
 
 
-class _SchemaVersion(int):
-    """Permite compatibilidad estricta con aserciones heredadas mientras expone versión 3."""
-
-    def __eq__(self, other):
-        return other in (2, 3) or super().__eq__(other)
-
-
-CURRENT_DB_SCHEMA_VERSION = _SchemaVersion(3)
+CURRENT_DB_SCHEMA_VERSION = 3
 
 INIT_SCHEMA_SQL = """
 PRAGMA journal_mode = WAL;
