@@ -349,6 +349,7 @@ async def get_stream_connect_url(device_path: str):
     mediamtx_port = mediamtx_manager.get_srt_port()
     cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
     udp_mode = cfg.get("udp_mode", "unicast")
+    udp_host = cfg.get("udp_host", "127.0.0.1")
 
     urls = build_client_urls(
         protocol=protocol,
@@ -358,6 +359,7 @@ async def get_stream_connect_url(device_path: str):
         passphrase=passphrase,
         mediamtx_port=mediamtx_port,
         udp_mode=udp_mode,
+        udp_host=udp_host,
     )
 
     from core.stream_proc import get_vlc_binary_path
@@ -369,7 +371,10 @@ async def get_stream_connect_url(device_path: str):
             "friendly_name": cam.get("friendly_name", dp),
             "protocol": protocol,
             "udp_mode": udp_mode,
+            "udp_host": udp_host,
             "connect_url": urls["connect_url"],
+            "publish_url": urls.get("publish_url", f"udp://{udp_host}:{port}"),
+            "receive_url": urls.get("receive_url", urls["connect_url"]),
             "vlc_url": urls["vlc_url"],
             "vlc_command": urls.get("vlc_command", ""),
             "vlc_caching_ms": urls.get("vlc_caching_ms", 50),
