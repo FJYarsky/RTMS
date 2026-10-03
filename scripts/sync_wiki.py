@@ -10,6 +10,7 @@ import argparse
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +21,21 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _DOCS_DIR = _REPO_ROOT / "docs"
 _WIKI_SRC_DIR = _REPO_ROOT / "docs" / "wiki"
 _BUILD_DIR = _REPO_ROOT / "build" / "wiki"
+
+
+def _remove_dir_safely(path: Path) -> None:
+    """Elimina un directorio recursivamente sorteando archivos de sólo lectura de Git en Windows."""
+    if not path.exists():
+        return
+
+    def _on_exc(fn, p, exc_info):
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            fn(p)
+        except Exception:
+            pass
+
+    shutil.rmtree(path, onexc=_on_exc)
 
 
 _STOP_WORDS: Set[str] = {"de", "del", "y", "e", "en", "el", "la", "los", "las", "por", "con", "a", "al"}
@@ -264,8 +280,7 @@ def deploy_wiki(
         return 1
 
     temp_clone_dir = _REPO_ROOT / "build" / "wiki_clone"
-    if temp_clone_dir.exists():
-        shutil.rmtree(temp_clone_dir)
+    _remove_dir_safely(temp_clone_dir)
 
     target_url = wiki_repo_url
     if token:
@@ -339,7 +354,7 @@ def deploy_wiki(
 
     if not diff_status.stdout.strip():
         print("[OK] La Wiki ya se encuentra completamente sincronizada con los últimos cambios.")
-        shutil.rmtree(temp_clone_dir, ignore_errors=True)
+        _remove_dir_safely(temp_clone_dir)
         return 0
 
     # Crear commit
@@ -361,7 +376,7 @@ def deploy_wiki(
         return 1
 
     print("[EXITO] Wiki de GitHub actualizada y publicada exitosamente.")
-    shutil.rmtree(temp_clone_dir, ignore_errors=True)
+    _remove_dir_safely(temp_clone_dir)
     return 0
 
 
