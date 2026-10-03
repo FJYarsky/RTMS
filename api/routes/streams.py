@@ -115,7 +115,7 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
 
     # Semántica PATCH: preservar valores existentes si no vienen en el payload
     res = config.resolution if config.resolution is not None else existing_cfg.get("resolution", "720p")
-    fps_val = config.fps if config.fps is not None else existing_cfg.get("fps", 30)
+    fps_val = config.fps if config.fps is not None else existing_cfg.get("fps", 60)
     bitrate_val = config.bitrate if config.bitrate is not None else existing_cfg.get("bitrate", 3000)
     proto_val = config.protocol if config.protocol is not None else existing_cfg.get("protocol", "udp")
     encoder_val = config.encoder if config.encoder is not None else existing_cfg.get("encoder", "auto")
