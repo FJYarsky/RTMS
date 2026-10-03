@@ -303,16 +303,17 @@ async function loadConnectUrlForStream(stream, globalIndex) {
         const res = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/connect_url`);
         if (res.ok) {
             const data = await res.json();
-            if (data.connect_url) {
-                stream.connect_url = data.connect_url;
+            const connectUrl = data.receive_url || data.connect_url;
+            if (connectUrl) {
+                stream.connect_url = connectUrl;
                 stream.vlc_url = data.vlc_url;
                 const urlInput = document.getElementById(`url-input-${globalIndex}`);
                 const btn = document.getElementById(`toggle-pass-btn-${globalIndex}`);
                 if (urlInput) {
-                    urlInput.dataset.fullUrl = data.connect_url;
+                    urlInput.dataset.fullUrl = connectUrl;
                     urlInput.dataset.vlcUrl = data.vlc_url || '';
-                    if (data.connect_url.includes('passphrase=')) {
-                        urlInput.value = data.connect_url.replace(/passphrase=[^&]+/, 'passphrase=••••••••');
+                    if (connectUrl.includes('passphrase=')) {
+                        urlInput.value = connectUrl.replace(/passphrase=[^&]+/, 'passphrase=••••••••');
                         urlInput.dataset.masked = 'true';
                         if (btn) {
                             btn.style.display = 'inline-flex';
@@ -320,7 +321,7 @@ async function loadConnectUrlForStream(stream, globalIndex) {
                             btn.title = (typeof getTranslation === 'function') ? getTranslation('passphrase_toggle_show') : 'Mostrar contraseña';
                         }
                     } else {
-                        urlInput.value = data.connect_url;
+                        urlInput.value = connectUrl;
                         urlInput.dataset.masked = 'false';
                         if (btn) btn.style.display = 'none';
                     }
@@ -622,19 +623,27 @@ function renderConnectPage() {
         
         let clientUrl = '';
         let protocolLabel = '';
+        const isUnicast = (stream.protocol === 'udp_unicast') || (stream.protocol === 'udp' && stream.udp_mode === 'unicast');
+        const destIp = stream.udp_host || '127.0.0.1';
+        const isLocalhost = (destIp === '127.0.0.1' || destIp === 'localhost');
+
         if (stream.protocol === 'srt') {
             protocolLabel = t('proto_srt_label');
             const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
             const cleanCamId = stream.clean_cam_id || stream.id;
             clientUrl = `srt://${_localIp}:${srtPort}?streamid=read:${cleanCamId}`;
-        } else if (stream.udp_mode === 'unicast') {
+        } else if (isUnicast) {
             protocolLabel = t('proto_udp_unicast');
-            clientUrl = `udp://@127.0.0.1:${stream.port}`;
+            clientUrl = isLocalhost ? `udp://127.0.0.1:${stream.port}` : `udp://@:${stream.port}`;
         } else {
             protocolLabel = t('proto_udp_multicast');
             const ipLastOctet = (stream.port % 200) + 1;
             clientUrl = `udp://@239.255.0.${ipLastOctet}:${stream.port}`;
         }
+
+        const unicastInfoHtml = isUnicast
+            ? `<div style="font-size: 0.72rem; color: var(--cyan); margin-top: 4px;">📡 Destino configurado: <strong>${escapeHtml(destIp)}:${stream.port}</strong> — Recibir en ${isLocalhost ? 'esta misma PC' : 'equipo receptor (' + escapeHtml(destIp) + ')'} usando <code>${clientUrl}</code></div>`
+            : '';
         
         const row = document.createElement('div');
         row.style.marginBottom = '20px';
@@ -647,6 +656,7 @@ function renderConnectPage() {
             </div>
             <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">
                 ${t('cam_protocol_label')} <strong>${escapeHtml(protocolLabel)}</strong> | ${t('cam_resolution_label')} <strong>${escapeHtml(stream.resolution)} @ ${escapeHtml(stream.fps)} FPS</strong> | ${t('cam_bitrate_label')} <strong>${escapeHtml(stream.bitrate)} kbps</strong>
+                ${unicastInfoHtml}
             </div>
             <div class="copy-input-grp">
                 <input type="text" id="url-input-${globalIndex}" value="${escapeHtml(clientUrl)}" readonly>
@@ -793,9 +803,12 @@ function createCameraCardElement(stream, index) {
         ? `${stream.mediamtx_port || _mediamtxSrtPort || 8890}`
         : `${stream.port} (${stream.udp_mode === 'unicast' ? 'Unicast' : 'Multicast'})`;
 
+    const isUnicast = (stream.protocol === 'udp_unicast') || (stream.udp_mode === 'unicast');
     const streamIdLine = stream.protocol === 'srt'
         ? `<div class="stream-chip-sub"><span style="color:var(--text-muted);">Stream ID:</span> <code class="stream-code-id">read:${escapeHtml(stream.clean_cam_id || stream.id)}</code></div>`
-        : '';
+        : (isUnicast
+            ? `<div class="stream-chip-sub"><span style="color:var(--text-muted);">Destino:</span> <code class="stream-code-id">${escapeHtml(stream.udp_host || '127.0.0.1')}:${stream.port}</code></div>`
+            : '');
 
     card.innerHTML = `
         <div class="stream-card-hdr">
@@ -1013,8 +1026,84 @@ async function restoreAllIgnoredCameras() {
     }
 }
 
+// MODAL PROMPT DESTINO UNICAST AL INICIAR POR PRIMERA VEZ
+let _pendingUnicastIndex = null;
+
+function openUnicastPrompt(index) {
+    const stream = _streams[index];
+    if (!stream) return;
+    _pendingUnicastIndex = index;
+    const ipInput = document.getElementById('unicast-prompt-ip-input');
+    if (ipInput) {
+        ipInput.value = stream.udp_host || '127.0.0.1';
+    }
+    const chipText = document.getElementById('prompt-chip-ip-text');
+    if (chipText) {
+        chipText.textContent = _localIp || '...';
+    }
+    const modal = document.getElementById('unicast-prompt-modal-overlay');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closeUnicastPromptModal() {
+    _pendingUnicastIndex = null;
+    const modal = document.getElementById('unicast-prompt-modal-overlay');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function setPromptIpValue(ip) {
+    const ipInput = document.getElementById('unicast-prompt-ip-input');
+    if (ipInput && ip) {
+        ipInput.value = ip;
+    }
+}
+
+async function confirmAndStartUnicast() {
+    if (_pendingUnicastIndex === null) return;
+    const index = _pendingUnicastIndex;
+    const stream = _streams[index];
+    if (!stream) return;
+
+    const ipInput = document.getElementById('unicast-prompt-ip-input');
+    const targetIp = (ipInput && ipInput.value.trim()) ? ipInput.value.trim() : '127.0.0.1';
+
+    try {
+        const payload = {
+            device_path: stream.device_path,
+            port: stream.port,
+            resolution: stream.resolution,
+            fps: stream.fps,
+            bitrate: stream.bitrate,
+            protocol: 'udp_unicast',
+            encoder: stream.encoder,
+            auto_start: stream.auto_start,
+            zerolatency: stream.zerolatency,
+            is_virtual: stream.is_virtual,
+            srt_latency: stream.srt_latency || 120,
+            srt_passphrase: stream.srt_passphrase || '',
+            udp_host: targetIp
+        };
+        await apiFetch('/api/stream/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        localStorage.setItem('rtms_unicast_confirmed_' + (stream.device_path || index), 'true');
+        stream.udp_host = targetIp;
+    } catch (e) {
+        console.warn('Could not persist unicast target IP:', e);
+    }
+
+    closeUnicastPromptModal();
+    executeControlStream(index, 'start');
+}
+
 // ACCIONES DE CONTROL DE STREAM CON TOKEN
-async function controlStream(index, action) {
+async function executeControlStream(index, action) {
     const stream = _streams[index];
     if (!stream) return;
     
@@ -1039,6 +1128,19 @@ async function controlStream(index, action) {
         console.error(err);
         showToast("Error de comunicación con el servidor", "error");
     }
+}
+
+async function controlStream(index, action) {
+    const stream = _streams[index];
+    if (!stream) return;
+
+    const isUnicast = (stream.protocol === 'udp_unicast') || (stream.protocol === 'udp' && stream.udp_mode === 'unicast');
+    const confirmedKey = 'rtms_unicast_confirmed_' + (stream.device_path || index);
+    if (action === 'start' && isUnicast && !localStorage.getItem(confirmedKey)) {
+        openUnicastPrompt(index);
+        return;
+    }
+    await executeControlStream(index, action);
 }
 
 // TOGGLE AUTOSTART INDIVIDUAL DE CÁMARA CON TOKEN
@@ -1222,6 +1324,10 @@ function configureStream(index) {
     if (udpHostEl) {
         udpHostEl.value = stream.udp_host || '127.0.0.1';
     }
+    const chipText = document.getElementById('chip-local-ip-text');
+    if (chipText) {
+        chipText.textContent = _localIp || '...';
+    }
     
     handleProtocolChange(protoVal);
     handleZerolatencyChange();
@@ -1232,6 +1338,13 @@ function closeConfigModal() {
     document.getElementById('config-modal-overlay').classList.remove('active');
 }
 
+function setUdpHostValue(val) {
+    const el = document.getElementById('config-udp-host');
+    if (el && val) {
+        el.value = val;
+    }
+}
+
 function resetCameraConfigToDefaults() {
     // 1. Preset 'default' (720p @ 30 FPS, 3000 kbps)
     const presetEl = document.getElementById('config-preset');
@@ -1240,11 +1353,11 @@ function resetCameraConfigToDefaults() {
     }
     applyQualityPreset('default');
 
-    // 2. Protocolo 'srt'
+    // 2. Protocolo por defecto: UDP Unicast (<50ms)
     const protoEl = document.getElementById('config-protocol');
     if (protoEl) {
-        protoEl.value = 'srt';
-        handleProtocolChange('srt');
+        protoEl.value = 'udp_unicast';
+        handleProtocolChange('udp_unicast');
     }
 
     // 3. Encoder 'auto'
@@ -2004,6 +2117,11 @@ async function openQrModal(index) {
     const modal = document.getElementById('qr-modal-overlay');
     const nameEl = document.getElementById('qr-stream-name');
     const badgeEl = document.getElementById('qr-protocol-badge');
+    const modalTitleEl = document.getElementById('qr-modal-title');
+    const destInfoEl = document.getElementById('qr-dest-info');
+    const destIpEl = document.getElementById('qr-dest-ip');
+    const destPortEl = document.getElementById('qr-dest-port');
+    const obsHintEl = document.getElementById('qr-obs-hint');
     const urlInput = document.getElementById('qr-url-input');
     const vlcCmdInput = document.getElementById('qr-vlc-cmd-input');
     const qrContainer = document.getElementById('qr-code-display');
@@ -2012,14 +2130,38 @@ async function openQrModal(index) {
 
     nameEl.textContent = `${stream.friendly_name}`;
 
+    const isUnicast = (stream.protocol === 'udp_unicast') || (stream.udp_mode === 'unicast');
+    const destIp = stream.udp_host || '127.0.0.1';
+    const isLocalhost = (destIp === '127.0.0.1' || destIp === 'localhost');
+
+    if (modalTitleEl) {
+        if (isUnicast) {
+            modalTitleEl.textContent = t('unicast_share_title');
+        } else if (stream.protocol === 'srt') {
+            modalTitleEl.textContent = t('srt_share_title');
+        } else {
+            modalTitleEl.textContent = t('mcast_share_title');
+        }
+    }
+
     if (badgeEl) {
         if (stream.protocol === 'srt') {
             const srtPort = stream.mediamtx_port || _mediamtxSrtPort || 8890;
             badgeEl.innerHTML = `<span class="badge" style="background:rgba(20,184,166,0.15); border:1px solid var(--teal); color:var(--teal); font-weight:700; padding:3px 10px; border-radius:var(--radius-full); font-size:0.75rem;">🔒 SRT Media Server (Puerto ${srtPort})</span>`;
-        } else if (stream.udp_mode === 'unicast') {
-            badgeEl.innerHTML = `<span class="badge" style="background:rgba(59,130,246,0.15); border:1px solid var(--blue); color:var(--cyan); font-weight:700; padding:3px 10px; border-radius:var(--radius-full); font-size:0.75rem;">📡 UDP Unicast LAN (Puerto ${stream.port})</span>`;
+        } else if (isUnicast) {
+            badgeEl.innerHTML = `<span class="badge" style="background:rgba(59,130,246,0.15); border:1px solid var(--blue); color:var(--cyan); font-weight:700; padding:3px 10px; border-radius:var(--radius-full); font-size:0.75rem;">📡 UDP Unicast (Destino: ${destIp}:${stream.port})</span>`;
         } else {
             badgeEl.innerHTML = `<span class="badge" style="background:rgba(16,185,129,0.15); border:1px solid var(--status-green); color:var(--status-green); font-weight:700; padding:3px 10px; border-radius:var(--radius-full); font-size:0.75rem;">🌐 UDP Multicast LAN (Puerto ${stream.port})</span>`;
+        }
+    }
+
+    if (destInfoEl) {
+        if (isUnicast) {
+            destInfoEl.style.display = 'block';
+            if (destIpEl) destIpEl.textContent = destIp;
+            if (destPortEl) destPortEl.textContent = stream.port;
+        } else {
+            destInfoEl.style.display = 'none';
         }
     }
 
@@ -2031,8 +2173,8 @@ async function openQrModal(index) {
         const res = await apiFetch(`/api/stream/${encodeURIComponent(stream.device_path)}/connect_url`);
         if (res.ok) {
             const data = await res.json();
-            targetUrl = data.vlc_url || data.connect_url || '';
-            obsUrl = data.connect_url || targetUrl;
+            targetUrl = data.receive_url || data.vlc_url || data.connect_url || '';
+            obsUrl = data.receive_url || data.connect_url || targetUrl;
             vlcCmd = data.vlc_command || '';
         }
     } catch (e) {
@@ -2045,19 +2187,29 @@ async function openQrModal(index) {
             const cleanCamId = stream.clean_cam_id || stream.id;
             targetUrl = `srt://${_localIp}:${srtPort}?streamid=read:${cleanCamId}`;
             obsUrl = targetUrl;
-        } else if (stream.udp_mode === 'unicast') {
-            targetUrl = `udp://@:${stream.port}`;
-            obsUrl = `udp://${_localIp}:${stream.port}`;
+        } else if (isUnicast) {
+            targetUrl = isLocalhost ? `udp://127.0.0.1:${stream.port}` : `udp://@:${stream.port}`;
+            obsUrl = targetUrl;
         } else {
             const p = parseInt(stream.port);
             const ipLastOctet = (p >= 9000 && p <= 9200) ? ((p - 9000) + 1) : (((p - 1024) % 250) + 1);
             targetUrl = `udp://@239.255.0.${ipLastOctet}:${stream.port}`;
-            obsUrl = `udp://239.255.0.${ipLastOctet}:${stream.port}`;
+            obsUrl = targetUrl;
         }
     }
 
     if (!vlcCmd) {
         vlcCmd = `vlc.exe "${targetUrl}" :network-caching=50 :clock-jitter=0 :clock-synchro=0 :drop-late-frames`;
+    }
+
+    if (obsHintEl) {
+        if (isUnicast) {
+            obsHintEl.textContent = isLocalhost 
+                ? 'ℹ️ Pega esta URL en OBS (Fuente multimedia) en esta misma PC.' 
+                : `ℹ️ Pega esta URL en OBS (Fuente multimedia) en el equipo receptor (${destIp}).`;
+        } else {
+            obsHintEl.textContent = '';
+        }
     }
 
     const obsInput = document.getElementById('qr-obs-url-input');

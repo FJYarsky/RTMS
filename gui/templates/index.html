@@ -191,7 +191,7 @@
                     <div class="card-header" data-i18n="obs_guide_header">Guía de Configuración Rápida en OBS Studio</div>
                     <div class="card-body">
                         <div class="alert-box alert-info" data-i18n="obs_guide_alert">
-                            <strong>Protocolo SRT Recomendado:</strong> SRT ofrece corrección automática de paquetes y latencia inferior a 100ms. Configura estas fuentes en la <strong>computadora donde corre OBS</strong>.
+                            <strong>Protocolo UDP Unicast Predeterminado (&lt;50ms):</strong> Transmisión punto a punto directa sin sobrecargas de intermediarios. Configura estas fuentes en la <strong>computadora donde corre OBS</strong>.
                         </div>
                         
                         <div class="obs-guide-steps">
@@ -213,7 +213,7 @@
                                 <div class="step-number">3</div>
                                 <div class="step-details">
                                     <div class="step-title" data-i18n="obs_step_3_title">Pegar la URL generada</div>
-                                    <div class="step-desc" data-i18n="obs_step_3_desc">En el campo <strong>Entrada</strong>, pega la URL de SRT copiada arriba (ej: <code>srt://192.168.1.X:8890?streamid=read:cam_id...</code>).</div>
+                                    <div class="step-desc" data-i18n="obs_step_3_desc">En el campo <strong>Entrada</strong>, pega la URL copiada arriba (ej: <code>udp://@:9000</code> para Unicast, o <code>srt://...</code> si usas SRT).</div>
                                 </div>
                             </div>
                             <div class="obs-guide-step">
@@ -644,15 +644,24 @@
                     <div class="form-group" style="margin-bottom: 16px;">
                         <label class="form-label" for="config-protocol" data-i18n="cam_protocol_label">Protocolo de Red</label>
                         <select class="form-ctrl" id="config-protocol" onchange="handleProtocolChange(this.value)">
-                            <option value="srt" selected data-i18n="opt_protocol_srt">SRT Media Server (Desacoplado, baja latencia — Recomendado)</option>
+                            <option value="udp_unicast" selected data-i18n="opt_protocol_udp_unicast">UDP Unicast LAN (Mínima latencia &lt;50ms — Predeterminado)</option>
+                            <option value="srt" data-i18n="opt_protocol_srt">SRT Media Server (Desacoplado, recuperación de pérdidas)</option>
                             <option value="udp_multicast" data-i18n="opt_protocol_udp_multicast">UDP Multicast (Emisión a múltiples receptores en red LAN)</option>
-                            <option value="udp_unicast" data-i18n="opt_protocol_udp_unicast">UDP Unicast LAN (Hacia otra PC o Celular — VLC sin caídas)</option>
                         </select>
                     </div>
 
                     <div class="form-group" id="group-udp-host" style="display: none; margin-bottom: 16px;">
-                        <label class="form-label" for="config-udp-host" data-i18n="cfg_udp_host_label">IP de Destino Unicast (PC o Dispositivo Remoto)</label>
+                        <label class="form-label" for="config-udp-host" data-i18n="cfg_udp_host_label">IP de Destino Unicast (PC o Dispositivo Receptor)</label>
                         <input class="form-ctrl" type="text" id="config-udp-host" value="127.0.0.1" placeholder="Ej: 192.168.1.100 o 127.0.0.1" data-i18n-attr="placeholder:cfg_udp_host_placeholder">
+                        <div style="display: flex; gap: 8px; margin-top: 6px; align-items: center; flex-wrap: wrap;">
+                            <span style="font-size: 0.72rem; color: var(--text-secondary);" data-i18n="cfg_udp_host_quick_label">Acceso rápido:</span>
+                            <button type="button" class="btn btn-ghost btn-xs" onclick="setUdpHostValue('127.0.0.1')" style="font-size: 0.72rem; padding: 2px 8px; border: 1px solid var(--border-color); border-radius: 12px; cursor: pointer;">
+                                🏠 127.0.0.1 (Local)
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-xs" id="chip-local-lan-ip" onclick="setUdpHostValue(_localIp)" style="font-size: 0.72rem; padding: 2px 8px; border: 1px solid var(--border-color); border-radius: 12px; cursor: pointer;">
+                                🌐 IP LAN (<span id="chip-local-ip-text">...</span>)
+                            </button>
+                        </div>
                         <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; display: block;" data-i18n="cfg_udp_host_desc">Ingrese la dirección IP del dispositivo receptor en su red local (o 127.0.0.1 si es en este mismo equipo).</small>
                     </div>
 
@@ -897,8 +906,13 @@
                     <div id="qr-code-display"></div>
                 </div>
 
+                <div id="qr-dest-info" style="display: none; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 12px; font-size: 0.78rem; text-align: left;">
+                    <div style="color: var(--cyan); font-weight: 600; margin-bottom: 2px;" data-i18n="qr_dest_header">📡 Transmisión UDP Unicast Directa</div>
+                    <div style="color: var(--text-secondary);" id="qr-dest-text">Emitiendo hacia el equipo receptor: <strong style="color: #fff;" id="qr-dest-ip">127.0.0.1</strong> por el puerto <strong style="color: #fff;" id="qr-dest-port">9000</strong>.</div>
+                </div>
+
                 <div class="form-group" style="text-align: left; margin-top: 8px;">
-                    <label class="form-label" for="qr-obs-url-input" data-i18n="qr_obs_label">URL para OBS Studio / vMix:</label>
+                    <label class="form-label" for="qr-obs-url-input" id="qr-obs-url-label" data-i18n="qr_obs_label">URL para OBS Studio / vMix (En el equipo receptor):</label>
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="qr-obs-url-input" class="form-ctrl" readonly style="flex: 1; font-family: monospace; font-size: 0.78rem;">
                         <button class="btn btn-primary btn-sm" onclick="copyObsUrl()">
@@ -909,10 +923,11 @@
                             <span data-i18n="btn_copy_url">Copiar</span>
                         </button>
                     </div>
+                    <small id="qr-obs-hint" style="color: var(--text-muted); font-size: 0.72rem; margin-top: 4px; display: block;"></small>
                 </div>
 
                 <div class="form-group" style="text-align: left; margin-top: 8px;">
-                    <label class="form-label" for="qr-url-input" data-i18n="qr_vlc_label">URL limpia para VLC Mobile:</label>
+                    <label class="form-label" for="qr-url-input" id="qr-vlc-url-label" data-i18n="qr_vlc_label">URL limpia para VLC (PC o Móvil):</label>
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="qr-url-input" class="form-ctrl" readonly style="flex: 1; font-family: monospace; font-size: 0.78rem;">
                         <button class="btn btn-primary btn-sm" onclick="copyQrUrl()">
@@ -962,11 +977,55 @@
                         <line x1="12" y1="16" x2="12" y2="12"></line>
                         <line x1="12" y1="8" x2="12.01" y2="8"></line>
                     </svg>
-                    <div data-i18n="qr_vlc_hint"><strong>Reproducción fluida en VLC:</strong> VLC aplica por defecto 1.500 ms de búfer. Copia y ejecuta el comando de terminal provisto arriba para reproducir con <strong>150 ms</strong> de búfer optimizado sin caídas de FPS ni imágenes trabadas.</div>
+                    <div id="qr-vlc-hint-text" data-i18n="qr_vlc_hint"><strong>Reproducción fluida en VLC:</strong> VLC aplica por defecto 1.500 ms de búfer. Copia y ejecuta el comando de terminal provisto arriba para reproducir con <strong>50 ms</strong> de búfer optimizado sin caídas de FPS ni imágenes trabadas.</div>
                 </div>
             </div>
             <div class="modal-foot" style="justify-content: center;">
                 <button class="btn btn-ghost" onclick="closeQrModal()" data-i18n="btn_close">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PREGUNTAR DESTINO UDP UNICAST AL INICIAR POR PRIMERA VEZ -->
+    <div class="modal-overlay" role="dialog" aria-modal="true" id="unicast-prompt-modal-overlay">
+        <div class="modal-card" style="max-width: 480px; text-align: left;">
+            <div class="modal-hdr">
+                <span style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="2" y1="12" x2="22" y2="12"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    <span id="unicast-prompt-title" data-i18n="unicast_prompt_title">Destino UDP Unicast</span>
+                </span>
+                <button class="modal-close" aria-label="Cerrar" onclick="closeUnicastPromptModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <p id="unicast-prompt-desc" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;" data-i18n="unicast_prompt_desc">
+                    ¿A qué dirección IP deseas transmitir el flujo de esta cámara?
+                </p>
+                <div class="form-group">
+                    <label class="form-label" for="unicast-prompt-ip-input" data-i18n="unicast_prompt_ip_label">IP de Destino (Equipo receptor):</label>
+                    <input type="text" id="unicast-prompt-ip-input" class="form-ctrl" placeholder="127.0.0.1 o IP en tu red local">
+                    <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 0.72rem; color: var(--text-secondary);" data-i18n="cfg_udp_host_quick_label">Acceso rápido:</span>
+                        <button type="button" class="btn btn-ghost btn-xs" onclick="setPromptIpValue('127.0.0.1')" style="font-size: 0.72rem; padding: 3px 10px; border: 1px solid var(--border-color); border-radius: 12px; cursor: pointer;">
+                            🏠 Este equipo (127.0.0.1)
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-xs" id="prompt-chip-lan-ip" onclick="setPromptIpValue(_localIp)" style="font-size: 0.72rem; padding: 3px 10px; border: 1px solid var(--border-color); border-radius: 12px; cursor: pointer;">
+                            🌐 Red Local (<span id="prompt-chip-ip-text">...</span>)
+                        </button>
+                    </div>
+                </div>
+                <div class="alert-box alert-info" style="font-size: 0.75rem; margin-top: 14px;" data-i18n="unicast_prompt_note">
+                    <strong>Nota:</strong> Esta IP quedará guardada como destino para esta cámara. Puedes modificarla en cualquier momento desde los ajustes de la cámara.
+                </div>
+            </div>
+            <div class="modal-foot" style="justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-ghost" onclick="closeUnicastPromptModal()" data-i18n="btn_cancel">Cancelar</button>
+                <button class="btn btn-primary" id="btn-confirm-start-unicast" onclick="confirmAndStartUnicast()" data-i18n="btn_start_stream">
+                    Iniciar Transmisión
+                </button>
             </div>
         </div>
     </div>
