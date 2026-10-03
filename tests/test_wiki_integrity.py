@@ -41,17 +41,17 @@ def test_wiki_mandatory_files_exist():
 
 
 def test_wiki_adrs_and_rfcs_coverage():
-    """Verifica que los 19 ADRs y los 5 RFCs cuenten con su página wiki correspondiente."""
+    """Verifica que los 24 ADRs y los 6 RFCs cuenten con su página wiki correspondiente."""
     wiki_files = {p.name for p in _WIKI_SRC_DIR.glob("*.md")}
 
-    # Validar que los 19 ADRs estén presentes
-    for i in range(1, 20):
+    # Validar que los 24 ADRs estén presentes
+    for i in range(1, 25):
         prefix = f"ADR-{i:04d}-"
         matching = [name for name in wiki_files if name.startswith(prefix)]
         assert len(matching) == 1, f"El registro ADR {i:04d} debe tener exactamente una página en la wiki."
 
-    # Validar que los 5 RFCs estén presentes
-    for i in range(1, 6):
+    # Validar que los 6 RFCs estén presentes
+    for i in range(1, 7):
         prefix = f"RFC-{i:04d}-"
         matching = [name for name in wiki_files if name.startswith(prefix)]
         assert len(matching) == 1, f"La propuesta RFC {i:04d} debe tener exactamente una página en la wiki."
