@@ -1,5 +1,21 @@
 # Changelog — RTMS (Real-Time Multicam System)
 
+## [2.8.3] — 2026-10-03
+
+### ⚡ Performance, 60 FPS & Windows NT Core Pinning
+- **Standard 60 FPS Default**: Default camera profiles and schema migration v3 standardized to 60 FPS across SQLite database and API with defensive auto-negotiation to 30 FPS for hardware sensors that do not support 60 FPS.
+- **P-Core Windows NT Affinity Pinning**: Added `get_pcore_affinity_mask()` in `core/process_optimizer.py` utilizing Win32 `GetLogicalProcessorInformationEx` (`RelationProcessorCore`, `EfficiencyClass`) to pin FFmpeg and MediaMTX to Performance Cores.
+- **UVC Camera Exposure Locking**: Added `core/uvc_control.py` utilizing DirectShow COM `IAMCameraControl` to enforce manual exposure $\le 1/60\text{ s}$, preventing framerate drops in low light.
+- **Lazy Lifecycle for MediaMTX**: Decoupled MediaMTX from unconditional startup in `main.py`; runs only on demand with a 20-second inactivity grace period.
+
+### 🛠️ Fixes, Network Transport & Stability
+- **OBS Studio URL Syntax Fix**: Replaced `@` syntax with explicit receiver IP (`udp://<IP>:<PORT>`) in unicast streaming.
+- **Destination IP Persistence Fix**: Fixed critical HTTP 422 bug in `app.js` (`confirmAndStartUnicast()`) payload schema validation.
+- **Aspect Ratio Distortion Fix (1080p)**: Enforced MJPEG input priority for 1080p USB webcams and aspect-ratio-preserving filter pad in fallback scaling.
+- **VLC Caching Safe Buffer**: Elevated default VLC `:network-caching` to 300 ms and eliminated destabilizing `:clock-jitter=0 :clock-synchro=0` options.
+- **SRT Deprecation as Recommended**: Demoted SRT from recommended status due to gosrt/MediaMTX instability; UDP Unicast established as canonical default.
+- **Raw RTP Transport**: Added optional `rtp` protocol with automated SDP session generation.
+
 ## [2.8.2] — 2026-10-02
 
 ### ⚡ Performance & Low Latency — Extreme Latency Optimization & UDP Unicast Default
