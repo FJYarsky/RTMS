@@ -132,6 +132,7 @@ def build_client_urls(
     zerolatency: bool = True,
     network_type: str = "wired",
     local_ip: Optional[str] = None,
+    udp_host: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Construye las URLs canónicas y optimizadas para clientes (OBS/vMix, WebRTC WHEP y VLC).
@@ -171,13 +172,22 @@ def build_client_urls(
     srt_url = f"srt://{clean_host}:{mediamtx_port}?{query}"
     webrtc_url = f"http://{clean_host}:8889/{clean_cam_id}"
 
+    publish_url = ""
+    receive_url = ""
+    dest_ip = "127.0.0.1"
+
     if actual_proto == "srt":
         connect_url = srt_url
         vlc_url = srt_url
+        publish_url = f"srt://127.0.0.1:{mediamtx_port}?streamid=publish:{clean_cam_id}"
+        receive_url = srt_url
     elif actual_proto == "udp_unicast" or udp_mode == "unicast":
-        target = "127.0.0.1" if clean_host in ("127.0.0.1", "localhost") else clean_host
-        connect_url = f"udp://{target}:{port}"
+        dest_ip = (udp_host or host or "127.0.0.1").strip()
+        is_loopback = dest_ip in ("127.0.0.1", "localhost")
+        receive_url = f"udp://127.0.0.1:{port}" if is_loopback else f"udp://@:{port}"
+        connect_url = receive_url
         vlc_url = f"udp://@:{port}"
+        publish_url = f"udp://{dest_ip}:{port}"
     else:
         # Default UDP Multicast
         p = int(port)
@@ -188,6 +198,8 @@ def build_client_urls(
         mcast_ip = f"239.255.0.{ip_last}"
         connect_url = f"udp://{mcast_ip}:{port}"
         vlc_url = f"udp://@{mcast_ip}:{port}"
+        publish_url = connect_url
+        receive_url = vlc_url
 
     vlc_command = f'vlc.exe "{vlc_url}" :network-caching={effective_lat_ms} :clock-jitter=0 :clock-synchro=0'
 
@@ -195,6 +207,9 @@ def build_client_urls(
         "srt": srt_url,
         "webrtc": webrtc_url,
         "udp": connect_url if (actual_proto in ("udp", "udp_unicast")) else f"udp://{clean_host}:{port}",
+        "publish_url": publish_url,
+        "receive_url": receive_url,
+        "udp_host": dest_ip,
         "connect_url": connect_url,
         "vlc_url": vlc_url,
         "vlc_command": vlc_command,

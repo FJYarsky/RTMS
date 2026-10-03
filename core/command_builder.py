@@ -167,11 +167,9 @@ async def build_ffmpeg_command(
             cmd += ["-vf", f"scale={video_size}", "-r", str(fps)]
 
     # Sincronización de framerate de salida:
-    # En zerolatency passthrough para evitar buffer FIFO de sincronización; en estándar cfr.
-    if zerolatency:
-        cmd += ["-fps_mode", "passthrough"]
-    else:
-        cmd += ["-fps_mode", "cfr"]
+    # cfr garantiza timestamps estrictamente crecientes (monótonos) a 1/fps exactos,
+    # erradicando duplicados de reloj DirectShow y advertencias de Non-monotonic DTS.
+    cmd += ["-fps_mode", "cfr"]
 
     protocol = str(cfg.get("protocol", "udp") or "udp").replace("\x00", "").strip()
 
@@ -273,8 +271,6 @@ async def build_ffmpeg_command(
                 "1",
                 "-rc-lookahead",
                 "0",
-                "-intra-refresh",
-                "1",
             ]
             if encoder != "av1_nvenc":
                 cmd += ["-b_adapt", "0"]

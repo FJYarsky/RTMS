@@ -936,6 +936,7 @@ class StreamManager:
                     "bitrate": cfg.get("bitrate", 3000),
                     "protocol": cfg.get("protocol", "udp"),
                     "udp_mode": cfg.get("udp_mode", "unicast"),
+                    "udp_host": cfg.get("udp_host", "127.0.0.1"),
                     "port": cfg.get("port", 9000),
                     "mediamtx_port": mediamtx_port,
                     "encoder": cfg.get("encoder", "auto"),
