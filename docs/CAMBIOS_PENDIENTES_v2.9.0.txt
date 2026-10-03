@@ -1,0 +1,173 @@
+================================================================================
+RTMS — LISTA DE CAMBIOS Y OPTIMIZACIONES PENDIENTES (EVALUACION v2.9.0)
+Mision Clave: Multicam por LAN a PC con OBS Studio (< 50ms P50 y Fail-Safe)
+Fecha de corte: 3 de Octubre de 2026 | Estado base auditado: v2.8.2
+================================================================================
+
+Este documento recopila de forma estricta unicamente los cambios, mejoras
+y correcciones arquitectonicas propuestos en la auditoria tecnica
+(RTMS_LOW_LATENCY_AUDIT_REPORT.md) que AUN NO HAN SIDO IMPLEMENTADOS en v2.8.2.
+
+Estan categorizados por subsistema, indicando la justificacion tecnica,
+el impacto en rendimiento/estabilidad y los archivos a modificar.
+
+--------------------------------------------------------------------------------
+1. INGESTA Y SENSOR DE HARDWARE (PRERREQUISITO FISICO < 50 ms)
+--------------------------------------------------------------------------------
+
+[PENDIENTE 1.1] Promocion y Negociacion Automatica de 60 FPS por Defecto
+- Diagnostico:
+  Actualmente core/config_models.py, config.json y el frontend mantienen
+  30 FPS por defecto (o 24 FPS).
+- Justificacion Fisica:
+  A 30 FPS, la exposicion del sensor CMOS (rolling shutter midpoint: 16.67 ms)
+  sumada al intervalo de refresco de pantalla a 60 Hz (16.67 ms) impone una
+  barrera fisica infranqueable de ~57.7 ms P50 glass-to-glass.
+  Capturar a 60 FPS reduce el tiempo de barrido a 8.33 ms, permitiendo
+  alcanzar 38.8 ms P50 (AMF) y 40.8 ms P50 (libx264).
+- Accion requerida:
+  1. Agregar sondeo de resoluciones y tasas de cuadros en core/hardware.py
+     para detectar si la camara soporta 60 FPS en 720p/1080p.
+  2. Promover 60 FPS como valor por defecto en camaras nuevas o al
+     restablecer valores.
+- Archivos a modificar:
+  * core/hardware.py
+  * core/config_models.py
+  * gui/static/app.js
+
+[PENDIENTE 1.2] Erradicacion del Sondeo Activo de Hardware durante Transmision
+- Diagnostico:
+  En core/stream_manager.py (start_periodic_hardware_sync), cada 15 segundos
+  se ejecuta un subproceso "ffmpeg -list_devices true -f dshow -i dummy".
+- Impacto:
+  Consultar DirectShow y el grafo COM interroga el bus USB del host,
+  provocando micro-congelamientos (stuttering) periodicos en los flujos de
+  video que estan transmitiendo activamente por la red LAN.
+- Accion requerida:
+  1. Pausar el sondeo activo de hardware si existen transmisiones activas
+     (self.has_active_streams == True).
+  2. A futuro, migrar a escucha pasiva de eventos Win32 WM_DEVICECHANGE.
+- Archivos a modificar:
+  * core/stream_manager.py
+
+--------------------------------------------------------------------------------
+2. SISTEMA OPERATIVO Y SCHEDULER DE WINDOWS NT (TIEMPO REAL ESTRICTO)
+--------------------------------------------------------------------------------
+
+[PENDIENTE 2.1] Registro de Hilos en MMCSS de Windows (Multimedia Class Scheduler)
+- Diagnostico:
+  core/process_optimizer.py eleva el proceso a HIGH_PRIORITY_CLASS, pero omite
+  el registro de los hilos criticos en el servicio MMCSS.
+- Impacto:
+  Sin MMCSS, Windows 10/11 puede aplicar limitacion energetica (power-throttling)
+  o degradar temporalmente la prioridad de los hilos de red/codificacion ante
+  tareas pesadas en segundo plano del sistema operativo.
+- Accion requerida:
+  Invocar AvSetMmThreadCharacteristicsW("Pro Audio", ...) via ctypes en
+  core/process_optimizer.py para blindar los hilos de streaming contra
+  interrupciones del planificador.
+- Archivos a modificar:
+  * core/process_optimizer.py
+  * core/stream_manager.py
+
+[PENDIENTE 2.2] Deteccion y Asignacion Automatica de Afinidad de CPU (P-Cores)
+- Diagnostico:
+  La funcion elevate_process_priority() acepta un core_mask, pero en
+  stream_manager.py y mediamtx_mgr.py se invoca con core_mask=None.
+- Impacto:
+  En procesadores hibridos (Intel 12th-14th Gen con P-cores y E-cores), los
+  hilos de corte paralelo (-slices 4) de libx264 pueden ser programados en
+  E-cores lentos, provocando colas de sincronizacion de 7 a 10 ms.
+  En AMD Ryzen multi-CCD, evita cruces de latencia por el Infinity Fabric.
+- Accion requerida:
+  Detectar mascaras de cores de rendimiento (P-cores) y pasar el core_mask
+  adecuado al elevar procesos.
+- Archivos a modificar:
+  * core/process_optimizer.py
+  * core/stream_manager.py
+
+--------------------------------------------------------------------------------
+3. TRANSPORTE DE RED LAN Y FAIL-SAFE HACIA OBS STUDIO
+--------------------------------------------------------------------------------
+
+[PENDIENTE 3.1] Selector de Perfil de Red LAN en UI y Modelos (Cableada vs Wi-Fi)
+- Diagnostico:
+  En core/stream_proc.py (build_client_urls) existe la logica interna de
+  bifurcacion: network_type="wired" (15 ms) vs "wifi" (50 ms). Sin embargo,
+  no existe ningun selector en la interfaz web ni campo en config_models.py.
+- Impacto:
+  Si la transmision por LAN se hace a traves de Wi-Fi 6 en lugar de cable
+  Ethernet, el buffer de 15 ms resulta demasiado ajustado y provoca descarte
+  de paquetes y artefactos durante contenciones de canal RF o escaneos
+  periodicos de Windows WLAN (WlanSvc).
+- Accion requerida:
+  1. Agregar campo 'network_type' ("wired" | "wifi") en CameraConfig
+     (core/config_models.py y base de datos SQLite).
+  2. Agregar selector en el modal de ajustes de camara en la GUI.
+  3. Ajustar la URL generada para OBS segun el medio seleccionado.
+- Archivos a modificar:
+  * core/config_models.py
+  * core/repository/database.py y migrator.py
+  * gui/templates/index.html
+  * gui/static/app.js
+
+[PENDIENTE 3.2] Loopback en UDP Puro hacia MediaMTX (Opcion para Modo SRT)
+- Diagnostico:
+  Cuando se transmite en modo SRT, FFmpeg publica hacia MediaMTX por loopback
+  usando SRT (latency=10ms).
+- Justificacion:
+  En localhost (127.0.0.1) el enlace fisico tiene 0% de perdida. Usar SRT en
+  el primer salto mantiene activo el temporizador TSBPD y la maquina ARQ
+  (sumando 2 a 10 ms). Publicar a MediaMTX por UDP local
+  ("udp://127.0.0.1:8890?pkt_size=1316&buffer_size=65536") reduce el primer
+  salto a 0.1 ms, dejando que MediaMTX aplique SRT unicamente en el cable LAN
+  hacia la PC de OBS.
+- Archivos a modificar:
+  * core/command_builder.py
+  * core/stream_proc.py
+
+[PENDIENTE 3.3] Migracion de Previsualizacion Web a WebRTC WHEP Nativo
+- Diagnostico:
+  core/preview_mgr.py mantiene un generador MJPEG en Python que lee chunks
+  de 16 KB desde stdout y realiza busquedas lineales de bytes (find b"\xff\xd8").
+- Impacto:
+  Cuando el usuario abre la vista previa en el navegador, Python ejecuta copias
+  de memoria continuas, consumiendo ciclos de CPU y compitiendo con el bucle
+  asyncio del servidor.
+- Accion requerida:
+  Conectar la ventana modal de vista previa directamente al endpoint WHEP de
+  MediaMTX (http://<ip>:8889/<cam_id>) mediante un elemento HTML5 <video>,
+  logrando previsualizacion instantanea (< 30 ms) con 0% de uso de CPU en Python.
+- Archivos a modificar:
+  * core/preview_mgr.py
+  * gui/templates/index.html
+  * gui/static/app.js
+
+--------------------------------------------------------------------------------
+4. DESACOPLE Y OPTIMIZACION DEL EVENT LOOP (ASYNCIO / GIL)
+--------------------------------------------------------------------------------
+
+[PENDIENTE 4.1] Desacople de Llamadas Sincronicas de Telemetria (asyncio.to_thread)
+- Diagnostico:
+  En core/telemetry_hub.py, el ticker de telemetria a 10 Hz invoca directamente:
+  * psutil.cpu_percent(interval=None)
+  * psutil.virtual_memory()
+  * telemetry_service.gpu_reader.get_metrics()
+- Impacto:
+  Si la llamada a la DLL de NVIDIA NVML o las APIs de psutil demoran 10-15 ms
+  debido a contencion del driver, bloquean de forma sincrona el bucle de eventos
+  de FastAPI, retrasando la lectura asincrona de tuberias de progreso de FFmpeg.
+- Accion requerida:
+  Envolver las lecturas pesadas de CPU/GPU en:
+  await asyncio.to_thread(...)
+- Archivos a modificar:
+  * core/telemetry_hub.py
+
+================================================================================
+RESUMEN DE IMPACTO ESPERADO EN v2.9.0:
+1. Ruptura definitiva del piso de 50 ms (38.8 ms P50 garantizado via 60 FPS).
+2. Erradicacion total de micro-tirones durante transmisiones activas (pausa de sondeo).
+3. Blindaje contra caidas de prioridad y throttling energetico (MMCSS Pro Audio).
+4. Compatibilidad optimizada tanto para cables Ethernet (15 ms) como Wi-Fi (50 ms).
+5. Previsualizacion web fluida a 0% de CPU via WebRTC WHEP.
+================================================================================

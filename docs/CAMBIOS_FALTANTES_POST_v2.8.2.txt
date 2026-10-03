@@ -1,0 +1,181 @@
+================================================================================
+RTMS — REPORTE DE CAMBIOS Y OPTIMIZACIONES PENDIENTES POST-v2.8.2
+EVALUACIÓN TÉCNICA PARA LA PRÓXIMA ACTUALIZACIÓN (v2.9.0 / v3.0.0)
+Fecha de generación: 3 de Octubre de 2026
+Autor: Arquitectura de Sistemas y Optimización de Ultra Baja Latencia
+================================================================================
+
+Este documento recopila de manera exclusiva y estructurada todas las propuestas
+técnicas y arquitectónicas surgidas de la auditoría de baja latencia que NO fueron
+incluidas en la versión v2.8.2, clasificadas para su evaluación e implementación.
+
+--------------------------------------------------------------------------------
+1. INGESTA DE VIDEO Y CONTROL FÍSICO DE HARDWARE (CÁMARAS Y CAPTURADORAS)
+--------------------------------------------------------------------------------
+
+[PENDIENTE 1.1] Migración de DirectShow a Windows Media Foundation (WMF)
+- Estado Actual: FFmpeg captura exclusivamente con el demuxer legacy `-f dshow`.
+- Problema: DirectShow opera mediante el wrapper de kernel `KsProxy.ax`, el cual
+  impone un ring buffer interno de 2 a 3 tramas (33 a 66 ms de delay ineludible)
+  y copias redundantes en memoria.
+- Propuesta: Sustituir `-f dshow` por Windows Media Foundation (`IMFSourceReaderEx`
+  o `-f lavfi / mf`), permitiendo transferencias DMA directas de USB 3.0/PCIe
+  a memoria de usuario sin intermediación de KsProxy.
+- Impacto Estimado: Reducción de 15 a 30 ms de latencia en la captura.
+- Complejidad: Media-Alta.
+- Componentes Afectados: `core/command_builder.py`, `core/device_scanner.py`.
+
+[PENDIENTE 1.2] Estandarización a 60 FPS por Defecto en Fuentes Capaces
+- Estado Actual: La configuración predeterminada del sistema es 30 FPS (`fps: 30`).
+- Problema: A 30 FPS, el tiempo físico de barrido lumínico del sensor CMOS es de
+  33.33 ms (66% del presupuesto total de 50 ms).
+- Propuesta: Establecer 60 FPS como el valor predeterminado global cuando el
+  dispositivo de video lo soporte, reduciendo el intervalo entre cuadros a 16.67 ms.
+- Impacto Estimado: Reducción directa de 16.66 ms de retardo óptico.
+- Complejidad: Baja.
+- Componentes Afectados: `core/command_builder.py`, `gui/static/app.js`, base de datos SQLite.
+
+[PENDIENTE 1.3] Bloqueo Programático de Auto-Exposición UVC (Anti-Drop FPS)
+- Estado Actual: No se configuran ni fijan los parámetros UVC del hardware de la
+  cámara antes de iniciar la transmisión.
+- Problema: En condiciones de iluminación media o baja, las webcams UVC (Logitech,
+  Elgato Facecam, genéricas) aumentan automáticamente el tiempo de integración
+  del sensor, reduciendo el framerate real a 15-20 FPS de forma silenciosa y
+  agregando entre 50 y 66 ms de retraso físico.
+- Propuesta: Invocar programáticamente las interfaces `IAMCameraControl` /
+  `IKsControl` para desactivar la auto-exposición y forzar el tiempo de obturación
+  a <= 1/60 s antes de lanzar el pipeline de captura.
+- Impacto Estimado: Previene degradaciones estocásticas de 50 ms en tiempo real.
+- Complejidad: Media.
+- Componentes Afectados: `core/device_scanner.py` o módulo helper Win32 CFFI.
+
+--------------------------------------------------------------------------------
+2. PLANIFICACIÓN DE SISTEMA OPERATIVO Y AFINIDAD DE HARDWARE
+--------------------------------------------------------------------------------
+
+[PENDIENTE 2.1] Pinning Real de Procesos a P-Cores (CPU Affinity Mask)
+- Estado Actual: `core/process_optimizer.py` tiene la función `core_mask`, pero en
+  las llamadas activas (`stream_manager.py` y `mediamtx_mgr.py`) se pasa `None`.
+- Problema: En procesadores modernos con arquitectura híbrida (Intel 12ª-15ª Gen
+  Alder/Raptor/Arrow Lake y AMD Zen 4/5), el planificador de Windows NT puede
+  migrar los hilos de codificación y streaming a Efficiency Cores (E-Cores),
+  disparando el jitter y causando caídas de frames impredecibles.
+- Propuesta: Implementar detección automática de topología de CPU mediante
+  `GetLogicalProcessorInformationEx` (RelationProcessorCore) y calcular una máscara
+  de bits que asigne FFmpeg y MediaMTX exclusivamente a los Performance Cores (P-Cores).
+- Impacto Estimado: Eliminación de picos de jitter de 10 a 40 ms; estabilidad P99.
+- Complejidad: Media.
+- Componentes Afectados: `core/process_optimizer.py`, `core/stream_manager.py`.
+
+--------------------------------------------------------------------------------
+3. PROTOCOLOS DE RED Y TRANSPORTE AVANZADO (ENLACE A OBS STUDIO)
+--------------------------------------------------------------------------------
+
+[PENDIENTE 3.1] Integración de NewTek NDI (Full NDI / SpeedHQ) para Red Local
+- Estado Actual: Los únicos protocolos de red son UDP Unicast/Multicast y SRT.
+- Problema: UDP Unicast requiere que el operador conozca y escriba la IP exacta
+  del PC receptor y configure puertos individuales en OBS.
+- Propuesta: Incorporar el SDK de NDI (NewTek / Vizrt) para emitir flujos NDI SpeedHQ:
+  * Descubrimiento automático en OBS mediante mDNS/Bonjour (sin IPs ni puertos).
+  * Compresión intra-frame de ultra-baja complejidad (1 frame de latencia: 16.6 ms).
+  * Soporte nativo a través del plugin oficial `obs-ndi`.
+- Impacto Estimado: Latencia vidrio-a-vidrio en LAN de ~18-22 ms; configuración cero.
+- Complejidad: Alta (Fase clave para v3.0.0).
+- Componentes Afectados: Nuevo submódulo de salida de video, `core/stream_manager.py`.
+
+[PENDIENTE 3.2] Soporte de Spout2 / Direct3D 11 Shared Texture (Caso Misma PC)
+- Estado Actual: Inexistente. Si OBS corre en la misma máquina física, se sigue
+  utilizando la pila de red (UDP loopback).
+- Problema: Usar sockets de red dentro de la misma máquina física es un antipatrón
+  que añade overhead de serialización, demuxing y buffers de red.
+- Propuesta: Implementar servidor Spout2 exponiendo un `HANDLE` de textura compartida
+  (`IDXGIResource::GetSharedHandle`). OBS Studio (mediante `obs-spout2`) lee la
+  textura directamente de VRAM en su swapchain.
+- Impacto Estimado: Latencia de transferencia menor a 0.5 ms; 0% uso de CPU y red.
+- Complejidad: Media-Alta.
+- Componentes Afectados: Módulo nativo emisor Spout2 / DirectX.
+
+[PENDIENTE 3.3] Eliminación del Contenedor MPEG-TS sobre UDP Unicast
+- Estado Actual: La salida UDP Unicast sigue empaquetándose en `-f mpegts`.
+- Problema: El contenedor MPEG-TS añade paquetes TS de 188 bytes con tablas PAT/PMT
+  que el desmultiplexor de OBS/VLC debe sincronizar, añadiendo entre 10 y 25 ms de
+  buffering antes de procesar el primer NAL unit.
+- Propuesta: Transmitir NAL units directos mediante Raw RTP (`-f rtp`) o datagramas
+  UDP puros con cabeceras de sincronización ultralivianas.
+- Impacto Estimado: Reducción de 10 a 20 ms de delay en la etapa de demuxing.
+- Complejidad: Media.
+- Componentes Afectados: `core/command_builder.py`, `core/stream_proc.py`.
+
+[PENDIENTE 3.4] Desacoplamiento / Detención Opcional de MediaMTX en Modo Unicast
+- Estado Actual: MediaMTX se inicia incondicionalmente en background al abrir la app.
+- Problema: Si el usuario únicamente transmite por UDP Unicast directo a OBS,
+  MediaMTX sigue consumiendo puertos (8554, 8889, 8890), ciclos de CPU y RAM,
+  incluso si no hay ninguna previsualización web activa.
+- Propuesta: Hacer que MediaMTX opere bajo demanda (Lazy Startup): arrancar el
+  proceso únicamente si se activa una cámara en protocolo SRT o si el usuario
+  abre el panel de vista previa WebRTC en el navegador.
+- Impacto Estimado: Ahorro de memoria (~50 MB), reducción de puertos abiertos y
+  menor contención de CPU en PCs modestas.
+- Complejidad: Baja-Media.
+- Componentes Afectados: `core/mediamtx_mgr.py`, `main.py`, `api/routes/preview.py`.
+
+--------------------------------------------------------------------------------
+4. ARQUITECTURA DE NÚCLEO Y RUNTIME (CORE v3.0.0)
+--------------------------------------------------------------------------------
+
+[PENDIENTE 4.1] Sustitución de Subprocesos CLI FFmpeg por Motor Compilado Nativo
+- Estado Actual: Cada cámara lanza un proceso `ffmpeg.exe` externo vía `subprocess.Popen`.
+- Problema: Los subprocesos CLI no permiten control fino de memoria, introducen
+  copias por tuberías anónimas de Windows (`pipe:0`), hacen imposible el zero-copy
+  con GPUs y añaden overhead de inicialización y sincronización.
+- Propuesta: Desarrollar `rtms-engine` en Rust o C# .NET 9 (Native AOT) como un
+  motor en memoria con bindings directos a WMF, NVENC (`nvEncodeAPI`) y sockets Winsock.
+- Impacto Estimado: Reducción de ~40-60 ms de latencia; reducción de 70% en CPU/RAM.
+- Complejidad: Muy Alta (Pilar fundamental de la versión 3.0.0).
+- Componentes Afectados: Reescribir `core/` hacia binario nativo modular.
+
+[PENDIENTE 4.2] Ring Buffers Lock-Free (SPSC) y Modelo Zero-Copy
+- Estado Actual: La transferencia inter-hilos depende de buffers de sistema operativo.
+- Problema: Las colas con locks o pipes sufren de context switching en kernel
+  (1.5 a 5.0 microsegundos por llamada bloqueante más penalización de caché CPU).
+- Propuesta: Implementar buffers circulares SPSC (Single Producer Single Consumer)
+  atómicos alineados a 64 bytes (`alignas(64)`) con asignadores prealocados (mimalloc).
+- Impacto Estimado: Cero fluctuación de frames; transferencia interhilos sub-microsegundo.
+- Complejidad: Alta.
+- Componentes Afectados: Núcleo de memoria de `rtms-engine`.
+
+--------------------------------------------------------------------------------
+5. MODERNIZACIÓN DE INTERFAZ, EMPAQUETADO Y DISTRIBUCIÓN
+--------------------------------------------------------------------------------
+
+[PENDIENTE 5.1] Migración de Frontend pywebview a Tauri v2 o WinUI 3
+- Estado Actual: La aplicación utiliza `pywebview` (Edge WebView2 atado a Python).
+- Problema: WebView2 consume entre 200 y 350 MB de memoria RAM y requiere hacks de
+  variables de entorno (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`) para evitar que
+  el render loop desbloqueado sature la GPU.
+- Propuesta: Migrar a Tauri v2 (Rust + React/Vite) o interfaz nativa WinUI 3
+  (Windows App SDK), reduciendo la huella de memoria a menos de 35 MB.
+- Impacto Estimado: Reducción del 85% de RAM de interfaz y rendimiento fluido a 60 FPS.
+- Complejidad: Alta.
+- Componentes Afectados: `gui/`, `main.py`.
+
+[PENDIENTE 5.2] Empaquetado Moderno con Velopack y Distribución WinGet
+- Estado Actual: Empaquetado portable tradicional mediante script batch (`build_portable.bat`).
+- Problema: No dispone de actualizaciones automáticas delta ni integración con el
+  gestor de paquetes nativo de Windows 11.
+- Propuesta: Implementar Velopack para generar instaladores autocontenidos con
+  actualizaciones en segundo plano y publicar el manifiesto en el repositorio oficial
+  de Microsoft (`winget install FJYarsky.RTMS`).
+- Impacto Estimado: Distribución profesional y ciclo de vida automatizado.
+- Complejidad: Media.
+- Componentes Afectados: Scripts de CI/CD, configuración de build.
+
+================================================================================
+MATRIZ DE PRIORIZACIÓN SUGERIDA PARA LA PRÓXIMA ACTUALIZACIÓN (v2.9.0):
+--------------------------------------------------------------------------------
+1. [ALTA / INMEDIATA]: P2.1 (Pinning automático a P-Cores en process_optimizer).
+2. [ALTA / INMEDIATA]: P1.2 (Estandarización a 60 FPS por defecto).
+3. [ALTA / INMEDIATA]: P3.4 (Lazy Startup de MediaMTX en modo UDP Unicast).
+4. [MEDIA / RÁPIDA] : P3.3 (Optimización / alternativa a contenedor MPEG-TS).
+5. [ESTRATÉGICA v3.0]: P3.1 (Integración NewTek NDI SDK) y P4.1 (Core nativo).
+================================================================================
