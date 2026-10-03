@@ -118,8 +118,8 @@ Emitido instantáneamente ante transiciones de estado, desconexión de hardware 
 * **Modo de Conexión**: `mode=caller` (FFmpeg empuja el flujo al broker local).
 * **Dirección de Enlace**: `srt://127.0.0.1:8890?streamid=publish:{cam_id}&...`
 * **Parámetros de Capa de Transporte**:
-  - `latency = 50000` ($\mu\text{s}$, 50 ms en zerolatency).
-  - `tlpktdrop = 1` (incondicional en caller: descarta paquetes tardíos para evitar acumular buffer).
+  - `latency = 10000` ($\mu\text{s}$, 10 ms en zerolatency para loopback localhost, erradicando el doble buffer).
+  - `tlpktdrop = 1` (incondicional en caller: requerido por gosrt para evitar ERROR:ROGUE y descartar paquetes tardíos).
   - `transtype = live`
   - `sndbuf = 65536` bytes, `rcvbuf = 65536` bytes.
   - `pkt_size = 1316` bytes (exactamente 7 paquetes MPEG-TS de 188 bytes).
@@ -128,15 +128,29 @@ Emitido instantáneamente ante transiciones de estado, desconexión de hardware 
 ### 3.2 Canal de Distribución y Lectura (MediaMTX Broker $\rightarrow$ OBS / vMix / VLC)
 * **Modo de Conexión**: `mode=listener` (MediaMTX escucha conexiones entrantes de clientes).
 * **URL Canónica Generada**:
-  `srt://{host}:8890?streamid=read:{cam_id}&latency=50000&rcvbuf=65536&tlpktdrop=1&passphrase={secret}`
+  `srt://{host}:8890?streamid=read:{cam_id}&latency=15000&rcvbuf=65536&tlpktdrop=1&passphrase={secret}`
 * **Cifrado Simétrico**: AES-128 nativo con derivación de clave por contraseña (`pbkeylen=16`).
 
 ---
 
-## 4. Especificación del Protocolo de Red UDP Multicast y Unicast
+## 4. Especificación del Protocolo de Red UDP (Unicast y Multicast) y Raw RTP
 
-### 4.2 Mapeo Canónico de Direcciones Multicast
-Para evitar colisiones entre múltiples cámaras dentro del segmento LAN, RTMS calcula de forma determinista la IP del grupo multicast en base al puerto de transmisión:
+### 4.1 UDP Unicast Canónico (Baja Latencia Extrema P50 <= 40 ms - ADR-0023)
+UDP Unicast es el protocolo recomendado para entornos LAN. Elimina servidores intermedios y colas de retransmisión.
+* **URL para OBS Studio / vMix**:
+  - Receptor en mismo equipo: `udp://127.0.0.1:{port}`
+  - Receptor en red LAN: `udp://{DESTINATION_IP}:{port}`
+  *(Nota: Se erradica la sintaxis obsoleta `@:` que causaba fallos de enlace en OBS Studio).*
+* **Comando Canónico para VLC Media Player**:
+  `vlc.exe "udp://@:{port}" :network-caching=300 :drop-late-frames :skip-frames`
+  *(El búfer seguro de 300 ms previene congelamientos del decodificador por jitter del planificador).*
+
+### 4.2 Raw RTP (RFC 3551)
+* **URL Canónica**: `rtp://{DESTINATION_IP}:{port}`
+* **Flags FFmpeg**: `-f rtp -payload_type 96`
+
+### 4.3 Mapeo Canónico de Direcciones Multicast
+Para transmisiones de un emisor a múltiples receptores en segmento LAN:
 
 $$P \in [9000, 9200] \implies \mathrm{IP}_{\mathrm{multicast}} = \texttt{239.255.0.} \left( (P - 9000) + 1 \right)$$
 $$P \notin [9000, 9200] \implies \mathrm{IP}_{\mathrm{multicast}} = \texttt{239.255.0.} \left( ((P - 1024) \bmod 250) + 1 \right)$$
@@ -144,12 +158,11 @@ $$P \notin [9000, 9200] \implies \mathrm{IP}_{\mathrm{multicast}} = \texttt{239.
 * **Parámetros del Socket Multicast**:
   - `pkt_size=1316`: Tamaño óptimo de payload MTU.
   - `ttl=16`: Tiempo de vida restringido a la red de producción local (evita escape hacia WAN).
-  - `buffer_size=65536`: Buffer mínimo para evitar acumulación de latencia.
+  - `buffer_size=131072`: Buffer de 128 KB para absorber ráfagas sin sobrecargar memoria.
   - `overrun_nonfatal=1`: Continuar transmisión si el buffer se satura temporalmente.
-  - `fifo_size=5000`: Cola interna de paquetes en FFmpeg.
+  - `fifo_size=50000`: Cola interna de paquetes en FFmpeg.
 * **Sintaxis de Reproducción en VLC Player**:
-  - Multicast: `vlc.exe "udp://@239.255.0.x:{port}" :network-caching=50 :clock-jitter=0 :clock-synchro=0`
-  - Unicast Local: `vlc.exe "udp://@:{port}" :network-caching=50 :clock-jitter=0 :clock-synchro=0`
+  - Multicast: `vlc.exe "udp://@239.255.0.x:{port}" :network-caching=300 :drop-late-frames :skip-frames`
 
 ---
 

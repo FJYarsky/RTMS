@@ -136,15 +136,14 @@ python scripts/verify_ultra_low_latency_pipeline.py --duration 10 --port 9050
 ---
 
 ### Incidente 4: Congelamiento o Pantalla Negra en Reproductores VLC
-* **Síntoma**: VLC Media Player muestra pantalla negra o tarda más de 5 segundos en reproducir la señal UDP.
-* **Causa Raíz**: El buffer de red predeterminado de VLC (1000 ms) desincroniza el reloj frente al flujo en tiempo real de RTMS.
+* **Síntoma**: VLC Media Player muestra pantalla congelada tras unos segundos o tarda más de 5 segundos en reproducir la señal UDP.
+* **Causa Raíz**: Parámetros de sincronización agresivos (`:clock-jitter=0 :clock-synchro=0`) o buffer de red insuficiente provocan congelamiento del decodificador por jitter del planificador de Windows.
 * **Procedimiento de Resolución**:
-  1. No abrir la URL directamente con doble clic simple en VLC sin argumentos.
-  2. Utilizar el comando generado por RTMS con parámetros de baja latencia:
+  1. Utilizar el comando generado por RTMS v2.8.3 con buffer seguro de 300 ms y descarte de cuadros tardíos:
      ```cmd
-     vlc.exe "udp://@239.255.0.1:9000" :network-caching=50 :clock-jitter=0 :clock-synchro=0
+     vlc.exe "udp://@:9000" :network-caching=300 :drop-late-frames :skip-frames
      ```
-  3. Alternativamente, utilizar el botón `Abrir en VLC` del Dashboard, el cual genera y ejecuta automáticamente un archivo de lista de reproducción `.xspf` con las directivas de caching precargadas.
+  2. Alternativamente, utilizar el botón `Abrir en VLC` del Dashboard, el cual genera y ejecuta automáticamente un archivo de lista de reproducción `.xspf` con las directivas de caching seguro precargadas.
 
 ---
 
@@ -155,3 +154,24 @@ python scripts/verify_ultra_low_latency_pipeline.py --duration 10 --port 9050
   1. RTMS detecta automáticamente el código de error `ENCODER` en la máquina de estados.
   2. El supervisor watchdog degrada automáticamente dicho flujo a CPU con `libx264 -preset ultrafast -tune zerolatency` (`force_cpu=True`) conforme a ADR-0007.
   3. En la interfaz web, el indicador de la cámara mostrará la insignia de advertencia amarilla `CPU Fallback`, garantizando que la emisión nunca se interrumpa.
+
+---
+
+### Incidente 6: Caída Inesperada de Cuadros a 15-20 FPS en Penumbra (Control UVC)
+* **Síntoma**: En condiciones de luz ambiental tenue, la cámara web reduce su entrega a 15-20 FPS a pesar de estar configurada en 60 FPS en el Dashboard.
+* **Causa Raíz**: El sensor físico de la cámara web activa su obturador automático alargando la exposición más allá de 16.6 ms.
+* **Procedimiento de Resolución**:
+  1. RTMS v2.8.3 aplica automáticamente el bloqueo de obturador a $\le 1/60\text{ s}$ vía DirectShow COM `IAMCameraControl` (ADR-0021, RFC-0006).
+  2. Si la cámara web es un modelo antiguo sin soporte de interfaz COM, verificar en los logs: `[UVC] Dispositivo no soporta IAMCameraControl`.
+  3. En ese caso, acceder a la utilidad de control del fabricante (ej. Logitech G HUB) y desmarcar manualmente la casilla `Exposición Automática`.
+
+---
+
+### Incidente 7: Micro-Tirones (Stuttering) en Procesadores Híbridos Intel 12ª-15ª Gen o AMD Zen 4c
+* **Síntoma**: Micro-tirones periódicos y picos de latencia P99 superiores a 100 ms en transmisiones multicámara.
+* **Causa Raíz**: El planificador de Windows NT desplazó hilos de codificación FFmpeg a núcleos de eficiencia energética (E-Cores).
+* **Procedimiento de Resolución**:
+  1. Verificar que `core/process_optimizer.py` haya detectado la topología híbrida:
+     Buscar en logs: `Topología de CPU híbrida detectada. Máscara P-Cores: 0x...`.
+  2. Abrir el Administrador de Tareas de Windows -> Pestaña Detalles -> Clic derecho en `ffmpeg.exe` -> `Establecer afinidad`.
+  3. Comprobar que únicamente los núcleos de alto rendimiento (P-Cores) estén marcados y que la prioridad esté fijada en `Alta` (`HIGH_PRIORITY_CLASS`).

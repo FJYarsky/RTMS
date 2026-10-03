@@ -54,7 +54,7 @@ flowchart TB
 * **[[Matriz de Trazabilidad|Matriz-de-Trazabilidad]]**: Matriz bidireccional que vincula cada módulo de código fuente con sus correspondientes ADRs y RFCs.
 
 ### 2. Registros de Decisión Arquitectónica (ADRs)
-Consulta el **[[Catálogo Completo de ADRs|Catalogo-de-ADRs]]** para analizar las 19 decisiones arquitectónicas formales que sustentan el sistema:
+Consulta el **[[Catálogo Completo de ADRs|Catalogo-de-ADRs]]** para analizar las 24 decisiones arquitectónicas formales que sustentan el sistema:
 * **ADR-0001**: Adopción de MediaMTX como Broker Central Multiplexor.
 * **ADR-0002**: Negociación Dinámica de Formatos DirectShow (MJPEG vs RAW).
 * **ADR-0003**: Cifrado Simétrico AES-128 con Passphrase en SRT.
@@ -74,6 +74,11 @@ Consulta el **[[Catálogo Completo de ADRs|Catalogo-de-ADRs]]** para analizar la
 * **ADR-0017**: Taxonomía de Errores, FSM y Watchdog con Backoff Exponencial.
 * **ADR-0018**: Seguridad con Token URLSafe, Prohibición de Query Params y Parche Proactor.
 * **ADR-0019**: Interfaz Nativa de Escritorio WebView2 y Sincronización al System Tray.
+* **ADR-0020**: Afinidad de Procesos a P-Cores en Arquitecturas Híbridas de Windows.
+* **ADR-0021**: Control DirectShow COM UVC y Bloqueo de Auto-Exposición a 60 FPS.
+* **ADR-0022**: Ciclo de Vida Lazy y Apagado Suave con Período de Gracia para MediaMTX.
+* **ADR-0023**: Canonicidad de UDP Unicast y Desmitificación de SRT como Protocolo Predeterminado.
+* **ADR-0024**: Preservación de Relación de Aspecto y Mitigación de Bufferbloat VBV a Nivel de Cuadro.
 
 ### 3. Propuestas Técnicas de Cambio (RFCs)
 Consulta el **[[Catálogo Completo de RFCs|Catalogo-de-RFCs]]** con los diseños de ingeniería de los componentes principales:
@@ -82,6 +87,7 @@ Consulta el **[[Catálogo Completo de RFCs|Catalogo-de-RFCs]]** con los diseños
 * **RFC-0003**: Persistencia Transaccional SQLite WAL y Migrador Idempotente.
 * **RFC-0004**: Pipeline de Previsualización Zero-Copy y Tickets Efímeros.
 * **RFC-0005**: Blindaje de Procesos con Win32 Job Objects y Ciclo de Vida Resiliente.
+* **RFC-0006**: Aislamiento de Subprocesos Multimedia en P-Cores y Control Óptico DirectShow UVC.
 
 ### 4. Operaciones, Guías y Mantenimiento
 * **[[Guía de Inicio Rápido|Guia-de-Inicio-Rapido]]**: Instalación, arranque y configuración inicial.

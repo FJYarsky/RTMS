@@ -13,6 +13,7 @@ Este catálogo documenta las propuestas técnicas de cambio y especificaciones f
 | **[[RFC-0003\|RFC-0003-Persistencia-Transaccional-Sqlite-Wal-Migrador]]** | Persistencia Transaccional SQLite WAL y Migrador | `Implemented` | `core/repository/database.py`, `core/repository/migrator.py` | Migración idempotente de `config.json` a esquema relacional normalizado con durabilidad WAL y respaldo inmutable `.bak`. |
 | **[[RFC-0004\|RFC-0004-Pipeline-Previsualizacion-Zero-Copy-Tickets-Efimeros]]** | Pipeline de Previsualización Zero-Copy y Tickets | `Implemented` | `core/preview_mgr.py`, `api/deps.py`, `api/routes/preview.py` | Transmisión on-demand de vistas previas `multipart/x-mixed-replace` delimitadas por marcadores JPEG SOI/EOI y tickets efímeros single-use. |
 | **[[RFC-0005\|RFC-0005-Blindaje-Procesos-Kernel-Win32-Ciclo-Vida-Resiliente]]** | Blindaje de Procesos Kernel Win32 y Ciclo de Vida | `Implemented` | `core/job_object.py`, `core/task_registry.py` | Encapsulado de subprocesos en Win32 Job Objects con terminación forzada atómica en caídas del SO y drenaje ordenado en shutdown. |
+| **[[RFC-0006\|RFC-0006-Aislamiento-Subprocesos-P-Cores-y-Control-Optico-Uvc]]** | Aislamiento P-Cores y Control Óptico DirectShow UVC | `Implemented` | `core/process_optimizer.py`, `core/uvc_control.py` | Pinning de FFmpeg/MediaMTX en P-Cores (`GetLogicalProcessorInformationEx`), `HIGH_PRIORITY_CLASS` y bloqueo de obturador UVC <=1/60s para asegurar 60 FPS estables. |
 
 ---
 
@@ -23,3 +24,4 @@ Este catálogo documenta las propuestas técnicas de cambio y especificaciones f
 * [[RFC-0003: Persistencia Transaccional SQLite WAL y Migraciones|RFC-0003-Persistencia-Transaccional-Sqlite-Wal-Migrador]]
 * [[RFC-0004: Pipeline de Previsualización y Tickets Efímeros|RFC-0004-Pipeline-Previsualizacion-Zero-Copy-Tickets-Efimeros]]
 * [[RFC-0005: Blindaje de Procesos en Kernel y Ciclo de Vida Resiliente|RFC-0005-Blindaje-Procesos-Kernel-Win32-Ciclo-Vida-Resiliente]]
+* [[RFC-0006: Aislamiento P-Cores y Control Óptico UVC|RFC-0006-Aislamiento-Subprocesos-P-Cores-y-Control-Optico-Uvc]]

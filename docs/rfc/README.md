@@ -24,6 +24,7 @@ Inspirado en el modelo de estándares de ingeniería de software moderno (IETF, 
 | [**RFC-0003**](RFC-0003-persistencia-transaccional-sqlite-wal-migrador.md) | Arquitectura de Persistencia Transaccional, Repositorio Asíncrono y Migraciones de Esquema en SQLite WAL | **Implementado** | 2026-10-01 | `database.py`, `config_repository.py`, `migrator.py` |
 | [**RFC-0004**](RFC-0004-pipeline-previsualizacion-zero-copy-tickets-efimeros.md) | Pipeline de Previsualización WebRTC WHEP / MJPEG de Zero-Copy y Control de Admisión Concurrente | **Implementado** | 2026-10-01 | `preview_mgr.py`, `api/routes/preview.py`, `deps.py` |
 | [**RFC-0005**](RFC-0005-blindaje-procesos-kernel-win32-ciclo-vida-resiliente.md) | Gobernanza de Blindaje de Procesos a Nivel de Kernel (Win32 Job Objects) y Ciclo de Vida Resiliente | **Implementado** | 2026-10-01 | `job_object.py`, `task_registry.py`, `process_cleanup.py` |
+| [**RFC-0006**](RFC-0006-aislamiento-subprocesos-p-cores-y-control-optico-uvc.md) | Aislamiento de Subprocesos Multimedia en Núcleos de Rendimiento (P-Cores) y Control Óptico DirectShow UVC | **Implementado** | 2026-10-03 | `process_optimizer.py`, `uvc_control.py`, `command_builder.py` |
 
 ---
 

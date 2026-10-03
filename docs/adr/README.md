@@ -37,11 +37,16 @@ Seguimos el estándar unificado de Michael Nygard para Architecture Decision Rec
 | [**ADR-0017**](0017-taxonomia-errores-maquina-estados-watchdog-backoff.md) | Taxonomía Formal de Errores, Máquina de Estados Finita y Watchdog con Backoff Exponencial | **Aceptado** | 2026-10-01 | Core / Resiliencia / FSM |
 | [**ADR-0018**](0018-seguridad-api-token-tickets-efimeros-proactor.md) | Blindaje de Seguridad en API Local, Tokens de Sesión y Mitigación Proactor | **Aceptado** | 2026-10-01 | Seguridad / API / Red |
 | [**ADR-0019**](0019-interfaz-nativa-escritorio-webview2-bandeja-sistema.md) | Interfaz Nativa de Escritorio con WebView2 (pywebview) y Persistencia al System Tray | **Aceptado** | 2026-10-01 | GUI / Escritorio / Concurrencia |
+| [**ADR-0020**](0020-afinidad-procesos-p-cores-arquitecturas-hibridas-windows.md) | Afinidad de Procesos a P-Cores en Arquitecturas Híbridas de Windows y Prioridad de Tiempo Real Suave | **Aceptado** | 2026-10-03 | OS / Rendimiento / Concurrencia |
+| [**ADR-0021**](0021-control-directshow-com-uvc-bloqueo-auto-exposicion.md) | Control DirectShow COM UVC y Bloqueo de Auto-Exposición para Prevención de Caídas de FPS | **Aceptado** | 2026-10-03 | Hardware / Video / DirectShow |
+| [**ADR-0022**](0022-ciclo-vida-lazy-apagado-suave-mediamtx.md) | Ciclo de Vida Lazy y Apagado Suave con Período de Gracia para MediaMTX | **Aceptado** | 2026-10-03 | Core / Recursos / Ciclo de Vida |
+| [**ADR-0023**](0023-canonicidad-udp-unicast-desmitificacion-srt.md) | Canonicidad de UDP Unicast y Desmitificación de SRT como Protocolo Predeterminado | **Aceptado** | 2026-10-03 | Red / Protocolos / Streaming |
+| [**ADR-0024**](0024-preservacion-aspect-ratio-mitigacion-bufferbloat-vbv.md) | Preservación de Relación de Aspecto y Mitigación de Bufferbloat VBV a Nivel de Cuadro | **Aceptado** | 2026-10-03 | Video / FFmpeg / Hardware |
 
 ---
 
 ## Cómo Proponer un Nuevo ADR
 1. Copia la plantilla base desde [`docs/adr/template.md`](template.md).
-2. Asigna el número consecutivo siguiente (`0020-...md`).
+2. Asigna el número consecutivo siguiente (`0025-...md`).
 3. Describe el contexto, las alternativas evaluadas y las consecuencias esperadas.
 4. Si la decisión amerita cambios profundos de protocolo o arquitectura de datos, acompaña el ADR con una propuesta en [`docs/rfc/`](../rfc/).

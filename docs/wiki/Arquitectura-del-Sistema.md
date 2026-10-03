@@ -93,6 +93,9 @@ flowchart TB
         preview_mgr["PreviewManager (core/preview_mgr.py)<br/>Admisión semáforo máx 3 y extracción SOI/EOI"]
         telemetry_hub["TelemetryWebSocketHub (core/telemetry_hub.py)<br/>Ticker 10 Hz on-demand y broadcast reactivo"]
         config_repo["ConfigRepository (core/repository/)<br/>Abstracción relacional SQLite WAL y migraciones"]
+        proc_opt["ProcessOptimizer (core/process_optimizer.py)<br/>Afinidad a P-Cores Win32 y HIGH_PRIORITY_CLASS"]
+        uvc_ctrl["UVCControl (core/uvc_control.py)<br/>Bloqueo DirectShow COM de auto-exposición a 60 FPS"]
+        mediamtx_mgr["MediaMTXManager (core/mediamtx_mgr.py)<br/>Ciclo lazy bajo demanda con supervisor de 20s"]
     end
 
     streams_router -->|"start_stream, stop_stream"| stream_mgr
@@ -101,6 +104,9 @@ flowchart TB
     preview_router -->|"Consume tickets efímeros"| deps
     ws_router -->|"Registra suscriptores WebSocket"| telemetry_hub
     stream_mgr -->|"Solicita lista de argumentos"| cmd_builder
+    stream_mgr -->|"Bloquea auto-exposición UVC"| uvc_ctrl
+    stream_mgr -->|"Eleva prioridad y asigna P-Cores"| proc_opt
+    stream_mgr -->|"Aprovisiona broker bajo demanda"| mediamtx_mgr
     cmd_builder -->|"Consulta mejor encoder"| enc_detector
     stream_mgr -->|"Asigna subprocesos recién creados"| job_mgr
     stream_mgr -->|"Reserva puertos de escucha"| port_mgr
@@ -114,49 +120,54 @@ flowchart TB
 
 ## 4. Nivel 4: Diagrama de Código y Ejecución del Pipeline (Code / Pipeline View)
 
-El diagrama de código modela la secuencia detallada de procesamiento de un cuadro de video desde su captura en el sensor USB hasta su entrega final al cliente SRT.
+El diagrama de código modela la secuencia detallada de procesamiento de un cuadro de video desde su captura en el sensor USB hasta su entrega final al cliente por UDP Unicast directo (SLA <= 50 ms) o mediante el broker MediaMTX.
 
 ```mermaid
 flowchart TD
     subgraph DSHOW [" Capa Física DirectShow "]
-        USB["Sensor CMOS / Lente USB"] -->|"Cuadros Crudos (YUYV) o MJPEG"| DRV["Controlador USB Win32"]
+        USB["Sensor CMOS / Lente USB"] -->|"UVC Shutter Lock <= 1/60s (ADR-0021)"| DRV["Controlador USB Win32"]
         DRV -->|"DirectShow Source Filter"| PIN{"Evaluación de Pin de Sensor"}
-        PIN -->|"MJPEG Soportado (ADR-0002)"| M_PIN["-vcodec mjpeg -rtbufsize 100M"]
-        PIN -->|"Solo RAW (NV12 / YUY2)"| R_PIN["-pixel_format yuyv422 -rtbufsize 65M"]
+        PIN -->|"MJPEG Soportado 1080p+ (ADR-0024)"| M_PIN["-vcodec mjpeg -rtbufsize 3M"]
+        PIN -->|"Pin Nativo (NV12 / YUY2)"| R_PIN["-pixel_format nv12 -rtbufsize 5M/10M"]
     end
 
-    subgraph WORKER [" Worker FFmpeg (Subproceso Aislado) "]
+    subgraph WORKER [" Worker FFmpeg (P-Core Pinning & HIGH_PRIORITY_CLASS) "]
         M_PIN --> DEC["Decodificador de Entrada"]
         R_PIN --> DEC
-        DEC -->|"Buffer de Píxeles Crudos"| FLT["Filtro de Escala y Tasa (fps=30, scale=1280x720)"]
-        FLT --> ENC{"Codificador Asignado"}
+        DEC -->|"Buffer de Píxeles Crudos"| FLT["Filtro de Escala & Aspect Ratio Guard (pad 16:9)"]
+        FLT -->|"Sincronización Monótona: -fps_mode cfr"| ENC{"Codificador Asignado"}
         
-        ENC -->|"NVIDIA NVENC"| E_NV["h264_nvenc -preset p1 -tune ll -rc cbr -zerolatency 1"]
-        ENC -->|"Intel QSV"| E_QSV["h264_qsv -preset veryfast -async_depth 1"]
-        ENC -->|"AMD AMF"| E_AMF["h264_amf -usage lowlatency -quality speed"]
-        ENC -->|"CPU Fallback"| E_CPU["libx264 -preset ultrafast -tune zerolatency"]
+        ENC -->|"NVIDIA NVENC"| E_NV["h264_nvenc -preset p1 -tune ull -rc cbr -zerolatency 1"]
+        ENC -->|"Intel QSV"| E_QSV["h264_qsv -preset veryfast -async_depth 1 -low_delay_brc 1"]
+        ENC -->|"AMD AMF"| E_AMF["h264_amf -usage ultralowlatency -quality speed -latency 1"]
+        ENC -->|"CPU Fallback"| E_CPU["libx264 -preset ultrafast -tune zerolatency -slices 4"]
         
-        E_NV --> CBR["Buffer VBV: maxrate=bitrate*1.15, bufsize=bitrate*0.35"]
+        E_NV --> CBR["Micro-VBV: bufsize = bitrate/fps*1.5 (1.5 frames)"]
         E_QSV --> CBR
         E_AMF --> CBR
         E_CPU --> CBR
 
         CBR --> GOP["Cadencia IDR Forzada: -g max(15, fps*0.5)"]
-        GOP --> MUX["Multiplexor MPEG-TS (pkt_size=1316)"]
-        MUX --> PUSH["SRT Socket Client (mode=caller, tlpktdrop=1, latency=50ms)"]
+        GOP --> MUX["Muxer MPEG-TS: -pes_payload_size 0 -flush_packets 1"]
+        MUX --> PROTO{"Selección de Protocolo"}
     end
 
-    subgraph BROKER [" MediaMTX Server (Broker Central) "]
-        PUSH -->|"srt://127.0.0.1:8890?streamid=publish:{cam_id}"| INGEST_SOCK["Socket de Ingesta SRT"]
-        INGEST_SOCK --> ROUTE["Tabla de Enrutamiento de Rutas en Memoria"]
-        ROUTE --> EGRESS_SRT["SRT Listener (:8890) con Passphrase AES-128"]
-        ROUTE --> EGRESS_WHEP["WebRTC HTTP Egress Protocol WHEP (:8889)"]
-        ROUTE --> EGRESS_UDP["UDP Forwarder (:8888 / Multicast 239.255.0.x)"]
+    subgraph DIRECT [" Ruta Directa Zero-Broker (Canónica LAN - ADR-0023) "]
+        PROTO -->|"udp (unicast) / rtp"| UDP_SOCK["Socket UDP Directo (P50 <= 40 ms)"]
+        UDP_SOCK -->|"udp://DEST_IP:PORT"| OBS_DIRECT["OBS / vMix Studio (Zero Buffer Delay)"]
+        UDP_SOCK -->|"vlc.exe udp://@:PORT :network-caching=300"| VLC_DIRECT["VLC Media Player"]
     end
 
-    subgraph CLIENTS [" Receptores de Producción "]
-        EGRESS_SRT -->|"srt://host:8890?streamid=read:{cam_id}&passphrase=..."| OBS["OBS Studio (Latencia menor a 100 ms)"]
-        EGRESS_WHEP -->|"POST /whep/{cam_id} (SDP Offer/Answer)"| WEB["Dashboard HTML5 (Video Tag)"]
-        EGRESS_UDP -->|"udp://@239.255.0.x:{port}"| VLC["Monitores VLC en Red Local"]
+    subgraph BROKER [" Broker MediaMTX (Aprovisionamiento Lazy - ADR-0022) "]
+        PROTO -->|"srt (modo caller)"| PUSH["Loopback Ingest (127.0.0.1:8890, latency=10ms)"]
+        PUSH --> INGEST_SOCK["Socket de Ingesta SRT"]
+        INGEST_SOCK --> ROUTE["Tabla de Enrutamiento en Memoria"]
+        ROUTE --> EGRESS_SRT["SRT Egress (:8890) Passphrase AES-128"]
+        ROUTE --> EGRESS_WHEP["WebRTC HTTP Egress WHEP (:8889)"]
+    end
+
+    subgraph CLIENTS [" Clientes WAN & Previsualización "]
+        EGRESS_SRT -->|"srt://host:8890?streamid=read:cam&..."| OBS_REMOTE["OBS Remoto / Producción WAN"]
+        EGRESS_WHEP -->|"POST /whep/{cam_id} SDP Offer"| WEB_DASH["Dashboard HTML5 (WebRTC < 30 ms)"]
     end
 ```

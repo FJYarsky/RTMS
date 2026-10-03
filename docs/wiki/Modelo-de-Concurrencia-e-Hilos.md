@@ -116,3 +116,20 @@ flowchart TD
     RESTORE_POWER --> RELEASE_MUTEX["10. release_single_instance_lock() (Liberar Mutex Win32)"]
     RELEASE_MUTEX --> END["Finalización Limpia del Proceso (Exit 0)"]
 ```
+
+---
+
+## 6. Aislamiento de Afinidad de CPU y Prioridades en el Kernel Windows NT (P-Core Pinning)
+
+Para neutralizar el jitter del planificador de Windows NT en microarquitecturas híbridas (Intel Alder/Raptor/Arrow Lake y AMD Zen 4/4c), RTMS implementa control estricto de afinidad y prioridades en ``core/process_optimizer.py``:
+
+### 6.1 Topología Heterogénea e Inversión de Prioridad
+Cuando múltiples procesos de transcodificación FFmpeg se ejecutan concurrentemente:
+1. El planificador de Windows NT puede desplazar hilos de codificación a **E-Cores (Efficient Cores)** para optimizar el consumo de energía.
+2. La ejecución en E-Cores eleva el tiempo de procesamiento por cuadro de $4\text{ ms}$ a más de $25\text{ ms}$, violando el intervalo de $16.66\text{ ms}$ a 60 FPS y provocando encolamiento masivo en `-rtbufsize`.
+
+### 6.2 Detección Dinámica y Confinamiento a P-Cores
+1. **Introspección**: Mediante `GetLogicalProcessorInformationEx(RelationProcessorCore)` se extrae la clase de eficiencia (`EfficiencyClass`) y la máscara de grupo de cada núcleo.
+2. **Cálculo de Máscara**: Si existe heterogeneidad (`max_eff > min_eff`), se calcula la máscara unificada de bits agregando exclusivamente los núcleos con `EfficiencyClass == max_eff`.
+3. **Fijación de Afinidad**: Al instanciarse cada subproceso multimedia (`ffmpeg.exe` y `mediamtx.exe`), se aplica `SetProcessAffinityMask(hProcess, pcore_mask)`.
+4. **Elevación de Prioridad**: Se asigna `HIGH_PRIORITY_CLASS` (0x00000080) garantizando despacho preferente sobre tareas de mantenimiento del sistema operativo, pero manteniéndose por debajo de `REALTIME_PRIORITY_CLASS` para preservar la estabilidad de los controladores de red y periféricos.

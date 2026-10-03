@@ -1,6 +1,6 @@
 # Catálogo de Registros de Decisión Arquitectónica (ADRs)
 
-Este catálogo documenta las **19 decisiones técnicas formales** que gobiernan la arquitectura, seguridad, concurrencia y persistencia de RTMS. Cada ADR sigue el estándar de ingeniería MADR (Markdown Architectural Decision Records).
+Este catálogo documenta las **24 decisiones técnicas formales** que gobiernan la arquitectura, seguridad, concurrencia y persistencia de RTMS. Cada ADR sigue el estándar de ingeniería MADR (Markdown Architectural Decision Records).
 
 ---
 
@@ -27,6 +27,11 @@ Este catálogo documenta las **19 decisiones técnicas formales** que gobiernan 
 | **[[ADR-0017\|ADR-0017-Taxonomia-Errores-Maquina-Estados-Watchdog-Backoff]]** | Taxonomía de Errores, FSM y Watchdog | `Accepted` | Tolerancia a Fallos | Clasificación semántica de excepciones y watchdog a 2 Hz con backoff $T = \min(2^k, 30)$ s. |
 | **[[ADR-0018\|ADR-0018-Seguridad-Api-Token-Tickets-Efimeros-Proactor]]** | Seguridad Tokens y Tickets Efímeros | `Accepted` | Seguridad API | Tokens URLSafe de 32 bytes, prohibición de query tokens y tickets efímeros single-use. |
 | **[[ADR-0019\|ADR-0019-Interfaz-Nativa-Escritorio-Webview2-Bandeja-Sistema]]** | Interfaz WebView2 y System Tray | `Accepted` | UI de Escritorio | Ventana nativa Edge Chromium desacoplada con bomba de mensajes Win32 y VSync a 60 FPS. |
+| **[[ADR-0020\|ADR-0020-Afinidad-Procesos-P-Cores-Arquitecturas-Hibridas-Windows]]** | Afinidad P-Cores en CPUs Híbridas | `Accepted` | Kernel & Silicio | Pinning de FFmpeg/MediaMTX en P-Cores con `GetLogicalProcessorInformationEx` y `HIGH_PRIORITY_CLASS`. |
+| **[[ADR-0021\|ADR-0021-Control-Directshow-Com-Uvc-Bloqueo-Auto-Exposicion]]** | Bloqueo Auto-Exposición DirectShow UVC | `Accepted` | Captura Óptica | Shutter manual <= 1/60s via COM `IAMCameraControl` erradicando caída invisible a 15-20 FPS. |
+| **[[ADR-0022\|ADR-0022-Ciclo-Vida-Lazy-Apagado-Suave-Mediamtx]]** | Ciclo Lazy y Apagado Suave MediaMTX | `Accepted` | Recursos & Broker | Inicio bajo demanda para SRT/WebRTC con gracia de 20s reduciendo RAM ociosa en >75%. |
+| **[[ADR-0023\|ADR-0023-Canonicidad-Udp-Unicast-Desmitificacion-Srt]]** | Canonicidad UDP Unicast LAN | `Accepted` | Red & Protocolos | UDP Unicast punto a punto recomendado en LAN (P50 <= 40 ms), sintaxis OBS limpia y VLC 300 ms. |
+| **[[ADR-0024\|ADR-0024-Preservacion-Aspect-Ratio-Mitigacion-Bufferbloat-Vbv]]** | Preservación de Aspect Ratio y Micro-VBV | `Accepted` | FFmpeg & Video | Prioridad MJPEG en 1080p, filtro padding 16:9 y micro-búfer VBV a 1.5 cuadros eliminando bufferbloat. |
 
 ---
 
@@ -51,3 +56,8 @@ Este catálogo documenta las **19 decisiones técnicas formales** que gobiernan 
 * [[ADR-0017: Taxonomía de Errores y Watchdog|ADR-0017-Taxonomia-Errores-Maquina-Estados-Watchdog-Backoff]]
 * [[ADR-0018: Tokens de Seguridad y Tickets|ADR-0018-Seguridad-Api-Token-Tickets-Efimeros-Proactor]]
 * [[ADR-0019: Escritorio Nativo WebView2|ADR-0019-Interfaz-Nativa-Escritorio-Webview2-Bandeja-Sistema]]
+* [[ADR-0020: Afinidad P-Cores en CPUs Híbridas|ADR-0020-Afinidad-Procesos-P-Cores-Arquitecturas-Hibridas-Windows]]
+* [[ADR-0021: Bloqueo Auto-Exposición UVC|ADR-0021-Control-Directshow-Com-Uvc-Bloqueo-Auto-Exposicion]]
+* [[ADR-0022: Ciclo Lazy MediaMTX|ADR-0022-Ciclo-Vida-Lazy-Apagado-Suave-Mediamtx]]
+* [[ADR-0023: Canonicidad UDP Unicast LAN|ADR-0023-Canonicidad-Udp-Unicast-Desmitificacion-Srt]]
+* [[ADR-0024: Aspect Ratio y Micro-VBV|ADR-0024-Preservacion-Aspect-Ratio-Mitigacion-Bufferbloat-Vbv]]

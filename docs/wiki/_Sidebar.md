@@ -37,6 +37,11 @@
 * [[ADR-0017: FSM y Watchdog|ADR-0017-Taxonomia-Errores-Maquina-Estados-Watchdog-Backoff]]
 * [[ADR-0018: Seguridad Tokens|ADR-0018-Seguridad-Api-Token-Tickets-Efimeros-Proactor]]
 * [[ADR-0019: WebView2 & Tray|ADR-0019-Interfaz-Nativa-Escritorio-Webview2-Bandeja-Sistema]]
+* [[ADR-0020: Afinidad P-Cores|ADR-0020-Afinidad-Procesos-P-Cores-Arquitecturas-Hibridas-Windows]]
+* [[ADR-0021: Control UVC 60 FPS|ADR-0021-Control-Directshow-Com-Uvc-Bloqueo-Auto-Exposicion]]
+* [[ADR-0022: Ciclo Lazy MediaMTX|ADR-0022-Ciclo-Vida-Lazy-Apagado-Suave-Mediamtx]]
+* [[ADR-0023: Canónico UDP Unicast|ADR-0023-Canonicidad-Udp-Unicast-Desmitificacion-Srt]]
+* [[ADR-0024: Aspect Ratio & VBV|ADR-0024-Preservacion-Aspect-Ratio-Mitigacion-Bufferbloat-Vbv]]
 
 ---
 
@@ -48,6 +53,7 @@
 * [[RFC-0003: SQLite WAL Migrator|RFC-0003-Persistencia-Transaccional-Sqlite-Wal-Migrador]]
 * [[RFC-0004: Previews Zero-Copy|RFC-0004-Pipeline-Previsualizacion-Zero-Copy-Tickets-Efimeros]]
 * [[RFC-0005: Blindaje Resiliente|RFC-0005-Blindaje-Procesos-Kernel-Win32-Ciclo-Vida-Resiliente]]
+* [[RFC-0006: P-Cores & UVC Shutter|RFC-0006-Aislamiento-Subprocesos-P-Cores-y-Control-Optico-Uvc]]
 
 ---
 

@@ -14,9 +14,12 @@ Esta matriz establece el vínculo bidireccional formal entre cada archivo y mód
 | :--- | :--- | :---: | :---: | :--- |
 | ``main.py`` | Punto de Entrada & Ciclo de Vida | `ADR-0012`, `ADR-0013`, `ADR-0018`, `ADR-0019` | `RFC-0005` | `test_audit_lifecycle.py`, `test_fastapi_headless.py`, `test_single_instance.py` |
 | ``core/stream_manager.py`` | Orquestación & FSM Watchdog | `ADR-0007`, `ADR-0009`, `ADR-0017` | `RFC-0002` | `test_stream_lifecycle.py`, `test_stream_resilience.py`, `test_stress_concurrency.py` |
-| ``core/stream_proc.py`` | Proceso de Streaming & URLs | `ADR-0003`, `ADR-0005`, `ADR-0017` | `RFC-0002` | `test_command_builder.py`, `test_vlc_integration.py` |
-| ``core/command_builder.py`` | Generador de Flags FFmpeg | `ADR-0002`, `ADR-0003`, `ADR-0007` | `RFC-0002` | `test_command_builder.py`, `test_ffmpeg_live.py` |
-| ``core/hardware.py`` | Detección DirectShow & Silicio | `ADR-0002`, `ADR-0007`, `ADR-0014` | `RFC-0002` | `test_hardware_parser.py`, `test_hardware_concurrency.py` |
+| ``core/stream_proc.py`` | Proceso de Streaming & URLs | `ADR-0003`, `ADR-0005`, `ADR-0017`, `ADR-0020`, `ADR-0023` | `RFC-0002`, `RFC-0006` | `test_command_builder.py`, `test_vlc_integration.py`, `test_audit_v283_features.py` |
+| ``core/command_builder.py`` | Generador de Flags FFmpeg | `ADR-0002`, `ADR-0003`, `ADR-0007`, `ADR-0023`, `ADR-0024` | `RFC-0002`, `RFC-0006` | `test_command_builder.py`, `test_ffmpeg_live.py`, `test_audit_v283_features.py` |
+| ``core/process_optimizer.py`` | Afinidad P-Cores & Prioridad NT | `ADR-0020` | `RFC-0006` | `test_audit_v283_features.py` |
+| ``core/uvc_control.py`` | Control DirectShow COM UVC | `ADR-0021` | `RFC-0006` | `test_audit_v283_features.py` |
+| ``core/mediamtx_mgr.py`` | Broker MediaMTX & Ciclo Lazy | `ADR-0001`, `ADR-0022` | `RFC-0002` | `test_mediamtx_lifecycle.py`, `test_audit_v283_features.py` |
+| ``core/hardware.py`` | Detección DirectShow & Silicio | `ADR-0002`, `ADR-0007`, `ADR-0014`, `ADR-0024` | `RFC-0002` | `test_hardware_parser.py`, `test_hardware_concurrency.py` |
 | ``core/job_object.py`` | Kernel Win32 Job Objects | `ADR-0009` | `RFC-0005` | `test_audit_new_features.py` |
 | ``core/repository/database.py`` | Motor SQLite WAL Transaccional | `ADR-0010` | `RFC-0003` | `test_config_persistence.py`, `test_config_isolation.py` |
 | ``core/repository/config_repository.py`` | Patrón Repositorio de Datos | `ADR-0010` | `RFC-0003` | `test_config_mgr.py`, `test_config_persistence.py` |
