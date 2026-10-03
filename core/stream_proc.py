@@ -77,7 +77,7 @@ def build_stream_url(
     latency_ms: Optional[int] = None,
     zerolatency: bool = True,
     streamid: Optional[str] = None,
-    udp_mode: str = "multicast",
+    udp_mode: str = "unicast",
     udp_host: str = "127.0.0.1",
 ) -> str:
     """Construye la URL normalizada de transmisión para SRT o UDP con parámetros optimizados de baja latencia."""
@@ -88,13 +88,13 @@ def build_stream_url(
 
     # Protocolo SRT
     if zerolatency:
-        effective_latency_ms = 50
+        effective_latency_ms = 10  # 10ms para loopback localhost (v2.8.2)
     else:
         effective_latency_ms = int(latency_ms) if latency_ms is not None else 120
     latency_us = effective_latency_ms * 1000
 
     host = "0.0.0.0" if mode == "listener" else "127.0.0.1"
-    # En modo caller hacia MediaMTX y transmisiones en vivo, tlpktdrop debe ser 1 incondicionalmente
+    # En modo caller hacia MediaMTX y transmisiones en vivo, tlpktdrop debe ser 1
     # para evitar retardo/ping acumulado infinito y rechazo ERROR:ROGUE en gosrt.
     drop_flag = "1" if (mode == "caller" or zerolatency) else "0"
     buf_size = "65536" if zerolatency else "262144"
@@ -121,39 +121,60 @@ def build_stream_url(
 
 
 def build_client_urls(
-    protocol: str,
-    host: str,
-    port: int,
-    cam_id: str,
+    protocol: str = "udp",
+    host: str = "127.0.0.1",
+    port: int = 9000,
+    cam_id: Optional[str] = None,
     passphrase: str = "",
     mediamtx_port: int = 8890,
-    udp_mode: str = "multicast",
-    latency_ms: Optional[int] = 50,
+    udp_mode: str = "unicast",
+    latency_ms: Optional[int] = None,
+    zerolatency: bool = True,
+    network_type: str = "wired",
+    local_ip: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Construye las URLs canónicas y limpias para clientes (OBS/vMix) y reproductores como VLC.
-    Garantiza sintaxis RFC 3986 (/?...) para SRT y prefijo @ para UDP en VLC sin parámetros de FFmpeg.
-    Proporciona comandos y banderas preconfiguradas de baja latencia fluida sin congelamientos.
+    Construye las URLs canónicas y optimizadas para clientes (OBS/vMix, WebRTC WHEP y VLC).
+    Soporta bifurcación de red cableada (15ms) vs Wi-Fi (50ms) y expone la URL WHEP para sub-30ms.
+    Mantiene compatibilidad total con todas las firmas y claves históricas de RTMS.
     """
-    clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
-    clean_host = host.strip() or "127.0.0.1"
-    effective_lat_ms = int(latency_ms) if latency_ms is not None else 50
+    # Detección polimórfica de argumentos: si el primer argumento es un cam_id (no un protocolo conocido)
+    if protocol not in ("srt", "udp", "udp_unicast") and cam_id is None:
+        actual_cam_id = protocol
+        clean_host = (local_ip or host).strip() or "127.0.0.1"
+        actual_proto = "udp"
+    else:
+        actual_cam_id = cam_id or f"cam_{port}"
+        clean_host = (local_ip or host).strip() or "127.0.0.1"
+        actual_proto = protocol
+
+    clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(actual_cam_id))
+
+    if latency_ms is not None:
+        effective_lat_ms = int(latency_ms)
+    elif zerolatency:
+        # Wired LAN: 15ms óptimo; Wi-Fi 6: 50ms absorbe fluctuaciones y contención RF
+        effective_lat_ms = 50 if str(network_type).lower() == "wifi" else 15
+    else:
+        effective_lat_ms = 50
     latency_us = effective_lat_ms * 1000
 
-    if protocol == "srt":
-        query_parts = [
-            f"streamid=read:{clean_cam_id}",
-            f"latency={latency_us}",
-            "rcvbuf=65536",
-            "tlpktdrop=1",
-        ]
-        if passphrase:
-            query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
-        query = "&".join(query_parts)
-        url = f"srt://{clean_host}:{mediamtx_port}?{query}"
-        vlc_url = url
-        connect_url = url
-    elif protocol == "udp_unicast" or udp_mode == "unicast":
+    query_parts = [
+        f"streamid=read:{clean_cam_id}",
+        f"latency={latency_us}",
+        "rcvbuf=65536",
+        "tlpktdrop=1",
+    ]
+    if passphrase:
+        query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")
+    query = "&".join(query_parts)
+    srt_url = f"srt://{clean_host}:{mediamtx_port}?{query}"
+    webrtc_url = f"http://{clean_host}:8889/{clean_cam_id}"
+
+    if actual_proto == "srt":
+        connect_url = srt_url
+        vlc_url = srt_url
+    elif actual_proto == "udp_unicast" or udp_mode == "unicast":
         target = "127.0.0.1" if clean_host in ("127.0.0.1", "localhost") else clean_host
         connect_url = f"udp://{target}:{port}"
         vlc_url = f"udp://@:{port}"
@@ -168,13 +189,16 @@ def build_client_urls(
         connect_url = f"udp://{mcast_ip}:{port}"
         vlc_url = f"udp://@{mcast_ip}:{port}"
 
-    vlc_command = f'vlc.exe "{vlc_url}" :network-caching=50 :clock-jitter=0 :clock-synchro=0'
+    vlc_command = f'vlc.exe "{vlc_url}" :network-caching={effective_lat_ms} :clock-jitter=0 :clock-synchro=0'
 
     return {
+        "srt": srt_url,
+        "webrtc": webrtc_url,
+        "udp": connect_url if (actual_proto in ("udp", "udp_unicast")) else f"udp://{clean_host}:{port}",
         "connect_url": connect_url,
         "vlc_url": vlc_url,
         "vlc_command": vlc_command,
-        "vlc_caching_ms": 50,
+        "vlc_caching_ms": effective_lat_ms,
     }
 
 

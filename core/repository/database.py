@@ -49,13 +49,13 @@ CREATE TABLE IF NOT EXISTS cameras (
     bitrate INTEGER NOT NULL,
     encoder TEXT NOT NULL,
     port INTEGER NOT NULL,
-    protocol TEXT NOT NULL DEFAULT 'srt',
+    protocol TEXT NOT NULL DEFAULT 'udp',
     srt_latency INTEGER NOT NULL DEFAULT 120,
     srt_passphrase TEXT DEFAULT '',
     zerolatency INTEGER NOT NULL DEFAULT 1,
     auto_start INTEGER NOT NULL DEFAULT 0,
     is_virtual INTEGER NOT NULL DEFAULT 0,
-    udp_mode TEXT NOT NULL DEFAULT 'multicast',
+    udp_mode TEXT NOT NULL DEFAULT 'unicast',
     udp_host TEXT NOT NULL DEFAULT '127.0.0.1',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

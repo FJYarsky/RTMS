@@ -23,8 +23,8 @@ from core.stream_proc import ErrorCategory, State, StreamProc
 
 logger = logging.getLogger("rtms.stream_manager")
 
-# CREATE_NO_WINDOW (0x08000000) | ABOVE_NORMAL_PRIORITY_CLASS (0x00008000) para FFmpeg prioritario
-_WIN_FLAGS = (0x08000000 | 0x00008000) if sys.platform == "win32" else 0
+# CREATE_NO_WINDOW (0x08000000) | HIGH_PRIORITY_CLASS (0x00000080) para FFmpeg prioritario (v2.8.2)
+_WIN_FLAGS = (0x08000000 | 0x00000080) if sys.platform == "win32" else 0
 
 
 class StreamManager:
@@ -194,7 +194,7 @@ class StreamManager:
                 proc.mjpeg_supported = False
 
         # Asegurar que MediaMTX esté activo bajo demanda si el protocolo es SRT
-        if proc.config.get("protocol", "srt") == "srt":
+        if proc.config.get("protocol", "udp") == "srt":
             try:
                 from core.mediamtx_mgr import mediamtx_manager
 
@@ -235,6 +235,13 @@ class StreamManager:
                 stderr=asyncio.subprocess.PIPE,
                 creationflags=_WIN_FLAGS,
             )
+            if process and process.pid:
+                try:
+                    from core.process_optimizer import HIGH_PRIORITY_CLASS, elevate_process_priority
+
+                    elevate_process_priority(process.pid, HIGH_PRIORITY_CLASS)
+                except Exception as opt_err:
+                    logger.debug(f"Aviso al elevar prioridad de FFmpeg: {opt_err}")
         except Exception as exc:
             proc.state = State.ERROR
             proc.log(f"ERROR al lanzar proceso: {exc}")
@@ -797,8 +804,8 @@ class StreamManager:
             except Exception:
                 pass
 
-    async def start_periodic_hardware_sync(self, interval: int = 5):
-        """Tarea en segundo plano que sondea periódicamente cambios en dispositivos DirectShow (hotplug)."""
+    async def start_periodic_hardware_sync(self, interval: int = 15):
+        """Tarea en segundo plano que sondea periódicamente cambios en dispositivos DirectShow (hotplug, v2.8.2 a 15s)."""
         while True:
             try:
                 await asyncio.sleep(interval)
@@ -927,8 +934,8 @@ class StreamManager:
                     "resolution": cfg.get("resolution", "720p"),
                     "fps": cfg.get("fps", 30),
                     "bitrate": cfg.get("bitrate", 3000),
-                    "protocol": cfg.get("protocol", "srt"),
-                    "udp_mode": cfg.get("udp_mode", "multicast"),
+                    "protocol": cfg.get("protocol", "udp"),
+                    "udp_mode": cfg.get("udp_mode", "unicast"),
                     "port": cfg.get("port", 9000),
                     "mediamtx_port": mediamtx_port,
                     "encoder": cfg.get("encoder", "auto"),

@@ -30,7 +30,7 @@
 
 ## 📌 Descripción
 
-**RTMS (Real-Time Multicam System)** es una estación de transmisión para Windows diseñada para capturar dispositivos DirectShow (cámaras web USB, capturadoras HDMI USB/PCIe y cámaras virtuales) y centralizar su distribución de **baja latencia (<100 ms)** hacia **OBS Studio**, **vMix** o **VLC Media Player**.
+**RTMS (Real-Time Multicam System)** es una estación de transmisión para Windows diseñada para capturar dispositivos DirectShow (cámaras web USB, capturadoras HDMI USB/PCIe y cámaras virtuales) y centralizar su distribución de **ultra-baja latencia (≤50 ms P50)** hacia **OBS Studio**, **vMix** o **VLC Media Player**. Configurado de fábrica con **UDP Unicast** para mínimo retardo de red directo y soporte completo para SRT y WebRTC WHEP.
 
 Integra un servidor de medios embebido (**MediaMTX**) que desacopla la ingesta de la distribución, garantizando que las conexiones o desconexiones de clientes receptores nunca reinicien la cámara física. Cuenta con telemetría en tiempo real, persistencia transaccional ACID en SQLite WAL, blindaje de procesos a nivel de kernel mediante Windows Job Objects y cifrado criptográfico local con Windows DPAPI.
 
@@ -183,7 +183,7 @@ RTMS/
 │   ├── adr/               # Architecture Decision Records (ADRs oficiales)
 │   └── rfc/               # Solicitudes de Comentarios y Especificaciones Técnicas (RFCs)
 ├── scripts/               # Scripts de descarga de binarios, sanitización y auditoría
-├── tests/                 # Suite de pruebas automatizadas con pytest (345 tests)
+├── tests/                 # Suite de pruebas automatizadas con pytest (378 tests)
 ├── config/                # Plantillas y configuraciones locales
 ├── main.py                # Punto de entrada principal y servidor ASGI
 ├── run.bat                # Lanzador de consola para Windows

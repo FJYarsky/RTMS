@@ -97,24 +97,24 @@ def print_table(results: List[TestResult]):
         print(f"{CLR_BOLD}{CLR_RED}SE DETECTARON FALLOS EN LA CADENA DE EJECUCIÓN. REVISAR DETALLES.{CLR_RESET}\n")
 
 
-async def run_obs_mode(protocol: str = "srt", port: int = 8890):
+async def run_obs_mode(protocol: str = "srt", port: int = 8890, encoder: str = "libx264"):
     """Mantiene la cámara virtual con reloj quemado en emisión continua para inspección visual en OBS/VLC."""
     print(f"\n{CLR_BOLD}{CLR_YELLOW}=== MODO OBS STUDIO / VLC EN VIVO (Presiona Ctrl+C para salir) ==={CLR_RESET}")
     cam_id = "latency_clock"
 
     if protocol == "srt":
         await mediamtx_manager.start(srt_port=port)
-        pub_url = f"srt://127.0.0.1:{port}?streamid=publish:{cam_id}&mode=caller&latency=50000&tlpktdrop=1&rcvbuf=65536"
-        read_url = f"srt://127.0.0.1:{port}?streamid=read:{cam_id}&latency=50000&rcvbuf=65536&tlpktdrop=1"
-        vlc_cmd = f'vlc.exe "{read_url}" :network-caching=50 :clock-jitter=0 :clock-synchro=0'
+        pub_url = f"srt://127.0.0.1:{port}?streamid=publish:{cam_id}&mode=caller&latency=10000&tlpktdrop=1&rcvbuf=16384"
+        read_url = f"srt://127.0.0.1:{port}?streamid=read:{cam_id}&latency=15000&rcvbuf=16384&tlpktdrop=1"
+        vlc_cmd = f'vlc.exe "{read_url}" :network-caching=15 :clock-jitter=0 :clock-synchro=0'
     else:
         port = 9028
-        pub_url = f"udp://127.0.0.1:{port}?pkt_size=1316&buffer_size=65536"
-        read_url = f"udp://@:{port}?buffer_size=65536&overrun_nonfatal=1"
-        vlc_cmd = f'vlc.exe "{read_url}" :network-caching=50'
+        pub_url = f"udp://127.0.0.1:{port}?pkt_size=1316&buffer_size=16384"
+        read_url = f"udp://@:{port}?buffer_size=16384&overrun_nonfatal=1"
+        vlc_cmd = f'vlc.exe "{read_url}" :network-caching=15'
 
-    print(f"\n{CLR_CYAN}Iniciando transmisión de reloj virtual quemado a 30 FPS...{CLR_RESET}")
-    streamer = VirtualClockStreamer(pub_url, fps=30, encoder="libx264")
+    print(f"\n{CLR_CYAN}Iniciando transmisión de reloj virtual quemado a 60 FPS ({encoder})...{CLR_RESET}")
+    streamer = VirtualClockStreamer(pub_url, fps=60, encoder=encoder)
     streamer.start()
 
     print(f"\n{CLR_BOLD}INSTRUCCIONES DE CONEXIÓN EN OBS STUDIO:{CLR_RESET}")
@@ -172,7 +172,11 @@ async def main_async():
     print_banner()
 
     if args.obs_mode:
-        await run_obs_mode(protocol=args.protocol if args.protocol in ("srt", "udp") else "srt", port=args.port)
+        await run_obs_mode(
+            protocol=args.protocol if args.protocol in ("srt", "udp") else "srt",
+            port=args.port,
+            encoder=args.encoder,
+        )
         return 0
 
     verifier = CorePipelineVerifier(mediamtx_port=args.port)

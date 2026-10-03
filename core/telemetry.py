@@ -6,6 +6,7 @@
 
 """Monitorización en tiempo real de telemetría y rendimiento."""
 
+import asyncio
 import ctypes
 import logging
 import threading
@@ -290,6 +291,17 @@ class SystemTelemetryService:
             "net_recv_mbps": net_stats["recv_mbps"],
             "net_total_mbps": net_stats["total_mbps"],
         }
+
+    async def collect_async(self, active_streams_count: int = 0, total_bitrate_kbps: float = 0.0) -> Dict[str, Any]:
+        """
+        Recolecta métricas de hardware delegando llamadas bloqueantes (psutil, NVML)
+        a un thread pool mediante asyncio.to_thread para evitar micro-stalls del GIL (v2.8.2).
+        """
+        return await asyncio.to_thread(
+            self.collect,
+            active_streams_count=active_streams_count,
+            total_bitrate_kbps=total_bitrate_kbps,
+        )
 
     def shutdown(self):
         """Cierra los subsistemas de telemetría y libera recursos asociados."""

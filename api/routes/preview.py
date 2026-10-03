@@ -90,7 +90,7 @@ async def stream_preview(request: Request, device_path: str, ticket: Optional[st
 
     is_running = proc.is_alive if proc else False
     if is_running:
-        protocol = cfg.get("protocol", "srt")
+        protocol = cfg.get("protocol", "udp")
         from core.secrets_mgr import unprotect_secret
 
         raw_pass = cfg.get("srt_passphrase", "")
@@ -115,7 +115,7 @@ async def stream_preview(request: Request, device_path: str, ticket: Optional[st
             )
         else:
             port = cfg.get("port", 9000)
-            udp_mode = cfg.get("udp_mode", "multicast")
+            udp_mode = cfg.get("udp_mode", "unicast")
             udp_host = cfg.get("udp_host", "127.0.0.1")
             url = build_stream_url(
                 protocol=protocol,
@@ -202,7 +202,7 @@ async def launch_external_ffplay(device_path: str):
     is_running = proc.is_alive if proc else False
 
     if is_running:
-        protocol = cfg.get("protocol", "srt")
+        protocol = cfg.get("protocol", "udp")
         from core.secrets_mgr import unprotect_secret
 
         raw_pass = cfg.get("srt_passphrase", "")
@@ -228,7 +228,7 @@ async def launch_external_ffplay(device_path: str):
             title = f"RTMS Monitor — {name} (SRT :{mediamtx_port})"
         else:
             port = cfg.get("port", 9000)
-            udp_mode = cfg.get("udp_mode", "multicast")
+            udp_mode = cfg.get("udp_mode", "unicast")
             udp_host = cfg.get("udp_host", "127.0.0.1")
             url = build_stream_url(
                 protocol=protocol,

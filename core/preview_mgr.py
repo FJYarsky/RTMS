@@ -59,6 +59,15 @@ class PreviewManager:
         """Verifica si el binario de FFmpeg está disponible en el sistema."""
         return has_ffmpeg_binary()
 
+    def get_whep_preview_url(self, cam_id: str, local_ip: str = "127.0.0.1") -> str:
+        """
+        Retorna la URL WebRTC WHEP para previsualización nativa de ultra baja latencia (<30ms) en navegador.
+        Evita el ciclo de procesamiento y GC pressure de MJPEG en Python (v2.8.2).
+        """
+        clean_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
+        host = local_ip.strip() or "127.0.0.1"
+        return f"http://{host}:8889/{clean_id}"
+
     async def acquire_slot(self, identifier: str) -> bool:
         """
         Adquiere un slot de visualización concurrente (máximo global configurable, re-entry seguro por cámara).

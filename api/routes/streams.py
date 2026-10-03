@@ -117,13 +117,13 @@ async def update_stream_config_endpoint(config: CameraConfigUpdate):
     res = config.resolution if config.resolution is not None else existing_cfg.get("resolution", "720p")
     fps_val = config.fps if config.fps is not None else existing_cfg.get("fps", 30)
     bitrate_val = config.bitrate if config.bitrate is not None else existing_cfg.get("bitrate", 3000)
-    proto_val = config.protocol if config.protocol is not None else existing_cfg.get("protocol", "srt")
+    proto_val = config.protocol if config.protocol is not None else existing_cfg.get("protocol", "udp")
     encoder_val = config.encoder if config.encoder is not None else existing_cfg.get("encoder", "auto")
     srt_latency_val = config.srt_latency if config.srt_latency is not None else existing_cfg.get("srt_latency", 120)
     auto_start_val = config.auto_start if config.auto_start is not None else existing_cfg.get("auto_start", False)
     zero_val = config.zerolatency if config.zerolatency is not None else existing_cfg.get("zerolatency", True)
     virtual_val = config.is_virtual if config.is_virtual is not None else existing_cfg.get("is_virtual", False)
-    udp_mode_val = config.udp_mode if config.udp_mode is not None else existing_cfg.get("udp_mode", "multicast")
+    udp_mode_val = config.udp_mode if config.udp_mode is not None else existing_cfg.get("udp_mode", "unicast")
     udp_host_val = config.udp_host if config.udp_host is not None else existing_cfg.get("udp_host", "127.0.0.1")
 
     saved = await asyncio.to_thread(
@@ -334,7 +334,7 @@ async def get_stream_connect_url(device_path: str):
     proc = stream_manager.get_proc(dp)
     cfg = proc.config if (proc and proc.config) else cam
 
-    protocol = cfg.get("protocol", "srt")
+    protocol = cfg.get("protocol", "udp")
     port = cfg.get("port", 9000)
     raw_pass = cfg.get("srt_passphrase", "")
     passphrase = ""
@@ -348,7 +348,7 @@ async def get_stream_connect_url(device_path: str):
 
     mediamtx_port = mediamtx_manager.get_srt_port()
     cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
-    udp_mode = cfg.get("udp_mode", "multicast")
+    udp_mode = cfg.get("udp_mode", "unicast")
 
     urls = build_client_urls(
         protocol=protocol,
@@ -394,7 +394,7 @@ async def get_stream_vlc_playlist(device_path: str):
     proc = stream_manager.get_proc(dp)
     cfg = proc.config if (proc and proc.config) else cam
 
-    protocol = cfg.get("protocol", "srt")
+    protocol = cfg.get("protocol", "udp")
     port = cfg.get("port", 9000)
     raw_pass = cfg.get("srt_passphrase", "")
     passphrase = ""
@@ -408,7 +408,7 @@ async def get_stream_vlc_playlist(device_path: str):
 
     mediamtx_port = mediamtx_manager.get_srt_port()
     cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
-    udp_mode = cfg.get("udp_mode", "multicast")
+    udp_mode = cfg.get("udp_mode", "unicast")
 
     urls = build_client_urls(
         protocol=protocol,
@@ -457,7 +457,7 @@ async def launch_vlc_stream_endpoint(device_path: str):
     proc = stream_manager.get_proc(dp)
     cfg = proc.config if (proc and proc.config) else cam
 
-    protocol = cfg.get("protocol", "srt")
+    protocol = cfg.get("protocol", "udp")
     port = cfg.get("port", 9000)
     raw_pass = cfg.get("srt_passphrase", "")
     passphrase = ""
@@ -471,7 +471,7 @@ async def launch_vlc_stream_endpoint(device_path: str):
 
     mediamtx_port = mediamtx_manager.get_srt_port()
     cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
-    udp_mode = cfg.get("udp_mode", "multicast")
+    udp_mode = cfg.get("udp_mode", "unicast")
 
     urls = build_client_urls(
         protocol=protocol,

@@ -61,8 +61,14 @@ async def build_ffmpeg_command(
         bitrate = 3000
 
     bk = f"{bitrate}k"
-    maxbk = f"{int(bitrate * 1.15)}k"
-    bufk = f"{int(bitrate * 0.35)}k" if zerolatency else f"{bitrate}k"
+    maxbk = f"{bitrate}k" if zerolatency else f"{int(bitrate * 1.15)}k"
+    if zerolatency:
+        # VBV restringido a 1.5 frames (v2.8.2): fuerza bitrate plano, elimina packet bursting
+        # Ejemplo: 3000kbps / 60fps * 1.5 = 75k; 3000kbps / 30fps * 1.5 = 150k
+        vbv_bufsize_val = max(50, int(bitrate / max(1, fps) * 1.5))
+        bufk = f"{vbv_bufsize_val}k"
+    else:
+        bufk = f"{bitrate}k"
 
     ffmpeg_bin = get_ffmpeg_bin()
     raw_device = cfg.get("device_path", cfg.get("friendly_name", ""))
@@ -124,42 +130,50 @@ async def build_ffmpeg_command(
         if proc and getattr(proc, "mjpeg_input_failed", False):
             use_mjpeg = False
 
-        if use_mjpeg:
-            dshow_args += ["-vcodec", "mjpeg"]
-
-        # En MJPEG comprimido por sensor, 25M de rtbufsize previene encolamiento excesivo de frames;
-        # en raw uncompressed (YUY2/NV12), 65M proporciona margen seguro sin acumular retardo de buffer.
-        rtbuf = "25M" if use_mjpeg else "65M"
         dshow_options_failed = (proc and getattr(proc, "dshow_options_failed", False)) or cfg.get(
             "dshow_options_failed", False
         )
+
+        if use_mjpeg:
+            dshow_args += ["-vcodec", "mjpeg", "-rtbufsize", "3M"]
+        else:
+            # rtbufsize anti-bufferbloat (~3 frames): 5M para 720p, 10M para 1080p
+            rtbuf = "5M" if "720" in video_size else "10M"
+            dshow_args += ["-rtbufsize", rtbuf]
+
+            # Negociación defensiva NV12: solicitar pin nativo NV12
+            # Si el dispositivo no soporta NV12, el retry handler (dshow_options_failed) reentrará sin -pixel_format
+            if not dshow_options_failed and cfg.get("enable_nv12_pin", True):
+                dshow_args += ["-pixel_format", "nv12"]
+
         if not dshow_options_failed:
             dshow_args += [
-                "-rtbufsize",
-                rtbuf,
                 "-video_size",
                 video_size,
                 "-framerate",
                 str(fps),
             ]
-        else:
-            # Fallback ágil: El driver del sensor rechazó video_size/framerate. Ingestamos nativo y escalamos.
-            dshow_args += [
-                "-rtbufsize",
-                rtbuf,
-            ]
+
         # Erradicación de deriva de reloj (Clock Drift) de webcam UVC en DirectShow:
-        # Forzar timestamping inmediato basado en el reloj monótono del host para eliminar colas internas
         if zerolatency:
-            dshow_args += ["-use_video_device_timestamps", "0"]
+            dshow_args += [
+                "-use_video_device_timestamps",
+                "0",
+            ]
 
         dshow_args += ["-i", f"video={escaped_device}"]
         cmd += dshow_args
         if dshow_options_failed:
             cmd += ["-vf", f"scale={video_size}", "-r", str(fps)]
-    cmd += ["-fps_mode", "cfr"]
 
-    protocol = str(cfg.get("protocol", "srt") or "srt").replace("\x00", "").strip()
+    # Sincronización de framerate de salida:
+    # En zerolatency passthrough para evitar buffer FIFO de sincronización; en estándar cfr.
+    if zerolatency:
+        cmd += ["-fps_mode", "passthrough"]
+    else:
+        cmd += ["-fps_mode", "cfr"]
+
+    protocol = str(cfg.get("protocol", "udp") or "udp").replace("\x00", "").strip()
 
     if force_cpu:
         encoder = "libx264"
@@ -184,7 +198,11 @@ async def build_ffmpeg_command(
             "Se recomienda HEVC (hevc_nvenc) o H.264 para compatibilidad total con MediaMTX."
         )
 
-    pix_fmt = "nv12" if ("nvenc" in str(encoder)) else "yuv420p"
+    pix_fmt = (
+        "nv12"
+        if (zerolatency or "nvenc" in str(encoder) or "amf" in str(encoder) or "qsv" in str(encoder))
+        else "yuv420p"
+    )
     cmd += ["-pix_fmt", pix_fmt]
 
     # Ajuste de flags del codificador según opción zerolatency
@@ -198,13 +216,19 @@ async def build_ffmpeg_command(
                 "-tune",
                 "zerolatency",
                 "-keyint_min",
-                "15",
+                str(gop),
                 "-sc_threshold",
                 "0",
                 "-bf",
                 "0",
+                "-threads",
+                "4",
+                "-slices",
+                "4",
                 "-x264-params",
-                "repeat-headers=1",
+                "repeat-headers=1:intra-refresh=1:sliced-threads=1",
+                "-flags",
+                "+low_delay",
             ]
         elif encoder == "libx265":
             cmd += [
@@ -249,6 +273,8 @@ async def build_ffmpeg_command(
                 "1",
                 "-rc-lookahead",
                 "0",
+                "-intra-refresh",
+                "1",
             ]
             if encoder != "av1_nvenc":
                 cmd += ["-b_adapt", "0"]
@@ -256,17 +282,31 @@ async def build_ffmpeg_command(
             cmd += [
                 "-c:v",
                 encoder,
-                "-quality",
-                "speed",
                 "-usage",
                 "ultralowlatency",
+                "-quality",
+                "speed",
+                "-latency",
+                "1",
+                "-rc",
+                "cbr",
+                "-forced_idr",
+                "1",
                 "-async_depth",
                 "1",
                 "-bf",
                 "0",
+                "-max_b_frames",
+                "0",
                 "-preanalysis",
                 "0",
-                "-forced_idr",
+                "-pa_lookahead_buffer_depth",
+                "0",
+                "-pa_scene_change_detection_enable",
+                "0",
+                "-header_spacing",
+                "0",
+                "-enforce_hrd",
                 "1",
             ]
         elif encoder in ("h264_qsv", "hevc_qsv", "av1_qsv"):
@@ -282,6 +322,12 @@ async def build_ffmpeg_command(
                 "-look_ahead",
                 "0",
                 "-forced_idr",
+                "1",
+                "-low_delay_brc",
+                "1",
+                "-scenario",
+                "livestreaming",
+                "-max_dec_frame_buffering",
                 "1",
             ]
         else:
@@ -306,9 +352,10 @@ async def build_ffmpeg_command(
     port = cfg.get("port", 9000)
     passphrase = cfg.get("srt_passphrase", "")
     srt_lat = cfg.get("srt_latency")
-    # En modo zerolatency el buffer se calibra automáticamente a 50 ms para estabilidad y fluidez sin pérdidas de cuadros;
+    # En modo zerolatency el buffer se calibra automáticamente a 10 ms para loopback localhost
+    # (absorbe jitter del planificador de Windows sin retardo artificial);
     # si zerolatency está deshabilitado, se respeta la latencia manual definida por el usuario.
-    latency_ms = 50 if zerolatency else (int(srt_lat) if srt_lat is not None else 120)
+    latency_ms = 10 if zerolatency else (int(srt_lat) if srt_lat is not None else 120)
     cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
     clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
 
@@ -316,13 +363,11 @@ async def build_ffmpeg_command(
         from core.mediamtx_mgr import mediamtx_manager
 
         mediamtx_port = mediamtx_manager.get_srt_port()
-        # En arquitectura desacoplada con MediaMTX (Fase 2), FFmpeg publica localmente
+        # En arquitectura desacoplada con MediaMTX (v2.8.2), FFmpeg publica localmente
         # por loopback (127.0.0.1) sin frase de paso para evitar rechazo BADSECRET.
-        # La protección de contraseña se aplica a los lectores externos (OBS/vMix)
-        # mediante srtReadPassphrase en MediaMTX.
         # En publicación loopback con zerolatency activo, la latencia de buffer se calibra
-        # automáticamente en 50 ms (latency=50000) y socket buffers de 64 KB (65536) para evitar caídas de FPS.
-        effective_srt_latency = 50 if zerolatency else latency_ms
+        # automáticamente en 10 ms (latency=10000) y tlpktdrop=1 (requerido por gosrt para evitar ERROR:ROGUE).
+        effective_srt_latency = 10 if zerolatency else (int(srt_lat) if srt_lat is not None else 20)
         raw_url = build_stream_url(
             protocol="srt",
             port=mediamtx_port,
@@ -333,7 +378,7 @@ async def build_ffmpeg_command(
             streamid=f"publish:{clean_cam_id}",
         )
     else:
-        udp_mode = cfg.get("udp_mode", "multicast")
+        udp_mode = cfg.get("udp_mode", "unicast")
         udp_host = cfg.get("udp_host", "127.0.0.1")
         raw_url = build_stream_url(
             protocol=protocol,
@@ -362,6 +407,8 @@ async def build_ffmpeg_command(
             "20",
             "-flush_packets",
             "1",
+            "-pes_payload_size",
+            "0",
             raw_url,
         ]
     else:

@@ -63,7 +63,7 @@ async def test_directshow_zerolatency_flags():
     # DirectShow flags
     assert "-rtbufsize" in cmd
     rtbuf_idx = cmd.index("-rtbufsize")
-    assert cmd[rtbuf_idx + 1] == "25M"  # MJPEG
+    assert cmd[rtbuf_idx + 1] == "3M"  # MJPEG (v2.8.2)
 
     assert "-use_video_device_timestamps" in cmd
     ts_idx = cmd.index("-use_video_device_timestamps")
@@ -90,7 +90,7 @@ async def test_directshow_zerolatency_flags():
 
 @pytest.mark.asyncio
 async def test_directshow_raw_uncompressed_rtbuf():
-    """Valida que entradas no comprimidas (use_mjpeg_input=False) utilicen 65M de rtbufsize."""
+    """Valida que entradas no comprimidas (use_mjpeg_input=False) utilicen buffer calibrado (5M para 720p)."""
     cfg = {
         "device_path": "HDMI Capture Card",
         "resolution": "720p",
@@ -102,7 +102,7 @@ async def test_directshow_raw_uncompressed_rtbuf():
     }
     cmd, _, _ = await build_ffmpeg_command(cfg, force_cpu=True)
     rtbuf_idx = cmd.index("-rtbufsize")
-    assert cmd[rtbuf_idx + 1] == "65M"
+    assert cmd[rtbuf_idx + 1] == "5M"
 
 
 @pytest.mark.asyncio
@@ -243,7 +243,7 @@ async def test_libx264_and_libx265_zerolatency_flags():
 
 
 def test_srt_url_zerolatency_parameters():
-    """Valida que la URL de SRT en modo zerolatency tenga latency=50000, tlpktdrop=1, sndbuf=65536, rcvbuf=65536."""
+    """Valida que la URL de SRT en modo zerolatency tenga latency=10000, tlpktdrop=1, sndbuf=65536, rcvbuf=65536."""
     url = build_stream_url(
         protocol="srt",
         port=8890,
@@ -254,7 +254,7 @@ def test_srt_url_zerolatency_parameters():
     parsed = urllib.parse.urlparse(url)
     qs = urllib.parse.parse_qs(parsed.query)
 
-    assert qs["latency"][0] == "50000"
+    assert qs["latency"][0] == "10000"
     assert qs["tlpktdrop"][0] == "1"
     assert qs["sndbuf"][0] == "65536"
     assert qs["rcvbuf"][0] == "65536"
@@ -300,13 +300,17 @@ def test_udp_low_latency_parameters():
 def test_client_vlc_low_latency_caching():
     """Valida que los comandos generados para VLC incluyan los modificadores de baja latencia fluida sin congelamientos."""
     res_srt = build_client_urls("srt", "127.0.0.1", 9000, "cam_test")
-    assert ":network-caching=50" in res_srt["vlc_command"]
+    assert ":network-caching=15" in res_srt["vlc_command"]
     assert ":clock-jitter=0" in res_srt["vlc_command"]
     assert ":clock-synchro=0" in res_srt["vlc_command"]
-    assert res_srt["vlc_caching_ms"] == 50
+    assert res_srt["vlc_caching_ms"] == 15
+
+    res_wifi = build_client_urls("srt", "127.0.0.1", 9000, "cam_test", network_type="wifi")
+    assert ":network-caching=50" in res_wifi["vlc_command"]
+    assert res_wifi["vlc_caching_ms"] == 50
 
     res_udp = build_client_urls("udp", "127.0.0.1", 9000, "cam_test", udp_mode="multicast")
-    assert ":network-caching=50" in res_udp["vlc_command"]
+    assert ":network-caching=15" in res_udp["vlc_command"]
     assert ":clock-jitter=0" in res_udp["vlc_command"]
     assert ":clock-synchro=0" in res_udp["vlc_command"]
     assert "udp://@239.255.0.1:9000" in res_udp["vlc_url"]
@@ -319,7 +323,7 @@ def test_mediamtx_config_anti_buffering():
     with open(cfg_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert "writeQueueSize: 256" in content
+    assert "writeQueueSize: 128" in content
     assert "udpMaxPayloadSize: 1472" in content
     assert "overridePublisher: yes" in content
     assert "webrtc: yes" in content

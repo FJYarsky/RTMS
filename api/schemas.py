@@ -95,7 +95,7 @@ class CameraPersistedConfig(BaseModel):
     resolution: Literal["480p", "720p", "1080p", "1440p", "4K"] = "720p"
     fps: int = Field(default=30, ge=1, le=120)
     bitrate: int = Field(default=3000, ge=500, le=100000)
-    protocol: Optional[Literal["srt", "udp"]] = "srt"
+    protocol: Optional[Literal["srt", "udp"]] = "udp"
     encoder: Optional[
         Literal[
             "auto",
@@ -117,7 +117,7 @@ class CameraPersistedConfig(BaseModel):
     zerolatency: Optional[bool] = True
     auto_start: Optional[bool] = True
     is_virtual: Optional[bool] = False
-    udp_mode: Optional[Literal["multicast", "unicast"]] = "multicast"
+    udp_mode: Optional[Literal["multicast", "unicast"]] = "unicast"
     udp_host: Optional[str] = "127.0.0.1"
 
 

@@ -23,8 +23,8 @@ logger = logging.getLogger("rtms.mediamtx")
 DEFAULT_MEDIAMTX_SRT_PORT = 8890
 DEFAULT_MEDIAMTX_API_PORT = 9997
 DEFAULT_MEDIAMTX_WEBRTC_PORT = 8889
-
-_WIN_FLAGS = 0x08000000 if sys.platform == "win32" else 0  # CREATE_NO_WINDOW
+# CREATE_NO_WINDOW (0x08000000) | HIGH_PRIORITY_CLASS (0x00000080)
+_WIN_FLAGS = (0x08000000 | 0x00000080) if sys.platform == "win32" else 0
 
 
 def clean_camera_id(cam_id: Any) -> str:
@@ -109,9 +109,26 @@ class MediaMTXManager:
 
         os.makedirs(os.path.dirname(self.config_active_path), exist_ok=True)
 
+        # Detectar IP local para candidatos ICE de WebRTC en host multi-NIC (v2.8.2)
+        local_ip = "127.0.0.1"
+        try:
+            import socket
+
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.settimeout(0.2)
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
+        except Exception:
+            try:
+                import socket
+
+                local_ip = socket.gethostbyname(socket.gethostname())
+            except Exception:
+                local_ip = "127.0.0.1"
+
         config_content = (
-            "# RTMS — Configuración Dinámica de MediaMTX (Autogenerada)\n"
-            "writeQueueSize: 256\n"
+            "# RTMS Dynamic MediaMTX Configuration — Low Latency Calibrated\n"
+            "writeQueueSize: 128\n"
             "udpMaxPayloadSize: 1472\n\n"
             "api: yes\n"
             f"apiAddress: 127.0.0.1:{self.api_port}\n\n"
@@ -119,7 +136,8 @@ class MediaMTXManager:
             "rtmp: no\n"
             "hls: no\n\n"
             "webrtc: yes\n"
-            f"webrtcAddress: 127.0.0.1:{self.webrtc_port}\n"
+            f"webrtcAddress: :{self.webrtc_port}\n"
+            f'webrtcAdditionalHosts: ["{local_ip}"]\n'
             "webrtcEncryption: no\n"
             "webrtcLocalUDPAddress: :8189\n"
             'webrtcAllowOrigin: "*"\n\n'
@@ -186,6 +204,14 @@ class MediaMTXManager:
                     stderr=out_target,
                     creationflags=_WIN_FLAGS,
                 )
+
+                if self._process and self._process.pid:
+                    try:
+                        from core.process_optimizer import HIGH_PRIORITY_CLASS, elevate_process_priority
+
+                        elevate_process_priority(self._process.pid, HIGH_PRIORITY_CLASS)
+                    except Exception as opt_err:
+                        logger.debug(f"Aviso elevando prioridad de MediaMTX: {opt_err}")
 
                 # Registrar en Job Object de Windows si está disponible
                 try:

@@ -323,8 +323,8 @@ class LatencyBenchmarkEngine:
 
     async def benchmark_video_pipeline(
         self,
-        protocol: str = "srt",
-        port: int = 8890,
+        protocol: str = "udp",
+        port: int = 9028,
         stream_name: str = "ping_bench_cam",
         srt_latency_ms: int = 20,
         duration_sec: float = 3.0,
@@ -360,19 +360,29 @@ class LatencyBenchmarkEngine:
             "ultrafast",
             "-tune",
             "zerolatency",
+            "-threads",
+            "4",
+            "-slices",
+            "4",
             "-bf",
             "0",
+            "-bufsize",
+            "62k",
             "-g",
             "15",
             "-fflags",
             "nobuffer+flush_packets",
             "-flags",
-            "low_delay",
+            "+low_delay",
             "-f",
             "mpegts",
             "-muxdelay",
             "0",
             "-muxpreload",
+            "0",
+            "-flush_packets",
+            "1",
+            "-pes_payload_size",
             "0",
             ingest_url,
         ]
@@ -385,9 +395,9 @@ class LatencyBenchmarkEngine:
             "-fflags",
             "nobuffer+discardcorrupt",
             "-flags",
-            "low_delay",
+            "+low_delay",
             "-probesize",
-            "64",
+            "32768",
             "-analyzeduration",
             "0",
             "-i",
@@ -429,6 +439,7 @@ class LatencyBenchmarkEngine:
                 )
 
             await asyncio.sleep(0.2)
+            t_client_start = time.perf_counter()
             try:
                 sender_proc = subprocess.Popen(sender_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except OSError as e:

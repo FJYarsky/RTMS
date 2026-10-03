@@ -23,9 +23,14 @@ def test_v280_srt_urls_no_slash_before_query():
     assert "/?" not in urls["connect_url"]
     assert "/?" not in urls["vlc_url"]
     assert "passphrase=test_secret" in urls["connect_url"]
-    assert "latency=50000" in urls["vlc_url"]
+    assert "latency=15000" in urls["vlc_url"]
     assert "rcvbuf=65536" in urls["vlc_url"]
     assert "tlpktdrop=1" in urls["vlc_url"]
+
+    urls_wifi = build_client_urls(
+        "srt", "192.168.1.100", 9000, "cam_test", passphrase="test_secret", network_type="wifi"
+    )
+    assert "latency=50000" in urls_wifi["vlc_url"]
 
 
 def test_v280_firewall_rules_covers_mediamtx_port():

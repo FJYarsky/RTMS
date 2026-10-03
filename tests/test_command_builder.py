@@ -30,11 +30,12 @@ def test_build_command_zerolatency_true():
         }
         cmd, url, enc = await mgr.build_command(cfg, force_cpu=True)
 
-        # Flags esperados en zerolatency=True
+        # Flags esperados en zerolatency=True (v2.8.2)
         assert "-tune" in cmd and "zerolatency" in cmd
         assert "-muxdelay" in cmd
         assert "-flush_packets" in cmd
         assert "tlpktdrop=1" in url
+        assert "latency=10000" in url
 
     asyncio.run(_run())
 

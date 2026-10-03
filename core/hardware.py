@@ -49,12 +49,12 @@ class DirectShowDeviceScanner:
     """
     Detector y caché con deduplicación y coalescing (single-flight) de dispositivos DirectShow.
     Evita saturar la CPU y bloquear drivers USB al colapsar múltiples llamadas concurrentes
-    en una única ejecución compartida de FFmpeg, manteniendo una caché con TTL corto (4 segundos).
+    en una única ejecución compartida de FFmpeg, manteniendo una caché con TTL calibrado (15 segundos, v2.8.2).
     """
 
     _instance: Optional["DirectShowDeviceScanner"] = None
 
-    def __init__(self, cache_ttl: float = 4.0):
+    def __init__(self, cache_ttl: float = 15.0):
         self._cache_ttl: float = cache_ttl
         self._cached_devices: Optional[List[Dict[str, str]]] = None
         self._last_scan_time: float = 0.0

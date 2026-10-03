@@ -14,6 +14,7 @@ import time
 import pytest
 from PIL import Image, ImageDraw
 
+from core.mediamtx_mgr import mediamtx_manager
 from core.pipeline_verifier import (
     BENCH_FPS,
     BENCH_HEIGHT,
@@ -113,5 +114,8 @@ def test_cli_tester_help_and_dry_run():
 async def test_pipeline_verifier_srt_end_to_end():
     """Prueba E2E real: genera stream virtual de reloj, publica en MediaMTX vía SRT y verifica recepción."""
     verifier = CorePipelineVerifier()
-    res = await verifier.verify_srt_unencrypted()
-    assert res.status == "PASS", f"La prueba de SRT sin cifrar falló: {res.details} | error={res.error}"
+    try:
+        res = await verifier.verify_srt_unencrypted()
+        assert res.status == "PASS", f"La prueba de SRT sin cifrar falló: {res.details} | error={res.error}"
+    finally:
+        mediamtx_manager.stop()

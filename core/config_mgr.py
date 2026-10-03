@@ -439,8 +439,8 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         cam.setdefault("auto_start", False)
         cam.setdefault("zerolatency", True)
         cam.setdefault("is_virtual", virtual_flag)
-        cam.setdefault("protocol", "srt")
-        cam.setdefault("udp_mode", "multicast")
+        cam.setdefault("protocol", "udp")
+        cam.setdefault("udp_mode", "unicast")
         cam.setdefault("udp_host", "127.0.0.1")
         cam.setdefault("device_path", device_path)
         if not cam.get("srt_passphrase") and not cam.get("decryption_failed"):
@@ -473,14 +473,14 @@ def get_or_allocate_camera_config(device_path: str, friendly_name: str) -> Dict[
         "resolution": "720p",
         "fps": 30,
         "bitrate": 3000,
-        "protocol": "srt",
+        "protocol": "udp",
         "encoder": "auto",
         "srt_latency": 120,
         "srt_passphrase": default_passphrase,
         "zerolatency": True,
         "auto_start": False,
         "is_virtual": virtual_flag,
-        "udp_mode": "multicast",
+        "udp_mode": "unicast",
         "udp_host": "127.0.0.1",
     }
 

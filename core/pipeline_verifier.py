@@ -13,6 +13,7 @@ y la medición de latencia/ping matemático con video de reloj quemado (burned-i
 """
 
 import asyncio
+import queue
 import statistics
 import subprocess
 import threading
@@ -31,7 +32,7 @@ from core.stream_proc import build_client_urls
 # Constantes del generador visual de reloj
 BENCH_WIDTH = 1280
 BENCH_HEIGHT = 720
-BENCH_FPS = 30
+BENCH_FPS = 60  # Requisito físico ineludible para <50ms P50 SLA (v2.8.2)
 FRAME_RAW_BYTES = BENCH_WIDTH * BENCH_HEIGHT * 3
 BARCODE_BLOCK_SIZE = 16
 BARCODE_Y_POS = 12
@@ -108,7 +109,7 @@ def decode_burned_in_header(
 class SyntheticClockGenerator:
     """
     Generador de cuadros sintéticos con reloj en milisegundos y cabecera óptica.
-    Capaz de renderizar > 120 FPS en CPU sin saturar recursos.
+    Capaz de renderizar > 150 FPS en CPU sin saturar recursos mediante dirty rects.
     """
 
     def __init__(self, width: int = BENCH_WIDTH, height: int = BENCH_HEIGHT, fps: int = BENCH_FPS):
@@ -119,7 +120,9 @@ class SyntheticClockGenerator:
         self.font_med: Any = None
         self.font_small: Any = None
         self._init_fonts()
-        self._base_template = self._create_base_template()
+        self.img = Image.new("RGB", (self.width, self.height), color=(15, 23, 42))  # Slate 900
+        self.draw = ImageDraw.Draw(self.img)
+        self._init_base_template()
 
     def _init_fonts(self) -> None:
         try:
@@ -129,44 +132,47 @@ class SyntheticClockGenerator:
         except Exception:
             self.font_large = self.font_med = self.font_small = ImageFont.load_default()
 
-    def _create_base_template(self) -> Image.Image:
-        img = Image.new("RGB", (self.width, self.height), color=(15, 23, 42))  # Slate 900
-        draw = ImageDraw.Draw(img)
+    def _init_base_template(self) -> None:
         # Título
-        draw.rectangle([30, 42, self.width - 30, 92], fill=(30, 41, 59))
-        draw.text((50, 52), "RTMS — PIPELINE VERIFICATION & PING BENCHMARK", fill=(56, 189, 248), font=self.font_med)
-        draw.text(
+        self.draw.rectangle([30, 42, self.width - 30, 92], fill=(30, 41, 59))
+        self.draw.text(
+            (50, 52), "RTMS — PIPELINE VERIFICATION & PING BENCHMARK", fill=(56, 189, 248), font=self.font_med
+        )
+        self.draw.text(
             (self.width - 240, 54), f"SYNTHETIC FEED • {self.fps} FPS", fill=(148, 163, 184), font=self.font_small
         )
         # Marco del reloj
-        draw.rectangle([30, 105, self.width - 30, 230], fill=(2, 6, 23), outline=(56, 189, 248), width=2)
+        self.draw.rectangle([30, 105, self.width - 30, 230], fill=(2, 6, 23), outline=(56, 189, 248), width=2)
         # Barra de escaneo de fluidez
-        draw.rectangle([30, 245, self.width - 30, 265], fill=(30, 41, 59))
-        return img
+        self.draw.rectangle([30, 245, self.width - 30, 265], fill=(30, 41, 59))
 
     def render_frame(self, frame_idx: int, timestamp_ms: int) -> bytes:
-        img = self._base_template.copy()
-        draw = ImageDraw.Draw(img)
+        # Limpieza ultra-rápida únicamente de regiones dinámicas (dirty rects)
+        self.draw.rectangle([8, 10, self.width - 8, 30], fill=(15, 23, 42))
+        self.draw.rectangle([32, 107, self.width - 32, 228], fill=(2, 6, 23))
+        self.draw.rectangle([30, 245, self.width - 30, 265], fill=(30, 41, 59))
 
         # 1. Cabecera óptica
-        draw_burned_in_header(draw, timestamp_ms, frame_idx)
+        draw_burned_in_header(self.draw, timestamp_ms, frame_idx)
 
         # 2. Reloj digital de alta resolución
         dt = datetime.fromtimestamp(timestamp_ms / 1000.0)
         time_str = dt.strftime("%H:%M:%S") + f".{int(timestamp_ms % 1000):03d}"
-        draw.text((55, 125), time_str, fill=(240, 253, 250), font=self.font_large)
+        self.draw.text((55, 125), time_str, fill=(240, 253, 250), font=self.font_large)
 
         # 3. Metadatos
-        draw.text((580, 130), f"UNIX TIME: {timestamp_ms} ms", fill=(20, 184, 166), font=self.font_med)
-        draw.text((580, 165), f"FRAME SEQ: #{frame_idx:06d}", fill=(226, 232, 240), font=self.font_small)
-        draw.text((580, 192), "ACCURACY: SUB-MILLISECOND HARDWARE TIMER", fill=(148, 163, 184), font=self.font_small)
+        self.draw.text((580, 130), f"UNIX TIME: {timestamp_ms} ms", fill=(20, 184, 166), font=self.font_med)
+        self.draw.text((580, 165), f"FRAME SEQ: #{frame_idx:06d}", fill=(226, 232, 240), font=self.font_small)
+        self.draw.text(
+            (580, 192), "ACCURACY: SUB-MILLISECOND HARDWARE TIMER", fill=(148, 163, 184), font=self.font_small
+        )
 
         # 4. Indicador de barrido continuo (animación anti-freeze)
         sweep_w = 50
         sweep_x = 30 + int((frame_idx * 16) % (self.width - 60 - sweep_w))
-        draw.rectangle([sweep_x, 245, sweep_x + sweep_w, 265], fill=(56, 189, 248))
+        self.draw.rectangle([sweep_x, 245, sweep_x + sweep_w, 265], fill=(56, 189, 248))
 
-        return img.tobytes()
+        return self.img.tobytes()
 
 
 class VirtualClockStreamer:
@@ -183,48 +189,174 @@ class VirtualClockStreamer:
         self._thread: Optional[threading.Thread] = None
 
     def start(self) -> None:
-        cmd = [
-            self.ffmpeg_bin,
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-f",
-            "rawvideo",
-            "-pix_fmt",
-            "rgb24",
-            "-s",
-            f"{BENCH_WIDTH}x{BENCH_HEIGHT}",
-            "-r",
-            str(self.fps),
-            "-i",
-            "pipe:0",
-            "-fflags",
-            "nobuffer+discardcorrupt",
-            "-flags",
-            "low_delay",
-            "-c:v",
-            self.encoder,
-            "-preset",
-            "ultrafast",
-            "-tune",
-            "zerolatency",
-            "-g",
-            "15",
-            "-bf",
-            "0",
-            "-b:v",
-            "2500k",
-            "-an",
-            "-f",
-            "mpegts",
-            "-muxdelay",
-            "0",
-            "-muxpreload",
-            "0",
-            "-flush_packets",
-            "1",
-            self.target_url,
-        ]
+        vbv_bufsize = f"{max(50, int(2500 / max(1, self.fps) * 1.5))}k"
+        gop = max(15, int(self.fps * 0.5))
+        enc = self.encoder.lower()
+
+        if "nvenc" in enc:
+            enc_args = [
+                "-c:v",
+                "h264_nvenc",
+                "-preset",
+                "p1",
+                "-tune",
+                "ull",
+                "-zerolatency",
+                "1",
+                "-delay",
+                "0",
+                "-surfaces",
+                "2",
+                "-pix_fmt",
+                "nv12",
+                "-b:v",
+                "2500k",
+                "-maxrate",
+                "2500k",
+                "-bufsize",
+                vbv_bufsize,
+                "-g",
+                str(gop),
+                "-forced-idr",
+                "1",
+                "-bf",
+                "0",
+            ]
+        elif "amf" in enc:
+            enc_args = [
+                "-c:v",
+                "h264_amf",
+                "-usage",
+                "ultralowlatency",
+                "-quality",
+                "speed",
+                "-latency",
+                "1",
+                "-rc",
+                "cbr",
+                "-pix_fmt",
+                "nv12",
+                "-b:v",
+                "2500k",
+                "-maxrate",
+                "2500k",
+                "-bufsize",
+                vbv_bufsize,
+                "-g",
+                str(gop),
+                "-forced_idr",
+                "1",
+                "-async_depth",
+                "1",
+                "-bf",
+                "0",
+                "-header_spacing",
+                "0",
+                "-enforce_hrd",
+                "1",
+            ]
+        elif "qsv" in enc:
+            enc_args = [
+                "-c:v",
+                "h264_qsv",
+                "-preset",
+                "veryfast",
+                "-async_depth",
+                "1",
+                "-bf",
+                "0",
+                "-forced_idr",
+                "1",
+                "-low_delay_brc",
+                "1",
+                "-scenario",
+                "livestreaming",
+                "-max_dec_frame_buffering",
+                "1",
+                "-pix_fmt",
+                "nv12",
+                "-b:v",
+                "2500k",
+                "-maxrate",
+                "2500k",
+                "-bufsize",
+                vbv_bufsize,
+                "-g",
+                str(gop),
+            ]
+        else:
+            enc_args = [
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "zerolatency",
+                "-pix_fmt",
+                "nv12",
+                "-b:v",
+                "2500k",
+                "-maxrate",
+                "2500k",
+                "-bufsize",
+                vbv_bufsize,
+                "-g",
+                str(gop),
+                "-keyint_min",
+                str(gop),
+                "-sc_threshold",
+                "0",
+                "-bf",
+                "0",
+                "-threads",
+                "4",
+                "-slices",
+                "4",
+                "-x264-params",
+                "repeat-headers=1:sliced-threads=1",
+                "-max_dec_frame_buffering",
+                "1",
+            ]
+
+        cmd = (
+            [
+                self.ffmpeg_bin,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-thread_queue_size",
+                "1",
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "rgb24",
+                "-s",
+                f"{BENCH_WIDTH}x{BENCH_HEIGHT}",
+                "-r",
+                str(self.fps),
+                "-i",
+                "pipe:0",
+                "-fflags",
+                "nobuffer+discardcorrupt",
+                "-flags",
+                "+low_delay",
+            ]
+            + enc_args
+            + [
+                "-an",
+                "-f",
+                "mpegts",
+                "-muxdelay",
+                "0",
+                "-muxpreload",
+                "0",
+                "-flush_packets",
+                "1",
+                "-pes_payload_size",
+                "0",
+                self.target_url,
+            ]
+        )
 
         self._proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self._stop_event.clear()
@@ -240,6 +372,11 @@ class VirtualClockStreamer:
             proc = self._proc
             if proc is None or proc.poll() is not None:
                 break
+            next_tick += frame_interval
+            sleep_duration = next_tick - time.perf_counter()
+            if sleep_duration > 0:
+                time.sleep(sleep_duration)
+
             t_now_ms = int(time.time() * 1000.0)
             raw = self.generator.render_frame(frame_idx, t_now_ms)
             try:
@@ -249,10 +386,6 @@ class VirtualClockStreamer:
             except Exception:
                 break
             frame_idx += 1
-            next_tick += frame_interval
-            sleep_duration = next_tick - time.perf_counter()
-            if sleep_duration > 0:
-                time.sleep(sleep_duration)
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -263,7 +396,7 @@ class VirtualClockStreamer:
                 if proc.stdin:
                     proc.stdin.close()
                 proc.terminate()
-                proc.wait(timeout=1.5)
+                proc.wait(timeout=1.0)
             except Exception:
                 try:
                     proc.kill()
@@ -299,23 +432,32 @@ def decode_stream_ping(
     """
     Decodifica el flujo en tiempo real, lee la cabecera quemada y calcula
     la latencia matemática exacta (ping) y la integridad de cuadros.
+    Utiliza un recorte superior de 32px (crop) para transmitir sólo la franja
+    del código óptico a través de la tubería, reduciendo el volumen de datos
+    por 23x y eliminando cualquier cuello de botella o buffer acumulativo en el consumidor.
+    Integra un hilo lector con timeout y watchdog estricto para evitar cuelgues.
     """
     ffmpeg_bin = get_ffmpeg_bin()
+    crop_h = 32
     cmd = [
         ffmpeg_bin,
         "-hide_banner",
         "-loglevel",
         "error",
+        "-thread_queue_size",
+        "1",
         "-fflags",
         "nobuffer+discardcorrupt",
         "-flags",
-        "low_delay",
+        "+low_delay",
         "-probesize",
         "32768",
         "-analyzeduration",
         "0",
         "-i",
         read_url,
+        "-vf",
+        f"crop={width}:{crop_h}:0:0",
         "-f",
         "rawvideo",
         "-pix_fmt",
@@ -326,36 +468,68 @@ def decode_stream_ping(
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     measurements: List[float] = []
     artifacts: List[str] = []
-    frame_size = width * height * 3
+    frame_size = width * crop_h * 3
     start_time = time.time()
     last_seq: Optional[int] = None
     dropped_count = 0
     corrupt_count = 0
+    warmup_frames = min(15, max(0, target_frames // 3))
+    frames_seen = 0
 
-    def read_exact(n_bytes: int) -> Optional[bytes]:
-        buf = bytearray()
-        while len(buf) < n_bytes:
-            chunk = proc.stdout.read(min(n_bytes - len(buf), 65536)) if proc.stdout else None
-            if not chunk:
-                return None
-            buf.extend(chunk)
-        return bytes(buf)
+    frame_q: queue.Queue = queue.Queue(maxsize=128)
+    reader_stop = threading.Event()
+
+    def _reader_loop() -> None:
+        try:
+            while not reader_stop.is_set():
+                buf = bytearray()
+                while len(buf) < frame_size and not reader_stop.is_set():
+                    to_read = min(frame_size - len(buf), 65536)
+                    chunk = proc.stdout.read(to_read) if proc.stdout else None
+                    if not chunk:
+                        return
+                    buf.extend(chunk)
+                if len(buf) == frame_size:
+                    t_recv = time.time() * 1000.0
+                    try:
+                        frame_q.put_nowait((bytes(buf), t_recv))
+                    except queue.Full:
+                        try:
+                            frame_q.get_nowait()
+                        except queue.Empty:
+                            pass
+                        try:
+                            frame_q.put_nowait((bytes(buf), t_recv))
+                        except queue.Full:
+                            pass
+        except Exception:
+            pass
+
+    reader_thread = threading.Thread(target=_reader_loop, daemon=True)
+    reader_thread.start()
 
     try:
         while len(measurements) < target_frames and (time.time() - start_time) < timeout_sec:
-            raw = read_exact(frame_size)
-            t_recv = time.time() * 1000.0
-            if raw is None or len(raw) < frame_size:
-                time.sleep(0.01)
+            rem = timeout_sec - (time.time() - start_time)
+            if rem <= 0:
+                break
+            try:
+                item = frame_q.get(timeout=min(1.0, max(0.05, rem)))
+            except queue.Empty:
+                if proc.poll() is not None and frame_q.empty():
+                    break
                 continue
 
-            decoded = decode_burned_in_header(raw, width, height)
+            raw, t_recv = item
+            decoded = decode_burned_in_header(raw, width, crop_h)
             if decoded is None:
                 corrupt_count += 1
                 artifacts.append(f"Corrupted frame detected at {time.strftime('%H:%M:%S')}")
                 continue
 
             t_source, seq = decoded
+            frames_seen += 1
+
             if last_seq is not None:
                 diff_seq = (seq - last_seq) & 0xFFFF
                 if diff_seq > 1:
@@ -366,16 +540,22 @@ def decode_stream_ping(
                     artifacts.append(f"Frame repetition/stutter at #{seq}")
 
             last_seq = seq
+
+            if frames_seen <= warmup_frames:
+                continue
+
             lat = t_recv - t_source
             if 0 <= lat <= 3000:
                 measurements.append(lat)
     finally:
+        reader_stop.set()
         try:
             proc.terminate()
             proc.wait(timeout=1.0)
         except Exception:
             try:
                 proc.kill()
+                proc.wait(timeout=1.0)
             except Exception:
                 pass
 
@@ -478,6 +658,18 @@ class CorePipelineVerifier:
         }
 
         try:
+            if not mediamtx_manager.is_running():
+                started = await mediamtx_manager.start(srt_port=self.mediamtx_port)
+                if not started:
+                    return TestResult(
+                        name=test_name,
+                        protocol="SRT",
+                        encoder=encoder,
+                        status="FAIL",
+                        details="No se pudo iniciar MediaMTX",
+                    )
+                await asyncio.sleep(0.8)
+
             proc = stream_manager.ensure_proc(dp)
             proc.config = cfg
             await stream_manager.start_stream(dp)
@@ -546,6 +738,18 @@ class CorePipelineVerifier:
         }
 
         try:
+            if not mediamtx_manager.is_running():
+                started = await mediamtx_manager.start(srt_port=self.mediamtx_port)
+                if not started:
+                    return TestResult(
+                        name=test_name,
+                        protocol="SRT-AES",
+                        encoder="libx264",
+                        status="FAIL",
+                        details="No se pudo iniciar MediaMTX",
+                    )
+                await asyncio.sleep(0.8)
+
             await mediamtx_manager.sync_path_api(cam_id, secret)
             proc = stream_manager.ensure_proc(dp)
             proc.config = cfg
@@ -728,6 +932,18 @@ class CorePipelineVerifier:
         }
 
         try:
+            if not mediamtx_manager.is_running():
+                started = await mediamtx_manager.start(srt_port=self.mediamtx_port)
+                if not started:
+                    return TestResult(
+                        name=test_name,
+                        protocol="WebRTC",
+                        encoder="libx264",
+                        status="FAIL",
+                        details="No se pudo iniciar MediaMTX",
+                    )
+                await asyncio.sleep(0.8)
+
             proc = stream_manager.ensure_proc(dp)
             proc.config = cfg
             await stream_manager.start_stream(dp)
@@ -774,20 +990,37 @@ class CorePipelineVerifier:
         cam_id = "latency_clock_bench"
 
         if protocol == "srt":
-            pub_url = (
-                f"srt://127.0.0.1:{port}?streamid=publish:{cam_id}&mode=caller&latency=50000&tlpktdrop=1&rcvbuf=65536"
-            )
-            read_url = f"srt://127.0.0.1:{port}?streamid=read:{cam_id}&latency=50000&rcvbuf=65536&tlpktdrop=1"
-        else:
-            pub_url = f"udp://127.0.0.1:{port}?pkt_size=1316&buffer_size=65536"
-            read_url = f"udp://127.0.0.1:{port}?buffer_size=65536&overrun_nonfatal=1"
+            if not mediamtx_manager.is_running():
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = None
+                if loop and loop.is_running():
+                    import concurrent.futures
 
-        streamer = VirtualClockStreamer(pub_url, fps=30, encoder=encoder)
+                    fut: concurrent.futures.Future[bool] = concurrent.futures.Future()
+                    threading.Thread(
+                        target=lambda: fut.set_result(asyncio.run(mediamtx_manager.start(srt_port=self.mediamtx_port)))
+                    ).start()
+                    fut.result(timeout=5.0)
+                else:
+                    asyncio.run(mediamtx_manager.start(srt_port=self.mediamtx_port))
+                time.sleep(0.8)
+
+            pub_url = (
+                f"srt://127.0.0.1:{port}?streamid=publish:{cam_id}&mode=caller&latency=10000&tlpktdrop=1&rcvbuf=16384"
+            )
+            read_url = f"srt://127.0.0.1:{port}?streamid=read:{cam_id}&latency=15000&rcvbuf=16384&tlpktdrop=1"
+        else:
+            pub_url = f"udp://127.0.0.1:{port}?pkt_size=1316&buffer_size=16384"
+            read_url = f"udp://127.0.0.1:{port}?buffer_size=16384&overrun_nonfatal=1"
+
+        streamer = VirtualClockStreamer(pub_url, fps=BENCH_FPS, encoder=encoder)
         streamer.start()
-        time.sleep(2.0)
+        time.sleep(0.4)
 
         try:
-            metrics = decode_stream_ping(read_url, target_frames=target_frames, timeout_sec=12.0)
+            metrics = decode_stream_ping(read_url, target_frames=target_frames, timeout_sec=10.0)
             streamer.stop()
 
             if not metrics.success:

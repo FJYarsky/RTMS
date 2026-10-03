@@ -368,7 +368,7 @@ async def test_api_vlc_endpoints():
         data_conn = res_conn.json()
         assert "vlc_command" in data_conn
         assert "vlc_caching_ms" in data_conn
-        assert data_conn["vlc_caching_ms"] == 50
+        assert data_conn["vlc_caching_ms"] == 15
 
         # 2. Probar descarga de playlist .xspf
         res_xspf = await ac.get("/api/stream/%40device%3Apnp%3Avlc_test_cam/vlc_playlist.xspf", headers=headers)
@@ -476,8 +476,8 @@ async def test_command_builder_directshow_low_latency_timestamps():
     idx = cmd.index("-use_video_device_timestamps")
     assert cmd[idx + 1] == "0"
 
-    # En MJPEG el rtbufsize debe ser 25M (no 150M)
-    assert "25M" in cmd
+    # En MJPEG el rtbufsize debe ser 3M (v2.8.2)
+    assert "3M" in cmd
 
     # Probesize y analyzeduration mínimos
     assert "-probesize" in cmd and "32" in cmd
