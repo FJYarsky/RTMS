@@ -112,6 +112,7 @@ async def build_ffmpeg_command(
         # Optimización de Silicio USB (v2.6.0):
         # Si el dispositivo no es virtual, verificar si el sensor DirectShow soporta compresión MJPEG.
         # Si use_mjpeg_input está configurado explícitamente se respeta; de lo contrario se sondea dinámicamente.
+        is_1080p_or_more = any(res_key in video_size for res_key in ("1920x1080", "2560x1440", "3840x2160"))
         explicit_mjpeg = cfg.get("use_mjpeg_input")
         if explicit_mjpeg is not None:
             use_mjpeg = bool(explicit_mjpeg)
@@ -125,7 +126,12 @@ async def build_ffmpeg_command(
                 if proc:
                     proc.mjpeg_supported = use_mjpeg
             except Exception:
-                use_mjpeg = False
+                use_mjpeg = is_1080p_or_more
+
+            # v2.8.3: En 1080p+, priorizar el pin MJPEG para evitar que el bus USB 2.0
+            # rechace NV12 sin comprimir y caiga al modo por defecto en 640x480 (4:3)
+            if is_1080p_or_more and not getattr(proc, "mjpeg_input_failed", False):
+                use_mjpeg = True
 
         if proc and getattr(proc, "mjpeg_input_failed", False):
             use_mjpeg = False
@@ -164,7 +170,9 @@ async def build_ffmpeg_command(
         dshow_args += ["-i", f"video={escaped_device}"]
         cmd += dshow_args
         if dshow_options_failed:
-            cmd += ["-vf", f"scale={video_size}", "-r", str(fps)]
+            w, h = video_size.split("x") if "x" in video_size else ("1280", "720")
+            aspect_filter = f"scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:black"
+            cmd += ["-vf", aspect_filter, "-r", str(fps)]
 
     # Sincronización de framerate de salida:
     # cfr garantiza timestamps estrictamente crecientes (monótonos) a 1/fps exactos,
@@ -373,6 +381,9 @@ async def build_ffmpeg_command(
             zerolatency=zerolatency,
             streamid=f"publish:{clean_cam_id}",
         )
+    elif protocol == "rtp":
+        udp_host = (cfg.get("udp_host") or "127.0.0.1").strip()
+        raw_url = f"rtp://{udp_host}:{port}"
     else:
         udp_mode = cfg.get("udp_mode", "unicast")
         udp_host = cfg.get("udp_host", "127.0.0.1")
@@ -387,7 +398,9 @@ async def build_ffmpeg_command(
             udp_host=udp_host,
         )
 
-    if zerolatency:
+    if protocol == "rtp":
+        cmd += ["-f", "rtp", "-payload_type", "96", raw_url]
+    elif zerolatency:
         cmd += [
             "-bsf:v",
             "dump_extra",

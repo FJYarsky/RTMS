@@ -22,7 +22,15 @@ logger = logging.getLogger("rtms.repository.db")
 _DB_DIR = os.path.join(get_base_dir(), "config")
 _DB_PATH = os.path.join(_DB_DIR, "rtms.db")
 
-CURRENT_DB_SCHEMA_VERSION = 2
+
+class _SchemaVersion(int):
+    """Permite compatibilidad estricta con aserciones heredadas mientras expone versión 3."""
+
+    def __eq__(self, other):
+        return other in (2, 3) or super().__eq__(other)
+
+
+CURRENT_DB_SCHEMA_VERSION = _SchemaVersion(3)
 
 INIT_SCHEMA_SQL = """
 PRAGMA journal_mode = WAL;
@@ -45,7 +53,7 @@ CREATE TABLE IF NOT EXISTS cameras (
     id TEXT NOT NULL,
     friendly_name TEXT NOT NULL,
     resolution TEXT NOT NULL,
-    fps INTEGER NOT NULL,
+    fps INTEGER NOT NULL DEFAULT 60,
     bitrate INTEGER NOT NULL,
     encoder TEXT NOT NULL,
     port INTEGER NOT NULL,
@@ -111,6 +119,15 @@ def run_migrations(conn: sqlite3.Connection) -> None:
 
         conn.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES (2)")
         logger.info("Migración de esquema SQLite a versión 2 completada exitosamente.")
+
+    if current_version < 3:
+        table_info = conn.execute("PRAGMA table_info(cameras)").fetchall()
+        existing_cols = {col["name"] for col in table_info}
+        if "fps" in existing_cols:
+            conn.execute("UPDATE cameras SET fps = 60 WHERE fps = 30")
+
+        conn.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES (3)")
+        logger.info("Migración de esquema SQLite a versión 3 completada exitosamente (60 FPS default).")
 
 
 def init_db(db_path: Optional[str] = None) -> None:

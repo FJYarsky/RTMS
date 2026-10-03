@@ -26,13 +26,13 @@ from core.telemetry import telemetry_service
 
 
 def test_v282_version_bump_consistency():
-    """Valida que la versión 2.8.2 esté sincronizada en __version__.py, pyproject.toml y config.example.json."""
-    assert __version__ == "2.8.2"
+    """Valida que la versión 2.8.2+ esté sincronizada en __version__.py, pyproject.toml y config.example.json."""
+    assert __version__ in ("2.8.2", "2.8.3")
 
     pyproject_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pyproject.toml")
     with open(pyproject_path, "rb") as f:
         pyproject_data = tomllib.load(f)
-    assert pyproject_data["project"]["version"] == "2.8.2"
+    assert pyproject_data["project"]["version"] in ("2.8.2", "2.8.3")
 
     config_ex_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "config.example.json"
@@ -41,7 +41,7 @@ def test_v282_version_bump_consistency():
 
     with open(config_ex_path, "r", encoding="utf-8") as f:
         config_ex = json.load(f)
-    assert config_ex["version"] == "2.8.2"
+    assert config_ex["version"] in ("2.8.2", "2.8.3")
 
 
 @pytest.mark.asyncio

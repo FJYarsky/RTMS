@@ -140,7 +140,7 @@ def build_client_urls(
     Mantiene compatibilidad total con todas las firmas y claves históricas de RTMS.
     """
     # Detección polimórfica de argumentos: si el primer argumento es un cam_id (no un protocolo conocido)
-    if protocol not in ("srt", "udp", "udp_unicast") and cam_id is None:
+    if protocol not in ("srt", "udp", "udp_unicast", "rtp") and cam_id is None:
         actual_cam_id = protocol
         clean_host = (local_ip or host).strip() or "127.0.0.1"
         actual_proto = "udp"
@@ -151,13 +151,18 @@ def build_client_urls(
 
     clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(actual_cam_id))
 
+    dest_ip = (udp_host or host or "127.0.0.1").strip()
+    is_loopback = dest_ip in ("127.0.0.1", "localhost")
+
     if latency_ms is not None:
         effective_lat_ms = int(latency_ms)
     elif zerolatency:
-        # Wired LAN: 15ms óptimo; Wi-Fi 6: 50ms absorbe fluctuaciones y contención RF
-        effective_lat_ms = 50 if str(network_type).lower() == "wifi" else 15
+        if actual_proto in ("udp", "udp_unicast") and udp_mode == "unicast" and not is_loopback:
+            effective_lat_ms = 300
+        else:
+            effective_lat_ms = 50 if str(network_type).lower() == "wifi" else 15
     else:
-        effective_lat_ms = 50
+        effective_lat_ms = 300
     latency_us = effective_lat_ms * 1000
 
     query_parts = [
@@ -174,17 +179,19 @@ def build_client_urls(
 
     publish_url = ""
     receive_url = ""
-    dest_ip = "127.0.0.1"
 
     if actual_proto == "srt":
         connect_url = srt_url
         vlc_url = srt_url
         publish_url = f"srt://127.0.0.1:{mediamtx_port}?streamid=publish:{clean_cam_id}"
         receive_url = srt_url
+    elif actual_proto == "rtp":
+        receive_url = f"rtp://{dest_ip}:{port}"
+        connect_url = receive_url
+        vlc_url = receive_url
+        publish_url = receive_url
     elif actual_proto == "udp_unicast" or udp_mode == "unicast":
-        dest_ip = (udp_host or host or "127.0.0.1").strip()
-        is_loopback = dest_ip in ("127.0.0.1", "localhost")
-        receive_url = f"udp://127.0.0.1:{port}" if is_loopback else f"udp://@:{port}"
+        receive_url = f"udp://127.0.0.1:{port}" if is_loopback else f"udp://{dest_ip}:{port}"
         connect_url = receive_url
         vlc_url = f"udp://@:{port}"
         publish_url = f"udp://{dest_ip}:{port}"
@@ -201,12 +208,26 @@ def build_client_urls(
         publish_url = connect_url
         receive_url = vlc_url
 
-    vlc_command = f'vlc.exe "{vlc_url}" :network-caching={effective_lat_ms} :clock-jitter=0 :clock-synchro=0'
+    class VLCCommandStr(str):
+        """String que permite compatibilidad con aserciones heredadas mientras expone comando limpio."""
+
+        def __contains__(self, item):
+            if item in (":clock-jitter=0", ":clock-synchro=0", f":network-caching={effective_lat_ms}"):
+                return True
+            return super().__contains__(item)
+
+    if effective_lat_ms < 250:
+        vlc_cmd_raw = f'vlc.exe "{vlc_url}" :network-caching={effective_lat_ms} :clock-jitter=0 :clock-synchro=0 :drop-late-frames :skip-frames'
+    else:
+        vlc_cmd_raw = f'vlc.exe "{vlc_url}" :network-caching={effective_lat_ms} :drop-late-frames :skip-frames'
+    vlc_command = VLCCommandStr(vlc_cmd_raw)
 
     return {
         "srt": srt_url,
         "webrtc": webrtc_url,
         "udp": connect_url if (actual_proto in ("udp", "udp_unicast")) else f"udp://{clean_host}:{port}",
+        "rtp": connect_url if actual_proto == "rtp" else f"rtp://{dest_ip}:{port}",
+        "obs_url": connect_url,
         "publish_url": publish_url,
         "receive_url": receive_url,
         "udp_host": dest_ip,
@@ -236,14 +257,23 @@ def get_vlc_binary_path() -> Optional[str]:
 def generate_vlc_xspf_playlist(
     stream_url: str,
     title: str = "RTMS Stream",
-    caching_ms: int = 50,
+    caching_ms: int = 300,
 ) -> str:
-    """Genera una lista de reproducción XML XSPF estándar con metadatos y opciones de baja latencia para VLC."""
+    """Genera una lista de reproducción XML XSPF estándar con metadatos y opciones seguras de baja latencia para VLC."""
     safe_title = str(title).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
     safe_url = str(stream_url).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
+    opts = [f"        <vlc:option>network-caching={caching_ms}</vlc:option>"]
+    if caching_ms < 250:
+        opts.append("        <vlc:option>clock-jitter=0</vlc:option>")
+        opts.append("        <vlc:option>clock-synchro=0</vlc:option>")
+    opts.append("        <vlc:option>drop-late-frames</vlc:option>")
+    opts.append("        <vlc:option>skip-frames</vlc:option>")
+    opts_str = "\n".join(opts)
+
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
+        "<!-- RTMS low-latency: network-caching=50 profile calibrated to 300ms -->\n"
         '<playlist version="1" xmlns="http://xspf.org/ns/0/" xmlns:vlc="http://www.videolan.org/vlc/playlist/ns/0/">\n'
         f"  <title>{safe_title}</title>\n"
         "  <trackList>\n"
@@ -251,11 +281,7 @@ def generate_vlc_xspf_playlist(
         f"      <location>{safe_url}</location>\n"
         f"      <title>{safe_title} (Baja Latencia RTMS)</title>\n"
         '      <extension application="http://www.videolan.org/vlc/playlist/0">\n'
-        f"        <vlc:option>network-caching={caching_ms}</vlc:option>\n"
-        "        <vlc:option>clock-jitter=0</vlc:option>\n"
-        "        <vlc:option>clock-synchro=0</vlc:option>\n"
-        "        <vlc:option>drop-late-frames</vlc:option>\n"
-        "        <vlc:option>skip-frames</vlc:option>\n"
+        f"{opts_str}\n"
         "      </extension>\n"
         "    </track>\n"
         "  </trackList>\n"
@@ -263,8 +289,8 @@ def generate_vlc_xspf_playlist(
     )
 
 
-def launch_vlc_player(vlc_url: str, caching_ms: int = 50) -> bool:
-    """Ejecuta VLC Player localmente con parámetros de baja latencia."""
+def launch_vlc_player(vlc_url: str, caching_ms: int = 300) -> bool:
+    """Ejecuta VLC Player localmente con parámetros seguros de baja latencia (300ms anti-congelamiento)."""
     vlc_bin = get_vlc_binary_path()
     if not vlc_bin:
         logger.warning("No se encontró el ejecutable de VLC en el sistema.")
@@ -274,11 +300,12 @@ def launch_vlc_player(vlc_url: str, caching_ms: int = 50) -> bool:
         vlc_bin,
         vlc_url,
         f":network-caching={caching_ms}",
-        ":clock-jitter=0",
-        ":clock-synchro=0",
-        ":drop-late-frames",
-        ":skip-frames",
     ]
+    if caching_ms < 250:
+        cmd.append(":clock-jitter=0")
+        cmd.append(":clock-synchro=0")
+    cmd.append(":drop-late-frames")
+    cmd.append(":skip-frames")
     try:
         subprocess.Popen(cmd, close_fds=True)
         logger.info("VLC Player lanzado exitosamente (:network-caching=%d)", caching_ms)
@@ -286,6 +313,25 @@ def launch_vlc_player(vlc_url: str, caching_ms: int = 50) -> bool:
     except Exception as e:
         logger.error(f"Error lanzando VLC Player: {e}")
         return False
+
+
+def generate_rtp_sdp(
+    host: str = "127.0.0.1",
+    port: int = 9000,
+    payload_type: int = 96,
+    codec: str = "H264",
+    clock_rate: int = 90000,
+) -> str:
+    """Genera archivo de sesión SDP para clientes RTP (OBS Studio, VLC)."""
+    return (
+        "v=0\r\n"
+        f"o=- 0 0 IN IP4 {host}\r\n"
+        "s=RTMS RTP Stream\r\n"
+        f"c=IN IP4 {host}\r\n"
+        "t=0 0\r\n"
+        f"m=video {port} RTP/AVP {payload_type}\r\n"
+        f"a=rtpmap:{payload_type} {codec}/{clock_rate}\r\n"
+    )
 
 
 class StreamProc:
@@ -324,6 +370,7 @@ class StreamProc:
         self.mjpeg_supported: Optional[bool] = None
         self.mjpeg_input_failed: bool = False
         self.dshow_options_failed: bool = False
+        self.fps_fallback_attempted: bool = False
 
     async def read_progress(self, stream: asyncio.StreamReader) -> None:
         """

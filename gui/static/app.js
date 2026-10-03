@@ -634,7 +634,7 @@ function renderConnectPage() {
             clientUrl = `srt://${_localIp}:${srtPort}?streamid=read:${cleanCamId}`;
         } else if (isUnicast) {
             protocolLabel = t('proto_udp_unicast');
-            clientUrl = isLocalhost ? `udp://127.0.0.1:${stream.port}` : `udp://@:${stream.port}`;
+            clientUrl = isLocalhost ? `udp://127.0.0.1:${stream.port}` : `udp://${destIp}:${stream.port}`;
         } else {
             protocolLabel = t('proto_udp_multicast');
             const ipLastOctet = (stream.port % 200) + 1;
@@ -1078,7 +1078,8 @@ async function confirmAndStartUnicast() {
             resolution: stream.resolution,
             fps: stream.fps,
             bitrate: stream.bitrate,
-            protocol: 'udp_unicast',
+            protocol: 'udp',
+            udp_mode: 'unicast',
             encoder: stream.encoder,
             auto_start: stream.auto_start,
             zerolatency: stream.zerolatency,
@@ -1094,6 +1095,7 @@ async function confirmAndStartUnicast() {
         });
         localStorage.setItem('rtms_unicast_confirmed_' + (stream.device_path || index), 'true');
         stream.udp_host = targetIp;
+        renderStreams();
     } catch (e) {
         console.warn('Could not persist unicast target IP:', e);
     }
@@ -1346,14 +1348,14 @@ function setUdpHostValue(val) {
 }
 
 function resetCameraConfigToDefaults() {
-    // 1. Preset 'default' (720p @ 30 FPS, 3000 kbps)
+    // 1. Preset 'default' (720p @ 60 FPS, 3000 kbps)
     const presetEl = document.getElementById('config-preset');
     if (presetEl) {
         presetEl.value = 'default';
     }
     applyQualityPreset('default');
 
-    // 2. Protocolo por defecto: UDP Unicast (<50ms)
+    // 2. Protocolo por defecto: UDP Unicast (Recomendado)
     const protoEl = document.getElementById('config-protocol');
     if (protoEl) {
         protoEl.value = 'udp_unicast';
@@ -1484,11 +1486,11 @@ function applyQualityPreset(preset) {
         document.getElementById('config-bitrate').value = 6000;
     } else if (preset === 'default') {
         document.getElementById('config-resolution').value = '720p';
-        document.getElementById('config-fps').value = '30';
+        document.getElementById('config-fps').value = '60';
         document.getElementById('config-bitrate').value = 3000;
     } else if (preset === 'lowest') {
         document.getElementById('config-resolution').value = '480p';
-        document.getElementById('config-fps').value = '24';
+        document.getElementById('config-fps').value = '60';
         document.getElementById('config-bitrate').value = 1500;
     }
 }
@@ -2188,7 +2190,7 @@ async function openQrModal(index) {
             targetUrl = `srt://${_localIp}:${srtPort}?streamid=read:${cleanCamId}`;
             obsUrl = targetUrl;
         } else if (isUnicast) {
-            targetUrl = isLocalhost ? `udp://127.0.0.1:${stream.port}` : `udp://@:${stream.port}`;
+            targetUrl = isLocalhost ? `udp://127.0.0.1:${stream.port}` : `udp://${destIp}:${stream.port}`;
             obsUrl = targetUrl;
         } else {
             const p = parseInt(stream.port);
@@ -2199,7 +2201,7 @@ async function openQrModal(index) {
     }
 
     if (!vlcCmd) {
-        vlcCmd = `vlc.exe "${targetUrl}" :network-caching=50 :clock-jitter=0 :clock-synchro=0 :drop-late-frames`;
+        vlcCmd = `vlc.exe "${targetUrl}" :network-caching=300 :drop-late-frames :skip-frames`;
     }
 
     if (obsHintEl) {
@@ -2264,7 +2266,7 @@ async function launchVlcCurrentModalStream() {
         showToast("Lanzando VLC Media Player en baja latencia...");
         const res = await apiFetch(`/api/stream/${encodeURIComponent(dp)}/launch_vlc`, { method: "POST" });
         if (res.ok) {
-            showToast("VLC Player iniciado exitosamente (~50ms de latencia)");
+            showToast("VLC Player iniciado exitosamente (300ms de búfer)");
         } else {
             const err = await res.json().catch(() => ({}));
             showToast("Aviso: " + (err.detail || "No se pudo iniciar VLC"), "error");
@@ -2294,7 +2296,7 @@ async function downloadXspfCurrentModalStream() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        showToast("Playlist .xspf descargada (Baja Latencia ~50ms)");
+        showToast("Playlist .xspf descargada (Búfer 300ms)");
     } catch (e) {
         showToast("Error descargando playlist: " + e.message, "error");
     }
@@ -2381,7 +2383,7 @@ async function runLatencyBenchmarkTest() {
         const rec = bench.recommendations || {};
         const vlcCacheEl = document.getElementById("metric-vlc-cache");
         if (vlcCacheEl) {
-            vlcCacheEl.textContent = `${rec.optimal_vlc_caching_ms || 50} ms`;
+            vlcCacheEl.textContent = `${rec.optimal_vlc_caching_ms || 300} ms`;
         }
 
         if (indicator) {

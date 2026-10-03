@@ -63,6 +63,10 @@ class MediaMTXManager:
         self._log_file: Optional[Any] = None
         self._process: Optional[subprocess.Popen] = None
         self._watchdog_task: Optional[asyncio.Task] = None
+        self._inactivity_task: Optional[asyncio.Task] = None
+        self._active_srt_streams: set = set()
+        self._last_activity_time: float = 0.0
+        self._grace_period_seconds: float = 20.0
         self._is_shutting_down = False
         self._lock = asyncio.Lock()
 
@@ -207,9 +211,15 @@ class MediaMTXManager:
 
                 if self._process and isinstance(getattr(self._process, "pid", None), int):
                     try:
-                        from core.process_optimizer import HIGH_PRIORITY_CLASS, elevate_process_priority
+                        from core.process_optimizer import (
+                            HIGH_PRIORITY_CLASS,
+                            elevate_process_priority,
+                            get_pcore_affinity_mask,
+                        )
 
-                        elevate_process_priority(self._process.pid, HIGH_PRIORITY_CLASS)
+                        elevate_process_priority(
+                            self._process.pid, HIGH_PRIORITY_CLASS, core_mask=get_pcore_affinity_mask()
+                        )
                     except Exception as opt_err:
                         logger.debug(f"Aviso elevando prioridad de MediaMTX: {opt_err}")
 
@@ -236,9 +246,21 @@ class MediaMTXManager:
                 except Exception as ex:
                     logger.debug(f"Aviso en sincronización inicial de rutas MediaMTX: {ex}")
 
+                # Registrar tiempo de actividad inicial
+                try:
+                    self._last_activity_time = asyncio.get_event_loop().time()
+                except RuntimeError:
+                    import time
+
+                    self._last_activity_time = time.time()
+
                 # Iniciar tarea de supervisión continua
                 if not self._watchdog_task or self._watchdog_task.done():
                     self._watchdog_task = asyncio.create_task(self._supervise_loop())
+
+                # Iniciar tarea de apagado por inactividad (período de gracia de 20s)
+                if not self._inactivity_task or self._inactivity_task.done():
+                    self._inactivity_task = asyncio.create_task(self._inactivity_watchdog_loop())
 
                 return True
             except Exception as e:
@@ -293,6 +315,9 @@ class MediaMTXManager:
         self._is_shutting_down = True
         if self._watchdog_task and not self._watchdog_task.done():
             self._watchdog_task.cancel()
+        if self._inactivity_task and not self._inactivity_task.done():
+            self._inactivity_task.cancel()
+            self._inactivity_task = None
 
         if self._process:
             try:
@@ -315,6 +340,73 @@ class MediaMTXManager:
             self._log_file = None
 
         logger.info("MediaMTX detenido limpiamente.")
+
+    def register_srt_stream(self, device_path: str):
+        """Registra una cámara activa transmitiendo en protocolo SRT."""
+        self._active_srt_streams.add(device_path)
+        try:
+            self._last_activity_time = asyncio.get_event_loop().time()
+        except RuntimeError:
+            import time
+
+            self._last_activity_time = time.time()
+        logger.debug(f"[MediaMTX] Flujo SRT registrado: {device_path} (Total activos: {len(self._active_srt_streams)})")
+
+    def unregister_srt_stream(self, device_path: str):
+        """Desregistra una cámara que cesó de transmitir en protocolo SRT."""
+        self._active_srt_streams.discard(device_path)
+        try:
+            self._last_activity_time = asyncio.get_event_loop().time()
+        except RuntimeError:
+            import time
+
+            self._last_activity_time = time.time()
+        logger.debug(f"[MediaMTX] Flujo SRT desregistrado: {device_path} (Restantes: {len(self._active_srt_streams)})")
+
+    def register_webrtc_activity(self):
+        """Registra actividad o solicitud de señalización WebRTC (WHEP)."""
+        try:
+            self._last_activity_time = asyncio.get_event_loop().time()
+        except RuntimeError:
+            import time
+
+            self._last_activity_time = time.time()
+
+    async def ensure_started(self, srt_port: Optional[int] = None) -> bool:
+        """Inicia MediaMTX bajo demanda si no se encuentra en ejecución."""
+        self.register_webrtc_activity()
+        if not self.is_running():
+            return await self.start(srt_port=srt_port)
+        return True
+
+    async def _inactivity_watchdog_loop(self):
+        """
+        Supervisa la inactividad de MediaMTX. Si no hay streams SRT ni visores WebRTC
+        activos durante 20 segundos continuos, apaga el servidor para liberar RAM y cerrar puertos.
+        """
+        while not self._is_shutting_down:
+            try:
+                await asyncio.sleep(2.0)
+                if self._is_shutting_down or not self.is_running():
+                    break
+
+                # Si hay flujos SRT registrados localmente, no apagar
+                if self._active_srt_streams:
+                    continue
+
+                # Comprobar período de gracia de 20 segundos
+                loop_time = asyncio.get_event_loop().time()
+                if (loop_time - self._last_activity_time) >= self._grace_period_seconds:
+                    logger.info(
+                        f"MediaMTX inactivo durante {int(self._grace_period_seconds)}s (sin flujos SRT ni visores WebRTC). "
+                        "Apagando proceso bajo demanda para liberar memoria..."
+                    )
+                    self.stop()
+                    break
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.debug(f"Aviso en supervisor de inactividad MediaMTX: {e}")
 
     async def restart(self, new_srt_port: Optional[int] = None) -> bool:
         """Reinicia el servidor MediaMTX con un nuevo puerto SRT si se especifica."""

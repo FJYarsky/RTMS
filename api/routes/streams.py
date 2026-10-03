@@ -429,7 +429,7 @@ async def get_stream_vlc_playlist(device_path: str):
     xspf_xml = generate_vlc_xspf_playlist(
         stream_url=urls["vlc_url"],
         title=friendly,
-        caching_ms=50,
+        caching_ms=300,
     )
 
     safe_fname = re.sub(r"[^a-zA-Z0-9_-]", "_", friendly) + ".xspf"
@@ -443,9 +443,37 @@ async def get_stream_vlc_playlist(device_path: str):
     )
 
 
+@router.get("/api/stream/{device_path:path}/session.sdp", dependencies=[Depends(verify_api_token)])
+async def get_stream_rtp_sdp(device_path: str):
+    """Genera y descarga el archivo de sesión SDP para clientes RTP (OBS Studio, VLC)."""
+    cam = find_camera_by_id_or_path(device_path)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Dispositivo de cámara no encontrado")
+
+    dp = cam["device_path"]
+    proc = stream_manager.get_proc(dp)
+    cfg = proc.config if (proc and proc.config) else cam
+
+    port = cfg.get("port", 9000)
+    host = cfg.get("udp_host") or get_local_ip() or "127.0.0.1"
+    from core.stream_proc import generate_rtp_sdp
+
+    sdp_content = generate_rtp_sdp(host=host, port=port)
+    friendly = cam.get("friendly_name") or f"Cam_{port}"
+    safe_fname = re.sub(r"[^a-zA-Z0-9_-]", "_", friendly) + ".sdp"
+    return Response(
+        content=sdp_content,
+        media_type="application/sdp",
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_fname}"',
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+        },
+    )
+
+
 @router.post("/api/stream/{device_path:path}/launch_vlc", dependencies=[Depends(verify_api_token)])
 async def launch_vlc_stream_endpoint(device_path: str):
-    """Lanza localmente el reproductor VLC con parámetros forzados de ultra baja latencia (:network-caching=50)."""
+    """Lanza localmente el reproductor VLC con parámetros seguros de baja latencia (:network-caching=300)."""
     from core.stream_proc import build_client_urls, get_vlc_binary_path, launch_vlc_player
 
     cam = find_camera_by_id_or_path(device_path)
@@ -488,13 +516,13 @@ async def launch_vlc_stream_endpoint(device_path: str):
         udp_mode=udp_mode,
     )
 
-    success = launch_vlc_player(urls["vlc_url"], caching_ms=50)
+    success = launch_vlc_player(urls["vlc_url"], caching_ms=300)
     if not success:
         raise HTTPException(status_code=500, detail="Fallo al ejecutar el proceso de VLC Media Player.")
 
     return {
         "status": "ok",
-        "message": f"VLC lanzado exitosamente con buffer de 50ms para {cam.get('friendly_name', dp)}",
+        "message": f"VLC lanzado exitosamente con buffer de 300ms para {cam.get('friendly_name', dp)}",
         "vlc_url": urls["vlc_url"],
-        "caching_ms": 50,
+        "caching_ms": 300,
     }

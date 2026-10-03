@@ -191,7 +191,7 @@
                     <div class="card-header" data-i18n="obs_guide_header">Guía de Configuración Rápida en OBS Studio</div>
                     <div class="card-body">
                         <div class="alert-box alert-info" data-i18n="obs_guide_alert">
-                            <strong>Protocolo UDP Unicast Predeterminado (&lt;50ms):</strong> Transmisión punto a punto directa sin sobrecargas de intermediarios. Configura estas fuentes en la <strong>computadora donde corre OBS</strong>.
+                            <strong>Protocolo UDP Unicast Predeterminado (Recomendado):</strong> Transmisión punto a punto directa sin sobrecargas de intermediarios. Configura estas fuentes en la <strong>computadora donde corre OBS</strong>.
                         </div>
                         
                         <div class="obs-guide-steps">
@@ -213,7 +213,7 @@
                                 <div class="step-number">3</div>
                                 <div class="step-details">
                                     <div class="step-title" data-i18n="obs_step_3_title">Pegar la URL generada</div>
-                                    <div class="step-desc" data-i18n="obs_step_3_desc">En el campo <strong>Entrada</strong>, pega la URL copiada arriba (ej: <code>udp://@:9000</code> para Unicast, o <code>srt://...</code> si usas SRT).</div>
+                                    <div class="step-desc" data-i18n="obs_step_3_desc">En el campo <strong>Entrada</strong>, pega la URL copiada arriba (ej: <code>udp://192.168.1.100:9000</code> para Unicast, o <code>srt://...</code> si usas SRT).</div>
                                 </div>
                             </div>
                             <div class="obs-guide-step">
@@ -232,8 +232,8 @@
                             <div class="obs-guide-step">
                                 <div class="step-number">5</div>
                                 <div class="step-details">
-                                    <div class="step-title" data-i18n="obs_step_5_title">Búfer de red y Baja Latencia (&lt;100ms)</div>
-                                    <div class="step-desc" data-i18n="obs_step_5_desc">En la configuración de la Fuente multimedia en OBS, reduce <strong>Búfer de red (Network Buffering)</strong> a <strong>1 MB</strong> o 0 para erradicar retrasos de 500-1000ms. Alternativamente, utiliza <strong>Fuente de video VLC</strong> con <code>:network-caching=50</code>.</div>
+                                    <div class="step-title" data-i18n="obs_step_5_title">Búfer de red y Baja Latencia en OBS</div>
+                                    <div class="step-desc" data-i18n="obs_step_5_desc">En la configuración de la Fuente multimedia en OBS, reduce <strong>Búfer de red (Network Buffering)</strong> a <strong>1 MB</strong> o 0 para erradicar retrasos de 500-1000ms. Para monitoreo en VLC, se utiliza un búfer seguro de 300ms (<code>:network-caching=300</code>) para prevenir congelamientos.</div>
                                 </div>
                             </div>
                         </div>
@@ -610,8 +610,8 @@
                             <select class="form-ctrl" id="config-preset" onchange="applyQualityPreset(this.value)">
                                 <option value="custom" data-i18n="opt_preset_custom">Personalizado...</option>
                                 <option value="best" data-i18n="opt_preset_best">Alta Calidad / Broadcast (1080p @ 60 FPS — 6000 kbps)</option>
-                                <option value="default" selected data-i18n="opt_preset_default">Estándar Equilibrado (720p @ 30 FPS — 3000 kbps)</option>
-                                <option value="lowest" data-i18n="opt_preset_lowest">Bajo Ancho de Banda (480p @ 24 FPS — 1500 kbps)</option>
+                                <option value="default" selected data-i18n="opt_preset_default">Estándar Equilibrado (720p @ 60 FPS — 3000 kbps)</option>
+                                <option value="lowest" data-i18n="opt_preset_lowest">Bajo Ancho de Banda (480p @ 60 FPS — 1500 kbps)</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -631,8 +631,8 @@
                             <label class="form-label" for="config-fps" data-i18n="cfg_fps_label">FPS (Fotogramas por Segundo)</label>
                             <select class="form-ctrl" id="config-fps" onchange="resetQualityPreset()">
                                 <option value="24">24 FPS</option>
-                                <option value="30" selected>30 FPS</option>
-                                <option value="60">60 FPS</option>
+                                <option value="30">30 FPS</option>
+                                <option value="60" selected>60 FPS</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -644,8 +644,8 @@
                     <div class="form-group" style="margin-bottom: 16px;">
                         <label class="form-label" for="config-protocol" data-i18n="cam_protocol_label">Protocolo de Red</label>
                         <select class="form-ctrl" id="config-protocol" onchange="handleProtocolChange(this.value)">
-                            <option value="udp_unicast" selected data-i18n="opt_protocol_udp_unicast">UDP Unicast LAN (Mínima latencia &lt;50ms — Predeterminado)</option>
-                            <option value="srt" data-i18n="opt_protocol_srt">SRT Media Server (Desacoplado, recuperación de pérdidas)</option>
+                            <option value="udp_unicast" selected data-i18n="opt_protocol_udp_unicast">UDP Unicast LAN (Hacia otra PC o OBS — Recomendado)</option>
+                            <option value="srt" data-i18n="opt_protocol_srt">SRT Media Server (Desacoplado, para redes WAN / Internet)</option>
                             <option value="udp_multicast" data-i18n="opt_protocol_udp_multicast">UDP Multicast (Emisión a múltiples receptores en red LAN)</option>
                         </select>
                     </div>
@@ -698,7 +698,7 @@
                         </label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer; margin-bottom: 6px;">
                             <input type="checkbox" id="config-zerolatency" checked style="display: inline-block;" onchange="handleZerolatencyChange()">
-                            <span data-i18n="cfg_zerolatency">Modo de baja latencia zerolatency (&lt;100ms real sin buffers)</span>
+                            <span data-i18n="cfg_zerolatency">Modo Zerolatency (VBV 1.5 frames, B-frames=0, latencia mínima)</span>
                         </label>
                         <label style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; cursor: pointer;">
                             <input type="checkbox" id="config-is-virtual" style="display: inline-block;">
@@ -1083,9 +1083,9 @@
                         </div>
 
                         <div class="metric-card" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                            <div style="font-size: 0.72rem; color: var(--text-muted);">BÚFER RECOMENDADO VLC</div>
-                            <div id="metric-vlc-cache" style="font-size: 1.2rem; font-weight: 800; color: #f59e0b;">50 ms</div>
-                            <div style="font-size: 0.7rem; color: var(--text-muted);">En lugar de 1.500 ms por defecto</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">BÚFER SEGURO VLC</div>
+                            <div id="metric-vlc-cache" style="font-size: 1.2rem; font-weight: 800; color: #f59e0b;">300 ms</div>
+                            <div style="font-size: 0.7rem; color: var(--text-muted);">Búfer anti-congelamiento (VLC 300 ms)</div>
                         </div>
                     </div>
 

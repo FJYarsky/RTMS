@@ -198,9 +198,8 @@ class StreamManager:
             try:
                 from core.mediamtx_mgr import mediamtx_manager
 
-                if not mediamtx_manager.is_running():
-                    logger.info("MediaMTX no está activo; iniciándolo bajo demanda para el flujo SRT...")
-                    await mediamtx_manager.start()
+                await mediamtx_manager.ensure_started()
+                mediamtx_manager.register_srt_stream(proc.device_path)
             except Exception as me:
                 logger.error(f"Error asegurando el estado de MediaMTX: {me}")
 
@@ -227,6 +226,15 @@ class StreamManager:
                 proc.transition_to(State.STOPPED)
             return
 
+        # P1.3 Bloqueo inteligente de auto-exposición UVC (Anti-Drop FPS en penumbra)
+        if not is_virt and not proc.using_fallback_cpu:
+            try:
+                from core.uvc_control import lock_uvc_auto_exposure
+
+                await asyncio.to_thread(lock_uvc_auto_exposure, raw_dev)
+            except Exception as uvc_err:
+                logger.debug(f"Aviso en control UVC para {raw_dev}: {uvc_err}")
+
         try:
             process = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -237,9 +245,13 @@ class StreamManager:
             )
             if process and isinstance(getattr(process, "pid", None), int):
                 try:
-                    from core.process_optimizer import HIGH_PRIORITY_CLASS, elevate_process_priority
+                    from core.process_optimizer import (
+                        HIGH_PRIORITY_CLASS,
+                        elevate_process_priority,
+                        get_pcore_affinity_mask,
+                    )
 
-                    elevate_process_priority(process.pid, HIGH_PRIORITY_CLASS)
+                    elevate_process_priority(process.pid, HIGH_PRIORITY_CLASS, core_mask=get_pcore_affinity_mask())
                 except Exception as opt_err:
                     logger.debug(f"Aviso al elevar prioridad de FFmpeg: {opt_err}")
         except Exception as exc:
@@ -383,6 +395,14 @@ class StreamManager:
         except Exception:
             pass
 
+        if proc.config.get("protocol") == "srt":
+            try:
+                from core.mediamtx_mgr import mediamtx_manager
+
+                mediamtx_manager.unregister_srt_stream(proc.device_path)
+            except Exception:
+                pass
+
         try:
             from core.power_mgr import power_governor
 
@@ -462,6 +482,17 @@ class StreamManager:
         if not proc:
             return
         async with proc.lock:
+            # P1.2 Auto-negociación defensiva: Si se solicitaba 60 FPS y el sensor lo rechaza,
+            # conmutar defensivamente a 30 FPS antes de recurrir al reescalado forzado
+            if proc.config and proc.config.get("fps", 60) == 60 and not getattr(proc, "fps_fallback_attempted", False):
+                proc.fps_fallback_attempted = True
+                proc.config["fps"] = 30
+                logger.warning(f"[{device_path}] DirectShow rechazó 60 FPS. Conmutando defensivamente a 30 FPS...")
+                proc.log("DirectShow rechazó 60 FPS. Conmutando defensivamente a 30 FPS...")
+                await self._stop_stream_locked(proc, timeout=1.0)
+                await self._start_stream_locked(proc, force_cpu=proc.using_fallback_cpu)
+                return
+
             proc.dshow_options_failed = True
             if proc.config:
                 proc.config["dshow_options_failed"] = True

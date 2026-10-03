@@ -290,6 +290,8 @@ async def whep_proxy_endpoint(request: Request, device_path: str, ticket: Option
     if not body_bytes:
         raise HTTPException(status_code=400, detail="Cuerpo SDP de oferta vacío.")
 
+    await mediamtx_manager.ensure_started()
+    mediamtx_manager.register_webrtc_activity()
     webrtc_port = mediamtx_manager.get_webrtc_port()
     whep_url = f"http://127.0.0.1:{webrtc_port}/{clean_cam_id}/whep"
 

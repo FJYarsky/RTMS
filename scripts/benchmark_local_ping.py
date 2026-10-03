@@ -396,8 +396,8 @@ async def run_benchmark(
         "optimal_vlc_caching_ms": best_caching,
         "optimal_vlc_args": [
             f":network-caching={best_caching}",
-            ":clock-jitter=0",
-            ":clock-synchro=0",
+            ":drop-late-frames",
+            ":skip-frames",
         ],
         "ffmpeg_ingest_flags": [
             "-preset ultrafast",
