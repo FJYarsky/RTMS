@@ -176,10 +176,10 @@ def test_v283_vlc_caching_300ms_and_clean_command():
     assert ":drop-late-frames" in vlc_cmd
     assert ":skip-frames" in vlc_cmd
 
-    # El comando renderizado en producción no debe contener clock-jitter ni clock-synchro
-    rendered_cmd = str(vlc_cmd)
-    assert ":clock-jitter=0" not in rendered_cmd
-    assert ":clock-synchro=0" not in rendered_cmd
+    # El comando renderizado en producción debe ser str limpio sin clock-jitter ni clock-synchro
+    assert type(vlc_cmd) is str
+    assert ":clock-jitter=0" not in vlc_cmd
+    assert ":clock-synchro=0" not in vlc_cmd
 
     # Playlist XSPF por defecto a 300ms
     xspf = generate_vlc_xspf_playlist("udp://192.168.1.100:9000", "Camara 1")
@@ -258,9 +258,22 @@ def test_v283_win32_pcore_affinity_detection():
 
 
 def test_v283_uvc_auto_exposure_graceful_handling():
-    """Valida degradación elegante de UVC control para dispositivos virtuales o no existentes."""
-    success = lock_uvc_auto_exposure("DispositivoVirtualInexistente_12345", max_shutter_sec=1 / 60.0)
-    assert success is False
+    """Valida degradación elegante de UVC control para dispositivos virtuales, no existentes o no soportados."""
+    # 1. Dispositivo virtual
+    assert lock_uvc_auto_exposure("DispositivoVirtualInexistente_12345", max_shutter_sec=1 / 60.0) is False
+
+    # 2. Dispositivo no existente sin palabra clave virtual
+    assert lock_uvc_auto_exposure("CamaraFisicaInexistente_9999", max_shutter_sec=1 / 60.0) is False
+
+    # 3. Dispositivo vacío o nulo
+    assert lock_uvc_auto_exposure("", max_shutter_sec=1 / 60.0) is False
+
+    # 4. Capacidades UVC estructuradas
+    from core.uvc_control import get_uvc_camera_capabilities
+
+    caps = get_uvc_camera_capabilities("Camara_Test")
+    assert isinstance(caps, dict)
+    assert caps["target_max_shutter"] == "1/60s"
 
 
 def test_v283_mediamtx_lazy_lifecycle():

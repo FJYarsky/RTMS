@@ -97,7 +97,7 @@ def test_sqlite_v2_migration_and_persistence(tmp_path: Path):
     cur = conn.cursor()
     cur.execute("SELECT MAX(version) FROM schema_migrations;")
     ver = cur.fetchone()[0]
-    assert ver == CURRENT_DB_SCHEMA_VERSION == 2
+    assert ver == CURRENT_DB_SCHEMA_VERSION == 3
 
     # Verificar que las nuevas columnas existen
     cur.execute("PRAGMA table_info(cameras);")

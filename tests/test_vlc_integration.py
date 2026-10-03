@@ -306,8 +306,8 @@ def test_generate_vlc_xspf_playlist():
     assert '<?xml version="1.0" encoding="UTF-8"?>' in xml
     assert '<playlist version="1"' in xml
     assert "network-caching=50" in xml
-    assert "clock-jitter=0" in xml
-    assert "clock-synchro=0" in xml
+    assert "clock-jitter=0" not in xml
+    assert "clock-synchro=0" not in xml
     assert "drop-late-frames" in xml
     assert "&amp;" in xml  # Caracteres especiales escapados correctamente
 
@@ -329,7 +329,8 @@ def test_launch_vlc_player_mocked(monkeypatch):
     assert args[0] == r"C:\Fake\vlc.exe"
     assert args[1] == "udp://@239.255.0.1:9000"
     assert ":network-caching=50" in args
-    assert ":clock-jitter=0" in args
+    assert ":clock-jitter=0" not in args
+    assert ":clock-synchro=0" not in args
 
 
 @pytest.mark.asyncio
@@ -368,14 +369,14 @@ async def test_api_vlc_endpoints():
         data_conn = res_conn.json()
         assert "vlc_command" in data_conn
         assert "vlc_caching_ms" in data_conn
-        assert data_conn["vlc_caching_ms"] == 15
+        assert data_conn["vlc_caching_ms"] == 300
 
         # 2. Probar descarga de playlist .xspf
         res_xspf = await ac.get("/api/stream/%40device%3Apnp%3Avlc_test_cam/vlc_playlist.xspf", headers=headers)
         assert res_xspf.status_code == 200
         assert res_xspf.headers["content-type"].startswith("application/xspf+xml")
         assert "attachment" in res_xspf.headers["content-disposition"]
-        assert "network-caching=50" in res_xspf.text
+        assert "network-caching=300" in res_xspf.text
 
         # 3. Probar launch_vlc con mock de ejecución
         import core.stream_proc

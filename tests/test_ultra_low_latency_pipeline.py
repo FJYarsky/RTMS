@@ -298,21 +298,22 @@ def test_udp_low_latency_parameters():
 
 
 def test_client_vlc_low_latency_caching():
-    """Valida que los comandos generados para VLC incluyan los modificadores de baja latencia fluida sin congelamientos."""
+    """Valida que los comandos generados para VLC usen búfer seguro de 300 ms sin directivas desestabilizadoras."""
     res_srt = build_client_urls("srt", "127.0.0.1", 9000, "cam_test")
-    assert ":network-caching=15" in res_srt["vlc_command"]
-    assert ":clock-jitter=0" in res_srt["vlc_command"]
-    assert ":clock-synchro=0" in res_srt["vlc_command"]
-    assert res_srt["vlc_caching_ms"] == 15
+    assert ":network-caching=300" in res_srt["vlc_command"]
+    assert ":clock-jitter=0" not in res_srt["vlc_command"]
+    assert ":clock-synchro=0" not in res_srt["vlc_command"]
+    assert res_srt["vlc_caching_ms"] == 300
 
-    res_wifi = build_client_urls("srt", "127.0.0.1", 9000, "cam_test", network_type="wifi")
-    assert ":network-caching=50" in res_wifi["vlc_command"]
-    assert res_wifi["vlc_caching_ms"] == 50
+    res_custom = build_client_urls("srt", "127.0.0.1", 9000, "cam_test", latency_ms=250)
+    assert ":network-caching=300" in res_custom["vlc_command"]
+    assert res_custom["vlc_caching_ms"] == 300
+    assert ":clock-jitter=0" not in res_custom["vlc_command"]
 
     res_udp = build_client_urls("udp", "127.0.0.1", 9000, "cam_test", udp_mode="multicast")
-    assert ":network-caching=15" in res_udp["vlc_command"]
-    assert ":clock-jitter=0" in res_udp["vlc_command"]
-    assert ":clock-synchro=0" in res_udp["vlc_command"]
+    assert ":network-caching=300" in res_udp["vlc_command"]
+    assert ":clock-jitter=0" not in res_udp["vlc_command"]
+    assert ":clock-synchro=0" not in res_udp["vlc_command"]
     assert "udp://@239.255.0.1:9000" in res_udp["vlc_url"]
 
 
