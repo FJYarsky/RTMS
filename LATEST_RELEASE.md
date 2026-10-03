@@ -32,3 +32,4 @@
 ### 🛡️ Calidad de Código y Validación
 - **378 Pruebas Automatizadas Pasando (100%)**: Cobertura exhaustiva en suites unitarias, de integración, concurrencia, límites, fuzzing y benchmarking sin fallos.
 - **Verificación E2E de Hardware y Protocolos**: 9/9 pipelines validadas en vivo incluyendo MediaMTX, SRT, SRT-AES, UDP Multicast, UDP Unicast, WebRTC WHEP y cámaras físicas DirectShow.
+
