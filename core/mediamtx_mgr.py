@@ -205,7 +205,7 @@ class MediaMTXManager:
                     creationflags=_WIN_FLAGS,
                 )
 
-                if self._process and self._process.pid:
+                if self._process and isinstance(getattr(self._process, "pid", None), int):
                     try:
                         from core.process_optimizer import HIGH_PRIORITY_CLASS, elevate_process_priority
 

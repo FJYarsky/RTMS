@@ -235,7 +235,7 @@ class StreamManager:
                 stderr=asyncio.subprocess.PIPE,
                 creationflags=_WIN_FLAGS,
             )
-            if process and process.pid:
+            if process and isinstance(getattr(process, "pid", None), int):
                 try:
                     from core.process_optimizer import HIGH_PRIORITY_CLASS, elevate_process_priority
 

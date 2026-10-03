@@ -47,7 +47,7 @@ def elevate_process_priority(
     Returns:
         True if successful, False otherwise.
     """
-    if sys.platform != "win32" or not pid:
+    if sys.platform != "win32" or not pid or not isinstance(pid, int):
         return False
     try:
         import ctypes
