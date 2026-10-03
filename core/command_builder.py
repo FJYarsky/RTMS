@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from core.config_mgr import is_virtual_device
 from core.hardware import get_ffmpeg_bin, hardware_detector
+from core.mediamtx_mgr import clean_camera_id
 from core.sanitizer import sanitize_url
 from core.stream_proc import StreamProc, build_stream_url
 
@@ -361,7 +362,7 @@ async def build_ffmpeg_command(
     # si zerolatency está deshabilitado, se respeta la latencia manual definida por el usuario.
     latency_ms = 10 if zerolatency else (int(srt_lat) if srt_lat is not None else 120)
     cam_id = cfg.get("id") or cfg.get("camera_id") or f"cam_{port}"
-    clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id))
+    clean_cam_id = clean_camera_id(cam_id)
 
     if protocol == "srt":
         from core.mediamtx_mgr import mediamtx_manager

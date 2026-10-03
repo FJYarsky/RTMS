@@ -1010,7 +1010,7 @@ class CorePipelineVerifier:
             pub_url = (
                 f"srt://127.0.0.1:{port}?streamid=publish:{cam_id}&mode=caller&latency=10000&tlpktdrop=1&rcvbuf=16384"
             )
-            read_url = f"srt://127.0.0.1:{port}?streamid=read:{cam_id}&latency=15000&rcvbuf=16384&tlpktdrop=1"
+            read_url = f"srt://127.0.0.1:{port}?streamid=read:{cam_id}"
         else:
             pub_url = f"udp://127.0.0.1:{port}?pkt_size=1316&buffer_size=16384"
             read_url = f"udp://127.0.0.1:{port}?buffer_size=16384&overrun_nonfatal=1"

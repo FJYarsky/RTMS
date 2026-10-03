@@ -9,7 +9,6 @@
 import asyncio
 import logging
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -149,24 +148,15 @@ def build_client_urls(
         clean_host = (local_ip or host).strip() or "127.0.0.1"
         actual_proto = protocol
 
-    clean_cam_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(actual_cam_id))
+    from core.mediamtx_mgr import clean_camera_id
+
+    clean_cam_id = clean_camera_id(actual_cam_id)
 
     dest_ip = (udp_host or host or "127.0.0.1").strip()
     is_loopback = dest_ip in ("127.0.0.1", "localhost")
 
-    if latency_ms is not None:
-        srt_lat_ms = int(latency_ms)
-    elif zerolatency:
-        srt_lat_ms = 50 if str(network_type).lower() == "wifi" else 15
-    else:
-        srt_lat_ms = 120
-    latency_us = srt_lat_ms * 1000
-
     query_parts = [
         f"streamid=read:{clean_cam_id}",
-        f"latency={latency_us}",
-        "rcvbuf=65536",
-        "tlpktdrop=1",
     ]
     if passphrase:
         query_parts.append(f"passphrase={urllib.parse.quote(passphrase)}")

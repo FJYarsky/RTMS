@@ -40,17 +40,18 @@ def test_injective_multicast_port_mapping():
 
 
 def test_client_urls_latency_and_unicast():
-    """Valida el formato de URL para SRT cliente (con parámetros de baja latencia) y UDP Unicast (udp://@:<port>)."""
-    # SRT (v2.8.2 wired: 15ms, wifi: 50ms)
+    """Valida el formato de URL para SRT cliente (canónico y limpio) y UDP Unicast (udp://@:<port>)."""
+    # SRT
     srt_urls = build_client_urls("srt", "192.168.1.50", 9000, "cam_main")
     assert "srt://192.168.1.50:8890" in srt_urls["connect_url"]
     assert "streamid=read:cam_main" in srt_urls["connect_url"]
-    assert "latency=15000" in srt_urls["vlc_url"]
-    assert "rcvbuf=65536" in srt_urls["vlc_url"]
-    assert "tlpktdrop=1" in srt_urls["vlc_url"]
+    assert "latency=" not in srt_urls["vlc_url"]
+    assert "rcvbuf=" not in srt_urls["vlc_url"]
+    assert "tlpktdrop=" not in srt_urls["vlc_url"]
 
     srt_wifi_urls = build_client_urls("srt", "192.168.1.50", 9000, "cam_main", network_type="wifi")
-    assert "latency=50000" in srt_wifi_urls["vlc_url"]
+    assert "streamid=read:cam_main" in srt_wifi_urls["vlc_url"]
+    assert "latency=" not in srt_wifi_urls["vlc_url"]
 
     # UDP Unicast
     udp_urls = build_client_urls("udp", "192.168.1.50", 9005, "cam_udp", udp_mode="unicast")

@@ -229,8 +229,13 @@ async def lifespan(app: FastAPI):
     # Configuración de firewall en segundo plano para arranque instantáneo de la ventana (<1s)
     task_registry.create_task(asyncio.to_thread(setup_firewall_rules), name="setup_firewall")
 
-    # Media Server (MediaMTX): Configurado en Lazy Startup bajo demanda (SRT / WebRTC WHEP)
-    logger.info("MediaMTX configurado en modo Lazy Startup (inicio bajo demanda con apagado tras 20s de inactividad).")
+    # Media Server (MediaMTX): Asegurar disponibilidad de puertos SRT y WebRTC para clientes (OBS/VLC/vMix)
+    if mediamtx_manager.is_binary_available():
+        try:
+            await mediamtx_manager.ensure_started()
+            logger.info(f"MediaMTX iniciado en lifespan (puerto SRT :{mediamtx_manager.get_srt_port()}).")
+        except Exception as e:
+            logger.warning(f"Aviso iniciando MediaMTX en lifespan: {e}")
 
     # Sincronización inicial y autoarranque desatendido
     task_registry.create_task(sync_streams_with_hardware(), name="sync_hardware")

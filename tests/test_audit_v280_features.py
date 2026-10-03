@@ -17,20 +17,21 @@ from core.system_env import setup_firewall_rules
 
 
 def test_v280_srt_urls_no_slash_before_query():
-    """Valida que las URLs SRT generadas no contengan barra diagonal antes de '?' (libsrt / VLC Android) e incluyan parámetros de baja latencia."""
+    """Valida que las URLs SRT generadas no contengan barra diagonal antes de '?' (libsrt / VLC Android) y sean limpias."""
     urls = build_client_urls("srt", "192.168.1.100", 9000, "cam_test", passphrase="test_secret")
     assert "srt://192.168.1.100:8890?streamid=read:cam_test" in urls["connect_url"]
     assert "/?" not in urls["connect_url"]
     assert "/?" not in urls["vlc_url"]
     assert "passphrase=test_secret" in urls["connect_url"]
-    assert "latency=15000" in urls["vlc_url"]
-    assert "rcvbuf=65536" in urls["vlc_url"]
-    assert "tlpktdrop=1" in urls["vlc_url"]
+    assert "latency=" not in urls["vlc_url"]
+    assert "rcvbuf=" not in urls["vlc_url"]
+    assert "tlpktdrop=" not in urls["vlc_url"]
 
     urls_wifi = build_client_urls(
         "srt", "192.168.1.100", 9000, "cam_test", passphrase="test_secret", network_type="wifi"
     )
-    assert "latency=50000" in urls_wifi["vlc_url"]
+    assert "streamid=read:cam_test" in urls_wifi["vlc_url"]
+    assert "latency=" not in urls_wifi["vlc_url"]
 
 
 def test_v280_firewall_rules_covers_mediamtx_port():

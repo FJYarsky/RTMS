@@ -31,7 +31,10 @@ def clean_camera_id(cam_id: Any) -> str:
     """Sanitiza el ID de cámara para rutas seguras en MediaMTX y URLs."""
     import re
 
-    return re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id)) if cam_id else ""
+    if not cam_id:
+        return ""
+    cleaned = re.sub(r"[^a-zA-Z0-9_-]", "_", str(cam_id)).strip("_")
+    return cleaned or "stream"
 
 
 class MediaMTXManager:
@@ -393,6 +396,17 @@ class MediaMTXManager:
                 # Si hay flujos SRT registrados localmente, no apagar
                 if self._active_srt_streams:
                     continue
+
+                # Comprobar si hay cámaras configuradas en SRT en config.json
+                try:
+                    from core.config_mgr import load_config
+
+                    cfg = load_config()
+                    has_srt_cam = any(c.get("protocol") == "srt" for c in cfg.get("cameras", {}).values())
+                    if has_srt_cam:
+                        continue
+                except Exception:
+                    pass
 
                 # Comprobar período de gracia de 20 segundos
                 loop_time = asyncio.get_event_loop().time()

@@ -218,13 +218,15 @@ def test_v282_srt_loopback_and_egress_calibration():
 
     # Egress Wired
     wired_urls = build_client_urls("srt", "192.168.1.10", 9000, "cam_main", network_type="wired")
-    assert "latency=15000" in wired_urls["vlc_url"]
+    assert "streamid=read:cam_main" in wired_urls["vlc_url"]
+    assert "latency=" not in wired_urls["vlc_url"]
     assert "webrtc" in wired_urls
     assert wired_urls["webrtc"] == "http://192.168.1.10:8889/cam_main"
 
     # Egress WiFi
     wifi_urls = build_client_urls("srt", "192.168.1.10", 9000, "cam_main", network_type="wifi")
-    assert "latency=50000" in wifi_urls["vlc_url"]
+    assert "streamid=read:cam_main" in wifi_urls["vlc_url"]
+    assert "latency=" not in wifi_urls["vlc_url"]
 
 
 def test_v282_mediamtx_config_parameters():

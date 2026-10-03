@@ -1095,7 +1095,7 @@ async function confirmAndStartUnicast() {
         });
         localStorage.setItem('rtms_unicast_confirmed_' + (stream.device_path || index), 'true');
         stream.udp_host = targetIp;
-        renderStreams();
+        renderCamerasPage();
     } catch (e) {
         console.warn('Could not persist unicast target IP:', e);
     }
