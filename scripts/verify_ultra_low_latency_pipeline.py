@@ -204,13 +204,13 @@ def audit_udp_parameters() -> List[Tuple[str, bool, str]]:
 
     client_urls = build_client_urls("srt", "127.0.0.1", 9000, "cam_test")
     has_vlc_cache = (
-        ":network-caching=50" in client_urls["vlc_command"] and ":clock-jitter=0" in client_urls["vlc_command"]
+        ":network-caching=300" in client_urls["vlc_command"] and ":clock-jitter=0" not in client_urls["vlc_command"]
     )
     results.append(
         (
-            "VLC Player Caching (:network-caching=50)",
+            "VLC Player Caching (:network-caching=300)",
             has_vlc_cache,
-            ":clock-jitter=0 :clock-synchro=0 :drop-late-frames",
+            "búfer seguro 300ms sin clock-jitter=0 :drop-late-frames",
         )
     )
 

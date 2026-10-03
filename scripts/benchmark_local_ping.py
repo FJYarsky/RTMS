@@ -418,9 +418,9 @@ async def run_benchmark(
 
     info_mark(f"1. Buffer de Transporte SRT : {recommendations['optimal_srt_flags']}")
     info_mark(
-        f"2. Caché de Red para VLC     : :network-caching={best_caching} (Recepción inmediata sin buffering excesivo)"
+        f"2. Caché de Red para VLC     : :network-caching={best_caching} (Monitoreo con búfer seguro anti-congelamiento)"
     )
-    info_mark("3. Sincronización de Reloj  : :clock-jitter=0 :clock-synchro=0 para omitir interpolación artificial")
+    info_mark("3. Sincronización de Reloj  : Sin directivas desestabilizadoras (omite clock-jitter=0 para estabilidad)")
     info_mark("4. Parámetros de Emisión     : GOP=15 (0.25-0.5s) con PAT/PCR periódicos para enganche sub-segundo")
 
     if save_json:
