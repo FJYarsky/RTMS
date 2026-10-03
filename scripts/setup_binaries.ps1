@@ -1,6 +1,6 @@
 # ==============================================================================
 # RTMS — Real-Time Multicam System
-# Descarga y verificación de binarios multimedia (FFmpeg, FFplay, MediaMTX).
+# Descarga y verificación resiliente de binarios multimedia (FFmpeg, FFplay, MediaMTX).
 # Desarrollado por Joaquín Yarsky (joaquinyarsky@gmail.com)
 # ==============================================================================
 
@@ -16,6 +16,40 @@ $ffmpegExe = Join-Path $binDir "ffmpeg.exe"
 $ffplayExe = Join-Path $binDir "ffplay.exe"
 $mediamtxExe = Join-Path $binDir "mediamtx.exe"
 
+$defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+function Download-FileWithRetry {
+    param(
+        [Parameter(Mandatory=$true)][string]$Url,
+        [Parameter(Mandatory=$true)][string]$OutPath,
+        [int]$MaxRetries = 3,
+        [int]$TimeoutSec = 180,
+        [string]$UserAgent = $defaultUserAgent
+    )
+    for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
+        try {
+            if (Test-Path $OutPath) { Remove-Item -Path $OutPath -Force -ErrorAction SilentlyContinue }
+            if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
+                & curl.exe -f -L --retry 2 --retry-delay 2 --max-time $TimeoutSec -A $UserAgent -o $OutPath $Url
+                if ($LASTEXITCODE -eq 0 -and (Test-Path $OutPath) -and ((Get-Item $OutPath).Length -gt 0)) {
+                    return $true
+                }
+            } else {
+                Invoke-WebRequest -Uri $Url -OutFile $OutPath -UserAgent $UserAgent -TimeoutSec $TimeoutSec -UseBasicParsing
+                if ((Test-Path $OutPath) -and ((Get-Item $OutPath).Length -gt 0)) {
+                    return $true
+                }
+            }
+        } catch {
+            Write-Host "  [WARN] Intento $attempt/$MaxRetries falló para $Url : $_" -ForegroundColor DarkYellow
+        }
+        if ($attempt -lt $MaxRetries) {
+            Start-Sleep -Seconds (2 * $attempt)
+        }
+    }
+    return $false
+}
+
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host " RTMS -- Verificador de Binarios Multimedia (FFmpeg / MediaMTX)" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
@@ -30,58 +64,104 @@ if (-not (Test-Path $binDir)) {
 if ((Test-Path $ffmpegExe) -and (Test-Path $ffplayExe)) {
     Write-Host "[OK] FFmpeg y FFplay ya se encuentran instalados en: $binDir" -ForegroundColor Green
 } else {
-    Write-Host "[INFO] FFmpeg o FFplay ausentes en $binDir. Iniciando descarga segura..." -ForegroundColor Yellow
+    Write-Host "[INFO] FFmpeg o FFplay ausentes en $binDir. Iniciando aprovisionamiento multi-origen..." -ForegroundColor Yellow
 
-    $downloadUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
-    $shaUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip.sha256"
+    $sources = @(
+        @{
+            Name = "GitHub Releases (GyanD/codexffmpeg 9.0.2 - Espejo Oficial de Alta Disponibilidad)"
+            ZipUrl = "https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip"
+            ExpectedSha256 = "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba"
+            ShaUrl = $null
+        },
+        @{
+            Name = "Gyan.dev Servidor Primario"
+            ZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+            ExpectedSha256 = $null
+            ShaUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip.sha256"
+        },
+        @{
+            Name = "GitHub Releases (BtbN/FFmpeg-Builds - Espejo Comunitario)"
+            ZipUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+            ExpectedSha256 = $null
+            ShaUrl = $null
+        }
+    )
+
+    $ffmpegInstalled = $false
     $zipPath = Join-Path $binDir "ffmpeg_temp.zip"
     $shaPath = Join-Path $binDir "ffmpeg_temp.zip.sha256"
+    $extractDir = Join-Path $binDir "ffmpeg_extracted"
 
-    Write-Host "[INFO] Descargando checksum SHA256 oficial de FFmpeg..." -ForegroundColor Cyan
-    if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-        curl.exe -f -sSL -A "RTMS-Installer/2.5.0" -o $shaPath $shaUrl
-    } else {
-        Invoke-WebRequest -Uri $shaUrl -OutFile $shaPath -UseBasicParsing
+    foreach ($source in $sources) {
+        Write-Host "[INFO] Probando origen: $($source.Name)..." -ForegroundColor Cyan
+        
+        $expectedSha = $source.ExpectedSha256
+        if (-not $expectedSha -and $source.ShaUrl) {
+            Write-Host "  [INFO] Obteniendo suma de verificación dinámica desde $($source.ShaUrl)..." -ForegroundColor Gray
+            $shaDownloaded = Download-FileWithRetry -Url $source.ShaUrl -OutPath $shaPath -MaxRetries 2 -TimeoutSec 30
+            if ($shaDownloaded -and (Test-Path $shaPath)) {
+                $expectedSha = (Get-Content -Path $shaPath -Raw).Trim().ToLower()
+                Write-Host "  [INFO] SHA256 esperado: $expectedSha" -ForegroundColor Gray
+            } else {
+                Write-Host "  [WARN] No se pudo obtener el hash dinámico, saltando a siguiente origen..." -ForegroundColor DarkYellow
+                continue
+            }
+        }
+
+        Write-Host "  [INFO] Descargando paquete comprimido desde $($source.ZipUrl)..." -ForegroundColor Cyan
+        $zipDownloaded = Download-FileWithRetry -Url $source.ZipUrl -OutPath $zipPath -MaxRetries 3 -TimeoutSec 240
+        if (-not $zipDownloaded -or -not (Test-Path $zipPath) -or ((Get-Item $zipPath).Length -lt 10485760)) {
+            Write-Host "  [WARN] Falló la descarga o archivo incompleto (<10MB) desde $($source.Name)." -ForegroundColor DarkYellow
+            Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $shaPath -Force -ErrorAction SilentlyContinue
+            continue
+        }
+
+        if ($expectedSha) {
+            Write-Host "  [INFO] Validando integridad SHA256..." -ForegroundColor Cyan
+            $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
+            if ($actualSha -ne $expectedSha) {
+                Write-Host "  [WARN] Fallo de integridad SHA256 (esperado: $expectedSha, obtenido: $actualSha). Probando siguiente origen..." -ForegroundColor DarkYellow
+                Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
+                Remove-Item -Path $shaPath -Force -ErrorAction SilentlyContinue
+                continue
+            }
+            Write-Host "  [OK] Integridad SHA256 confirmada." -ForegroundColor Green
+        }
+
+        Write-Host "  [INFO] Descomprimiendo binarios..." -ForegroundColor Cyan
+        try {
+            if (Test-Path $extractDir) { Remove-Item -Path $extractDir -Recurse -Force -ErrorAction SilentlyContinue }
+            Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
+
+            $extractedExe = Get-ChildItem -Path $extractDir -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+            $extractedPlay = Get-ChildItem -Path $extractDir -Recurse -Filter "ffplay.exe" | Select-Object -First 1
+
+            if ($extractedExe -and $extractedPlay) {
+                Move-Item -Path $extractedExe.FullName -Destination $ffmpegExe -Force
+                Move-Item -Path $extractedPlay.FullName -Destination $ffplayExe -Force
+                Write-Host "  [OK] FFmpeg y FFplay extraídos e instalados exitosamente." -ForegroundColor Green
+                $ffmpegInstalled = $true
+            } else {
+                Write-Host "  [WARN] No se encontraron ffmpeg.exe y ffplay.exe en el paquete extraído." -ForegroundColor DarkYellow
+            }
+        } catch {
+            Write-Host "  [WARN] Error durante la extracción: $_" -ForegroundColor DarkYellow
+        } finally {
+            Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $shaPath -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+
+        if ($ffmpegInstalled) {
+            break
+        }
     }
 
-    $expectedSha = (Get-Content -Path $shaPath -Raw).Trim().ToLower()
-    Write-Host "[INFO] Hash esperado FFmpeg: $expectedSha" -ForegroundColor Gray
-
-    Write-Host "[INFO] Descargando paquete oficial de FFmpeg..." -ForegroundColor Cyan
-    if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-        curl.exe -f -L -A "RTMS-Installer/2.5.0" -o $zipPath $downloadUrl
-    } else {
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing
-    }
-
-    Write-Host "[INFO] Verificando integridad criptografica SHA256..." -ForegroundColor Cyan
-    $actualSha = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
-    if ($actualSha -ne $expectedSha) {
-        Write-Host "[ERROR] FALLO DE INTEGRIDAD: El hash de FFmpeg no coincide con el esperado." -ForegroundColor Red
-        Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path $shaPath -Force -ErrorAction SilentlyContinue
+    if (-not $ffmpegInstalled -or -not (Test-Path $ffmpegExe) -or -not (Test-Path $ffplayExe)) {
+        Write-Host "[ERROR] No se pudo aprovisionar FFmpeg / FFplay desde ningún origen disponible." -ForegroundColor Red
         exit 1
     }
-
-    Write-Host "[OK] Suma de verificacion SHA256 de FFmpeg confirmada." -ForegroundColor Green
-    Remove-Item -Path $shaPath -Force -ErrorAction SilentlyContinue
-
-    Write-Host "[INFO] Extrayendo FFmpeg y FFplay..." -ForegroundColor Cyan
-    $extractDir = Join-Path $binDir "ffmpeg_extracted"
-    Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
-
-    $extractedExe = Get-ChildItem -Path $extractDir -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
-    $extractedPlay = Get-ChildItem -Path $extractDir -Recurse -Filter "ffplay.exe" | Select-Object -First 1
-
-    if ($extractedExe) {
-        Move-Item -Path $extractedExe.FullName -Destination $ffmpegExe -Force
-    }
-    if ($extractedPlay) {
-        Move-Item -Path $extractedPlay.FullName -Destination $ffplayExe -Force
-    }
-
-    Remove-Item -Path $zipPath -Force
-    Remove-Item -Path $extractDir -Recurse -Force
 }
 
 # ----------------------------------------------------------------------
@@ -96,12 +176,13 @@ if (Test-Path $mediamtxExe) {
 } else {
     Write-Host "[INFO] MediaMTX no encontrado en $binDir. Iniciando descarga segura..." -ForegroundColor Yellow
     $mtxZipPath = Join-Path $binDir "mediamtx_temp.zip"
+    $mtxExtractDir = Join-Path $binDir "mediamtx_extracted"
 
-    Write-Host "[INFO] Descargando MediaMTX $mediamtxVersion oficial desde GitHub Releases..." -ForegroundColor Cyan
-    if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-        curl.exe -f -L -A "RTMS-Installer/2.5.0" -o $mtxZipPath $mediamtxUrl
-    } else {
-        Invoke-WebRequest -Uri $mediamtxUrl -OutFile $mtxZipPath -UseBasicParsing
+    Write-Host "[INFO] Descargando MediaMTX $mediamtxVersion desde GitHub Releases..." -ForegroundColor Cyan
+    $mtxDownloaded = Download-FileWithRetry -Url $mediamtxUrl -OutPath $mtxZipPath -MaxRetries 3 -TimeoutSec 120
+    if (-not $mtxDownloaded -or -not (Test-Path $mtxZipPath)) {
+        Write-Host "[ERROR] No se pudo descargar el paquete de MediaMTX." -ForegroundColor Red
+        exit 1
     }
 
     Write-Host "[INFO] Verificando integridad criptografica SHA256 de MediaMTX..." -ForegroundColor Cyan
@@ -115,7 +196,6 @@ if (Test-Path $mediamtxExe) {
     Write-Host "[OK] Suma de verificacion SHA256 de MediaMTX confirmada." -ForegroundColor Green
 
     Write-Host "[INFO] Extrayendo mediamtx.exe..." -ForegroundColor Cyan
-    $mtxExtractDir = Join-Path $binDir "mediamtx_extracted"
     Expand-Archive -Path $mtxZipPath -DestinationPath $mtxExtractDir -Force
 
     $extractedMtx = Get-ChildItem -Path $mtxExtractDir -Recurse -Filter "mediamtx.exe" | Select-Object -First 1
@@ -123,8 +203,8 @@ if (Test-Path $mediamtxExe) {
         Move-Item -Path $extractedMtx.FullName -Destination $mediamtxExe -Force
     }
 
-    Remove-Item -Path $mtxZipPath -Force
-    Remove-Item -Path $mtxExtractDir -Recurse -Force
+    Remove-Item -Path $mtxZipPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path $mtxExtractDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # ----------------------------------------------------------------------
