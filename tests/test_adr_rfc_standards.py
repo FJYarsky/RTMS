@@ -60,6 +60,3 @@ def test_rfc_catalog_and_files_integrity():
         assert rfc_file.name in readme_content, f"{rfc_file.name} no está referenciado en docs/rfc/README.md"
         for sec in required_sections:
             assert sec in content, f"{rfc_file.name} carece de la sección obligatoria: '{sec}'"
-
-
-# rtms-sync
