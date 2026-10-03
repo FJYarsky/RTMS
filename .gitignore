@@ -67,3 +67,8 @@ RTMS_AUDITORIA_*.txt
 htmlcov/
 reports/
 
+# Agent and internal audit workspace files
+.agents/
+PROJECT.md
+RTMS_LOW_LATENCY_AUDIT_REPORT.md
+
