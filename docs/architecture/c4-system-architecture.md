@@ -47,7 +47,7 @@ flowchart TB
         backend["Servidor API Backend<br/>FastAPI, Uvicorn, Python 3.12+ (asyncio)<br/>(Orquesta ciclo de vida, expone REST, autentica tokens y emite telemetría)"]
         mediamtx["Broker de Streaming Embebido<br/>MediaMTX (Go Mono-binario)<br/>(Conmutador multiplexor 1-a-N para SRT :8890, WebRTC WHEP :8889 y RTSP)"]
         workers["Workers de Ingesta FFmpeg<br/>FFmpeg 7.x/8.x (Subprocesos Win32)<br/>(Captura DirectShow, CBR y aceleración por silicio NVENC/QSV/AMF/CPU)"]
-        database[("Base de Datos Transaccional<br/>SQLite WAL (config/rtms.db)<br/>(Persistencia ACID de configuración, variables y migraciones)")]
+        database["Base de Datos Transaccional<br/>SQLite WAL config/rtms.db<br/>Persistencia ACID de configuración, variables y migraciones"]
         tray["Bandeja del Sistema (System Tray)<br/>pystray, Win32 Message Pump<br/>(Icono interactivo en la barra de tareas de Windows)"]
     end
 

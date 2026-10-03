@@ -53,7 +53,7 @@ Se procesa la estructura nativa `SYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX`:
 * **`GroupMask[0].Mask` (KAFFINITY / c_size_t)**: Máscara de bits que identifica unívocamente a los procesadores lógicos pertenecientes a dicho núcleo.
 
 El algoritmo calcula:
-$$\text{pcore\_mask} = \bigvee_{\forall c \in \text{Cores} \mid \text{EfficiencyClass}(c) = \max(\text{EfficiencyClass})} \text{Mask}(c)$$
+$$\mathbf{Mask}_{\text{pcore}} = \bigvee_{\forall c \in \text{Cores} \mid \text{EfficiencyClass}(c) = \max(\text{EfficiencyClass})} \text{Mask}(c)$$
 
 Si todos los núcleos presentan la misma clase de eficiencia ($\max = \min$), el sistema reconoce una topología homogénea y genera una máscara unificada con todos los núcleos lógicos del sistema, garantizando máxima compatibilidad.
 
