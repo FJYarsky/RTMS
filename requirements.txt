@@ -5,7 +5,7 @@
 # ==============================================================================
 
 # Framework Web y Servidor ASGI
-fastapi>=0.115.0
+fastapi>=0.142.2
 uvicorn[standard]>=0.52.4
 pydantic>=2.8.2
 starlette>=1.7.0
