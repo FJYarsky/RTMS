@@ -3,7 +3,7 @@
 # Versiones fijadas de dependencias para despliegues reproducibles.
 # ==============================================================================
 
-fastapi==0.141.1
+fastapi==0.143.0
 uvicorn==0.54.0
 pydantic==2.13.5
 pydantic-core==2.49.0
