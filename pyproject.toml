@@ -33,7 +33,7 @@ dependencies = [
     "jinja2>=3.1.4",
     "pywebview>=5.1",
     "pystray>=0.19.5",
-    "pillow>=10.4.0",
+    "pillow>=13.0.0",
     "psutil>=6.0.0",
     "aiosqlite>=0.22.1",
 ]
